@@ -4,6 +4,7 @@ import argparse
 import ctypes
 import json
 import re
+import signal
 import subprocess
 from pathlib import Path
 
@@ -22,6 +23,7 @@ class CompanionProbe(QWidget):
         self.setMask(QRegion(12, 12, 96, 96, QRegion.Ellipse))
         self.offset = None
         self.presses = 0
+        self.closing = False
         self.monitor = QTimer(self)
         self.monitor.timeout.connect(self.check_fullscreen)
         self.monitor.start(300)
@@ -50,11 +52,22 @@ class CompanionProbe(QWidget):
         self.offset = None
 
     def contextMenuEvent(self, event):
+        self.monitor.stop()
         menu = QMenu(self)
         menu.addAction("Закрыть прототип", self.close)
         menu.exec(event.globalPos())
+        if not self.closing:
+            self.monitor.start()
+
+    def closeEvent(self, event):
+        self.closing = True
+        self.monitor.stop()
+        super().closeEvent(event)
+        QApplication.instance().quit()
 
     def check_fullscreen(self):
+        if self.closing:
+            return
         # Only a probe: production needs asynchronous platform integration.
         active = subprocess.run(
             ["xprop", "-root", "_NET_ACTIVE_WINDOW"], capture_output=True, text=True, timeout=1
@@ -185,6 +198,11 @@ def main():
     parser.add_argument("--verify", action="store_true")
     args = parser.parse_args()
     app = QApplication([])
+    signal.signal(signal.SIGINT, lambda *_: app.quit())
+    signal.signal(signal.SIGTERM, lambda *_: app.quit())
+    heartbeat = QTimer()
+    heartbeat.timeout.connect(lambda: None)
+    heartbeat.start(100)
     companion = CompanionProbe()
     if args.verify:
         verify(app, companion)
