@@ -375,8 +375,14 @@ def test_sql_constraints_and_registry_foreign_key(tmp_path):
     with sqlite3.connect(path) as db:
         db.execute("PRAGMA foreign_keys=ON")
         with pytest.raises(sqlite3.IntegrityError):
-            db.execute("INSERT INTO work_blocks VALUES (?,?,0,0)", (str(uuid4()), str(task.id)))
+            db.execute(
+                "INSERT INTO work_blocks(id,task_id,starts_us,ends_us) VALUES (?,?,0,0)",
+                (str(uuid4()), str(task.id)),
+            )
         with pytest.raises(sqlite3.IntegrityError):
-            db.execute("INSERT INTO work_blocks VALUES (?,?,0,1)", (str(uuid4()), str(uuid4())))
+            db.execute(
+                "INSERT INTO work_blocks(id,task_id,starts_us,ends_us) VALUES (?,?,0,1)",
+                (str(uuid4()), str(uuid4())),
+            )
         with pytest.raises(sqlite3.IntegrityError):
             db.execute("DELETE FROM task_identities WHERE id=?", (str(task.id),))

@@ -73,6 +73,34 @@ class GuiHarness:
         QTest.qWait(80)
         self.idle()
 
+    def drag(self, name, dx=0, dy=0, target_name=None, escape=False):
+        source = self.item(name)
+        self.reveal(source)
+        start = source.mapToScene(QPointF(source.width() / 2, source.height() / 2)).toPoint()
+        if target_name:
+            target = self.item(target_name)
+            end = target.mapToScene(QPointF(target.width() / 2, target.height() / 2)).toPoint()
+        else:
+            end = start + QPointF(dx, dy).toPoint()
+        assert 0 <= end.x() < self.window.width() and 0 <= end.y() < self.window.height(), (
+            name,
+            start,
+            end,
+        )
+        QTest.mousePress(
+            self.window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start
+        )
+        for step in range(1, 9):
+            QTest.mouseMove(self.window, start + (end - start) * step / 8, 20)
+            self.app.processEvents()
+        if escape:
+            QTest.keyClick(self.window, Qt.Key.Key_Escape)
+        QTest.mouseRelease(
+            self.window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, end
+        )
+        self.app.processEvents()
+        self.idle()
+
     def choose(self, name, index):
         control = self.item(name)
         control.forceActiveFocus()

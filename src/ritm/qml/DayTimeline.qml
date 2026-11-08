@@ -61,7 +61,7 @@ Rectangle {
                 height: Math.max(44, modelData.segmentMinutes * timeline.minuteHeight + (gesture === "resize" ? previewDelta * timeline.minuteHeight : 0))
                 z: previewDelta !== 0 ? 3 : 1
                 radius: 8
-                color: previewDelta !== 0 ? "#d2e4c8" : "#e6efdf"
+                color: previewDelta !== 0 ? "#d2e4c8" : modelData.isEvent ? "#eee6f5" : "#e6efdf"
                 border.color: modelData.warning ? "#b96d40" : "#6e9578"
                 border.width: pending || previewDelta !== 0 ? 2 : 1
                 Connections {
@@ -81,6 +81,7 @@ Rectangle {
                         id: modelData.id,
                         expectedStart: modelData.startsAt,
                         expectedEnd: modelData.endsAt,
+                        expectedTitle: modelData.eventTitle,
                         operation: kind,
                         minutes: previewDelta
                     });
@@ -172,7 +173,7 @@ Rectangle {
                     anchors.bottom: parent.bottom
                     height: 9
                     radius: 4
-                    color: blockItem.modelData.canResize ? "#7c9c79" : "#c4d3bc"
+                    color: blockItem.modelData.canResize ? (blockItem.modelData.isEvent ? "#9784ad" : "#7c9c79") : "#c4d3bc"
                     MouseArea {
                         objectName: "timelineResize_" + blockItem.modelData.id
                         anchors.fill: parent

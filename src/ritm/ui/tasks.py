@@ -381,6 +381,7 @@ class TaskController(QObject):
                         if (
                             expected.starts_at.isoformat() != data["expectedStart"]
                             or expected.ends_at.isoformat() != data["expectedEnd"]
+                            or expected.title != data.get("expectedTitle", expected.title)
                         ):
                             raise ValueError(
                                 "Блок уже изменился. Обновите календарь и повторите действие"
@@ -409,9 +410,12 @@ class TaskController(QObject):
                         messages.append("есть пересечение с другими блоками")
                     if result.warnings.after_deadline:
                         messages.append("окончание позже дедлайна")
-                    notice = ("Блок изменён" if expected is not None else "Блок сохранён") + (
-                        ": " + "; ".join(messages) if messages else ""
-                    )
+                    if block.task_id is None:
+                        notice = "Событие изменено" if expected is not None else "Событие сохранено"
+                    else:
+                        notice = "Блок изменён" if expected is not None else "Блок сохранён"
+                    if messages:
+                        notice += ": " + "; ".join(messages)
                     day = block.starts_at.astimezone(self._zone).date().isoformat()
                     config = {**config, "anchor": day, "day": day}
                 elif action == "save":

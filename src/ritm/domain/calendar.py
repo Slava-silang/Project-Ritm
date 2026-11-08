@@ -34,14 +34,25 @@ def from_instant_us(value: int) -> datetime:
 
 @dataclass(frozen=True, kw_only=True)
 class WorkBlock:
-    task_id: UUID
+    task_id: UUID | None = None
+    title: str = ""
     starts_at: datetime
     ends_at: datetime
     id: UUID = field(default_factory=uuid4)
 
     def __post_init__(self):
-        if not isinstance(self.id, UUID) or not isinstance(self.task_id, UUID):
+        if not isinstance(self.id, UUID) or (
+            self.task_id is not None and not isinstance(self.task_id, UUID)
+        ):
             raise ValueError("Идентификаторы блока и задачи должны быть UUID")
+        if not isinstance(self.title, str):
+            raise ValueError("Название события должно быть строкой")
+        title = self.title.strip()
+        if self.task_id is None and not title:
+            raise ValueError("Название события обязательно")
+        if self.task_id is not None and title:
+            raise ValueError("Название блока задачи берётся из самой задачи")
+        object.__setattr__(self, "title", title)
         start, end = utc_instant(self.starts_at), utc_instant(self.ends_at)
         if end <= start:
             raise ValueError("Окончание рабочего блока должно быть позже начала")
@@ -68,12 +79,18 @@ class BlockWarnings:
     after_deadline: bool
 
 
-def block_warnings(block: WorkBlock, task: Task, nearby: Iterable[WorkBlock]) -> BlockWarnings:
-    if block.task_id != task.id:
+def block_warnings(
+    block: WorkBlock, task: Task | None, nearby: Iterable[WorkBlock]
+) -> BlockWarnings:
+    if (task is None and block.task_id is not None) or (
+        task is not None and block.task_id != task.id
+    ):
         raise ValueError("Рабочий блок должен относиться к указанной главной задаче")
     return BlockWarnings(
         overlapping_ids=tuple(
             other.id for other in nearby if other.id != block.id and overlaps(block, other)
         ),
-        after_deadline=task.deadline is not None and block.ends_at > task.deadline,
+        after_deadline=bool(
+            task is not None and task.deadline is not None and block.ends_at > task.deadline
+        ),
     )

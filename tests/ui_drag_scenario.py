@@ -9,10 +9,8 @@ from pathlib import Path
 from uuid import UUID
 
 from gui_support import GuiHarness
-from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQuickControls2 import QQuickStyle
-from PySide6.QtTest import QTest
 
 from ritm.app import load_window
 from ritm.application.calendar import CalendarService
@@ -58,27 +56,7 @@ def saved():
         return store.get_work_block(UUID(identifier))
 
 
-def drag(name, dx=0, dy=0, target_name=None, escape=False):
-    source = gui.item(name)
-    gui.reveal(source)
-    start = source.mapToScene(QPointF(source.width() / 2, source.height() / 2)).toPoint()
-    if target_name:
-        target = gui.item(target_name)
-        end = target.mapToScene(QPointF(target.width() / 2, target.height() / 2)).toPoint()
-    else:
-        end = start + QPointF(dx, dy).toPoint()
-    assert 0 <= end.x() < window.width() and 0 <= end.y() < window.height(), (name, start, end)
-    QTest.mousePress(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
-    for step in range(1, 9):
-        point = start + (end - start) * step / 8
-        QTest.mouseMove(window, point, 20)
-        app.processEvents()
-
-    if escape:
-        QTest.keyClick(window, Qt.Key.Key_Escape)
-    QTest.mouseRelease(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, end)
-    app.processEvents()
-    gui.idle()
+drag = gui.drag
 
 
 try:

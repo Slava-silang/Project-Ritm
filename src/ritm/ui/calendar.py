@@ -108,9 +108,9 @@ def calendar_view(
     by_id = {task.id: task for task in tasks}
     events = {}
     for block in blocks:
-        if block.task_id not in by_id:
+        if block.task_id is not None and block.task_id not in by_id:
             continue
-        task = by_id[block.task_id]
+        task = by_id.get(block.task_id)
         warnings = block_warnings(block, task, blocks)
         messages = []
         if warnings.overlapping_ids:
@@ -119,9 +119,11 @@ def calendar_view(
             messages.append("Выходит за дедлайн")
         events[block.id] = {
             "id": str(block.id),
-            "taskId": str(task.id),
-            "kind": "block",
-            "title": task.title,
+            "taskId": str(task.id) if task is not None else "",
+            "kind": "block" if task is not None else "event",
+            "isEvent": task is None,
+            "eventTitle": block.title,
+            "title": task.title if task is not None else block.title,
             "warning": " · ".join(messages),
             "duration": duration_text(block.duration),
             "startsAt": block.starts_at.isoformat(),
@@ -180,6 +182,7 @@ def calendar_view(
                 "inMonth": day.month == anchor.month,
                 "entries": entries,
                 "blockCount": sum(x["kind"] == "block" for x in entries),
+                "eventCount": sum(x["kind"] == "event" for x in entries),
                 "deadlineCount": sum(x["kind"] == "deadline" for x in entries),
             }
         )
@@ -209,7 +212,7 @@ def calendar_view(
     timeline = []
     lane_ends = []
     for entry in chosen["entries"]:
-        if entry["kind"] != "block":
+        if entry["kind"] not in ("block", "event"):
             continue
         start_minute = entry["offsetMinutes"]
         lane = next((i for i, end in enumerate(lane_ends) if end <= start_minute), len(lane_ends))
@@ -237,8 +240,12 @@ def calendar_view(
 
 
 def block_from_fields(data: dict, zone: tzinfo | None = None) -> WorkBlock:
+    if data.get("kind", "task") not in ("task", "event"):
+        raise ValueError("Неизвестный тип записи календаря")
+    event = data.get("kind") == "event"
     return WorkBlock(
-        task_id=UUID(str(data.get("taskId", ""))),
+        task_id=None if event else UUID(str(data.get("taskId", ""))),
+        title=str(data.get("title", "")) if event else "",
         starts_at=local_instant(str(data.get("start", "")), zone),
         ends_at=local_instant(str(data.get("end", "")), zone),
     )
@@ -273,5 +280,10 @@ def change_block(block: WorkBlock, data: dict, zone: tzinfo | None = None) -> Wo
             if data["end"] == block.ends_at.astimezone(zone).strftime(DATE_FORMAT + " %z")
             else local_instant(data["end"], zone)
         )
-        return replace(block, starts_at=start, ends_at=end)
+        return replace(
+            block,
+            starts_at=start,
+            ends_at=end,
+            title=str(data.get("title", block.title)) if block.task_id is None else "",
+        )
     raise ValueError("Неизвестное изменение рабочего блока")

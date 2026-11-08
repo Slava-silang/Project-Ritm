@@ -33,6 +33,8 @@ ColumnLayout {
     }
     function beginEdit(entry) {
         blockEditor.entry = entry;
+        blockKind.currentIndex = entry.isEvent ? 1 : 0;
+        eventTitle.text = entry.eventTitle || "";
         blockTask.currentIndex = Math.max(0, pane.backend.calendarTasks.findIndex(task => task.id === entry.taskId));
         blockStart.text = entry.startText;
         blockEnd.text = entry.endText;
@@ -70,6 +72,8 @@ ColumnLayout {
 
     function beginCreate(taskId) {
         blockEditor.entry = null;
+        blockKind.currentIndex = pane.backend.calendarTasks.length ? 0 : 1;
+        eventTitle.text = "";
         blockTask.currentIndex = Math.max(0, pane.backend.calendarTasks.findIndex(task => task.id === taskId));
         const day = pane.view.formDate || "";
         blockStart.text = day + " 09:00";
@@ -98,7 +102,7 @@ ColumnLayout {
         contentItem: ColumnLayout {
             spacing: 3
             RowLayout {
-                visible: eventButton.entry.kind === "block"
+                visible: eventButton.entry.kind !== "deadline"
                 Layout.fillWidth: true
                 Rectangle {
                     Layout.preferredWidth: 28
@@ -162,7 +166,7 @@ ColumnLayout {
             }
             Label {
                 Layout.fillWidth: true
-                visible: eventButton.entry.kind === "block"
+                visible: eventButton.entry.kind !== "deadline"
                 text: eventButton.entry.segmentDuration === eventButton.entry.duration ? eventButton.entry.duration : eventButton.entry.segmentDuration + qsTr(" в этом дне · ") + eventButton.entry.duration + qsTr(" всего")
                 wrapMode: Text.Wrap
                 color: "#69766d"
@@ -179,10 +183,15 @@ ColumnLayout {
         }
         background: Rectangle {
             radius: 8
-            color: eventButton.entry.kind === "deadline" ? "#fff0e7" : eventButton.hovered ? "#dce9dd" : "#e9f0e5"
+            color: eventButton.entry.kind === "deadline" ? "#fff0e7" : eventButton.entry.isEvent ? (eventButton.hovered ? "#e0d5eb" : "#eee6f5") : eventButton.hovered ? "#dce9dd" : "#e9f0e5"
             border.color: eventButton.visualFocus ? "#2b5949" : "transparent"
         }
-        onClicked: pane.openTask(entry.taskId)
+        onClicked: {
+            if (entry.kind === "event")
+                pane.beginEdit(entry);
+            else
+                pane.openTask(entry.taskId);
+        }
     }
 
     RowLayout {
@@ -233,14 +242,14 @@ ColumnLayout {
         }
         Button {
             objectName: "newBlockButton"
-            text: qsTr("+ Блок")
-            enabled: !pane.backend.busy && pane.backend.calendarTasks.length > 0
+            text: qsTr("+ В расписание")
+            enabled: !pane.backend.busy
             onClicked: pane.beginCreate("")
         }
     }
     Label {
         Layout.fillWidth: true
-        text: pane.backend.calendarTasks.length ? qsTr("Зелёный — рабочий блок · ◆ — дедлайн. Событие открывает задачу; ↔ переносит блок между днями. На шкале дня можно двигать блок и тянуть его нижний край.") : qsTr("Сначала добавьте задачу, чтобы запланировать время.")
+        text: qsTr("Зелёный — работа над задачей · Фиолетовый — событие · ◆ — дедлайн. ↔ переносит запись между днями.")
         wrapMode: Text.Wrap
         color: "#69766d"
         font.pixelSize: 13
@@ -327,6 +336,7 @@ ColumnLayout {
                                         id: source.entry.id,
                                         expectedStart: source.entry.startsAt,
                                         expectedEnd: source.entry.endsAt,
+                                        expectedTitle: source.entry.eventTitle,
                                         operation: "day",
                                         day: dayCell.modelData.date,
                                         sourceDay: source.entry.day
@@ -365,6 +375,13 @@ ColumnLayout {
                                 text: pane.narrow ? "● " + dayCell.modelData.blockCount : qsTr("Блоки: ") + dayCell.modelData.blockCount
                                 font.pixelSize: 12
                                 color: "#2b5949"
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: (pane.view.mode === "month" || pane.narrow) && dayCell.modelData.eventCount > 0
+                                text: pane.narrow ? "С: " + dayCell.modelData.eventCount : qsTr("События: ") + dayCell.modelData.eventCount
+                                font.pixelSize: 12
+                                color: "#71518d"
                             }
                             Label {
                                 Layout.fillWidth: true
@@ -421,7 +438,7 @@ ColumnLayout {
         id: blockEditor
         objectName: "blockEditor"
         property var entry: null
-        title: entry ? qsTr("Изменить рабочий блок") : qsTr("Запланировать рабочий блок")
+        title: entry ? (entry.isEvent ? qsTr("Изменить событие") : qsTr("Изменить рабочий блок")) : qsTr("Добавить в расписание")
         parent: Overlay.overlay
         anchors.centerIn: parent
         width: Math.min(520, parent ? parent.width - 32 : 520)
@@ -443,11 +460,36 @@ ColumnLayout {
                 spacing: 12
                 enabled: !pane.backend.busy
                 Label {
+                    text: qsTr("Тип записи")
+                    color: "#69766d"
+                }
+                ComboBox {
+                    id: blockKind
+                    objectName: "blockKindInput"
+                    Layout.fillWidth: true
+                    model: [qsTr("Блок задачи"), qsTr("Событие")]
+                    enabled: !blockEditor.entry
+                }
+                Label {
+                    text: qsTr("Название события *")
+                    color: "#69766d"
+                    visible: blockKind.currentIndex === 1
+                }
+                TextField {
+                    id: eventTitle
+                    objectName: "eventTitleInput"
+                    Layout.fillWidth: true
+                    visible: blockKind.currentIndex === 1
+                    placeholderText: qsTr("Например, пара или прогулка с друзьями")
+                }
+                Label {
+                    visible: blockKind.currentIndex === 0
                     text: qsTr("Задача")
                     color: "#69766d"
                 }
                 ComboBox {
                     id: blockTask
+                    visible: blockKind.currentIndex === 0
                     objectName: "blockTaskInput"
                     Layout.fillWidth: true
                     textRole: "title"
@@ -502,20 +544,24 @@ ColumnLayout {
             Button {
                 objectName: "saveBlockButton"
                 text: qsTr("Сохранить")
-                enabled: !pane.backend.busy && blockTask.currentIndex >= 0
+                enabled: !pane.backend.busy && (blockKind.currentIndex === 1 || (blockTask.currentIndex >= 0 && blockTask.currentIndex < pane.backend.calendarTasks.length))
                 onClicked: {
                     if (blockEditor.entry)
                         pane.backend.changeBlock({
                             id: blockEditor.entry.id,
                             expectedStart: blockEditor.entry.startsAt,
                             expectedEnd: blockEditor.entry.endsAt,
+                            expectedTitle: blockEditor.entry.eventTitle,
+                            title: eventTitle.text,
                             operation: "fields",
                             start: blockStart.text,
                             end: blockEnd.text
                         });
                     else
                         pane.backend.createBlock({
-                            taskId: pane.backend.calendarTasks[blockTask.currentIndex].id,
+                            kind: blockKind.currentIndex === 1 ? "event" : "task",
+                            title: eventTitle.text,
+                            taskId: blockKind.currentIndex === 1 ? "" : pane.backend.calendarTasks[blockTask.currentIndex].id,
                             start: blockStart.text,
                             end: blockEnd.text
                         });
