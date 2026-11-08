@@ -1,6 +1,7 @@
 """SQLite v1. Каждый экземпляр используется только в создавшем его потоке."""
 
 import sqlite3
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -103,6 +104,27 @@ class TaskStore:
         )
 
     def save_task(self, task: Task):
+        with self._db:
+            self._write_task(task)
+
+    def update_task(self, identifier: UUID, transform: Callable[[Task], Task]) -> Task:
+        """Прочитать, преобразовать и записать одним изменением.
+
+        transform — чистая функция; не должна обращаться к этому соединению.
+        Блокировка записи берётся до чтения, исключая потерю параллельных изменений.
+        """
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            task = self.get_task(identifier)
+            if task is None:
+                raise KeyError(identifier)
+            updated = transform(task)
+            if type(updated) is not Task or updated.id != identifier:
+                raise ValueError("Преобразование должно сохранить задачу и её ID")
+            self._write_task(updated)
+            return updated
+
+    def _write_task(self, task: Task):
         duration = task.expected_duration
         microseconds = (
             None
@@ -111,35 +133,34 @@ class TaskStore:
         )
         if microseconds is not None and microseconds > 2**63 - 1:
             raise ValueError("Длительность превышает диапазон SQLite")
-        with self._db:
-            result = self._db.execute(
-                """INSERT INTO nodes
-                   (id,parent_id,position,kind,title,completed,description,category_id,
-                    difficulty,expected_us,deadline,weight)
-                   VALUES (?,NULL,0,0,?,?,?,?,?,?,?,NULL)
-                   ON CONFLICT(id) DO UPDATE SET title=excluded.title,
-                    completed=excluded.completed,description=excluded.description,
-                    category_id=excluded.category_id,difficulty=excluded.difficulty,
-                    expected_us=excluded.expected_us,deadline=excluded.deadline
-                   WHERE nodes.kind=0""",
-                (
-                    str(task.id),
-                    task.title,
-                    int(task.completed),
-                    task.description,
-                    str(task.category_id) if task.category_id else None,
-                    task.difficulty,
-                    microseconds,
-                    task.deadline.isoformat() if task.deadline else None,
-                ),
-            )
-            if not result.rowcount:
-                raise ValueError("ID задачи занят подзадачей")
-            self._db.execute("DELETE FROM nodes WHERE parent_id=?", (str(task.id),))
-            for position, child in enumerate(task.subtasks):
-                self._save_child(child, task.id, position, 1, child.weight)
-                for item_position, item in enumerate(child.items):
-                    self._save_child(item, child.id, item_position, 2, None)
+        result = self._db.execute(
+            """INSERT INTO nodes
+               (id,parent_id,position,kind,title,completed,description,category_id,
+                difficulty,expected_us,deadline,weight)
+               VALUES (?,NULL,0,0,?,?,?,?,?,?,?,NULL)
+               ON CONFLICT(id) DO UPDATE SET title=excluded.title,
+                completed=excluded.completed,description=excluded.description,
+                category_id=excluded.category_id,difficulty=excluded.difficulty,
+                expected_us=excluded.expected_us,deadline=excluded.deadline
+               WHERE nodes.kind=0""",
+            (
+                str(task.id),
+                task.title,
+                int(task.completed),
+                task.description,
+                str(task.category_id) if task.category_id else None,
+                task.difficulty,
+                microseconds,
+                task.deadline.isoformat() if task.deadline else None,
+            ),
+        )
+        if not result.rowcount:
+            raise ValueError("ID задачи занят подзадачей")
+        self._db.execute("DELETE FROM nodes WHERE parent_id=?", (str(task.id),))
+        for position, child in enumerate(task.subtasks):
+            self._save_child(child, task.id, position, 1, child.weight)
+            for item_position, item in enumerate(child.items):
+                self._save_child(item, child.id, item_position, 2, None)
 
     def _save_child(self, child, parent_id, position, kind, weight):
         self._db.execute(

@@ -1,4 +1,4 @@
-"""Неизменяемые данные задачи. Выполнение и распределение весов — T06/T07."""
+"""Неизменяемые данные задачи. Переходы выполнения — completion.py; распределение весов — T07."""
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
