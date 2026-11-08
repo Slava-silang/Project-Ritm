@@ -108,7 +108,12 @@ def test_add_first_level_to_completed_task(task, has_children, completed):
     child = Subtask(title="Новый этап", completed=completed)
     updated = add_subtask(done, child)
     assert updated.completed is completed
-    assert updated.subtasks == (*done.subtasks, child)
+    assert tuple(branch.id for branch in updated.subtasks) == (
+        *(branch.id for branch in done.subtasks),
+        child.id,
+    )
+    assert updated.subtasks[-1].completed is completed
+    assert sum(branch.weight for branch in updated.subtasks) == 100
 
 
 def test_new_branch_uses_children_completion(task):

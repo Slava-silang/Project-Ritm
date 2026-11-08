@@ -3,6 +3,7 @@
 from dataclasses import replace
 from uuid import UUID
 
+from ritm.domain import weights
 from ritm.domain.tasks import ChecklistItem, Subtask, Task
 
 
@@ -57,8 +58,13 @@ def set_completed(task: Task, node_id: UUID, completed: bool) -> Task:
 
 
 def add_subtask(task: Task, subtask: Subtask) -> Task:
-    """Добавить первый уровень; перераспределение весов будет реализовано в T07."""
-    return _refresh(replace(task, subtasks=(*task.subtasks, subtask)))
+    """Добавить первый уровень, распределить веса и пересчитать предков."""
+    return _refresh(weights.add_subtask(task, subtask))
+
+
+def remove_subtask(task: Task, subtask_id: UUID) -> Task:
+    """Удалить ветку, перераспределить веса и пересчитать выполнение."""
+    return _refresh(weights.remove_subtask(task, subtask_id))
 
 
 def add_item(task: Task, parent_id: UUID, item: ChecklistItem) -> Task:
