@@ -9,7 +9,7 @@ from uuid import uuid4
 import pytest
 
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
-from ritm.storage.sqlite import APPLICATION_ID, TaskStore
+from ritm.storage.sqlite import APPLICATION_ID, SCHEMA_VERSION, TaskStore
 
 
 def test_roundtrip_tree_and_reopen(tmp_path):
@@ -121,7 +121,7 @@ def test_minimal_task_and_schema_constraints(tmp_path):
         store.save_task(task)
         assert store.get_task(task.id) == task
     with sqlite3.connect(path) as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert db.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         with pytest.raises(sqlite3.IntegrityError):
             db.execute(
                 "INSERT INTO nodes(id,parent_id,position,kind,title,completed) "

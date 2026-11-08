@@ -3,12 +3,11 @@
 import json
 import sqlite3
 import sys
-import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QPointF, Qt, QTimer
+from gui_support import GuiHarness
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtQuick import QQuickItem
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtTest import QTest
 
@@ -24,53 +23,12 @@ engine = load_window(controller)
 window = engine.rootObjects()[0]
 
 
-def wait_for(predicate, message="condition"):
-    deadline = time.monotonic() + 10
-    while not predicate():
-        app.processEvents()
-        QTest.qWait(10)
-        assert time.monotonic() < deadline, f"Timeout: {message}; error={controller.error}"
-    app.processEvents()
-    QTest.qWait(50)
-
-
-def idle():
-    wait_for(lambda: not controller.busy, "storage idle")
-
-
-def item(name):
-    candidates = window.findChildren(QObject, name)
-    if candidates:
-        return candidates[0]
-    pending = [window.contentItem()]
-    while pending:
-        candidate = pending.pop()
-        if candidate.objectName() == name:
-            return candidate
-        if isinstance(candidate, QQuickItem):
-            pending.extend(candidate.childItems())
-    raise AssertionError(f"Missing QML item {name}; detail={controller.detail}")
-
-
-def fill(name, value):
-    item(name).setProperty("text", value)
-    app.processEvents()
-
-
-def click(name):
-    target = item(name)
-    assert target.isVisible() and target.isEnabled(), name
-    point = target.mapToScene(QPointF(target.width() / 2, target.height() / 2)).toPoint()
-    assert 0 <= point.x() < window.width() and 0 <= point.y() < window.height(), (name, point)
-    QTest.mouseClick(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, point)
-    app.processEvents()
-    QTest.qWait(80)
-    idle()
+gui = GuiHarness(app, window, controller)
+wait_for, idle, item, fill, click = gui.wait_for, gui.idle, gui.item, gui.fill, gui.click
 
 
 def screenshot(name):
-    QTest.qWait(100)
-    assert window.grabWindow().save(str(profile / name))
+    gui.screenshot(profile / name)
 
 
 try:
@@ -176,6 +134,7 @@ try:
     controller = TaskController(profile)
     engine = load_window(controller)
     window = engine.rootObjects()[0]
+    gui.window, gui.controller = window, controller
     idle()
     assert controller.detail["id"] == identifier
     assert controller.detail["title"] == "Лабораторная № 1 · Механика"

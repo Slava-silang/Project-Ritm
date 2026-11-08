@@ -80,3 +80,61 @@ def add_item(task: Task, parent_id: UUID, item: ChecklistItem) -> Task:
             ),
         )
     )
+
+
+def remove_node(task: Task, node_id: UUID) -> Task | None:
+    if node_id == task.id:
+        return None
+    if any(child.id == node_id for child in task.subtasks):
+        return remove_subtask(task, node_id)
+    if not any(item.id == node_id for child in task.subtasks for item in child.items):
+        raise KeyError(node_id)
+    return _refresh(
+        replace(
+            task,
+            subtasks=tuple(
+                replace(child, items=tuple(item for item in child.items if item.id != node_id))
+                for child in task.subtasks
+            ),
+        )
+    )
+
+
+def restore_node(current: Task | None, before: Task, after: Task | None, node_id: UUID) -> Task:
+    if node_id == before.id:
+        if current is not None:
+            raise ValueError("Задача с таким ID уже существует; запись оставлена в корзине")
+        return before
+    if current is None:
+        raise ValueError("Сначала восстановите главную задачу из корзины")
+    for position, child in enumerate(before.subtasks):
+        if child.id == node_id:
+            result = add_subtask(current, child)
+            children = list(result.subtasks)
+            children.insert(min(position, len(children) - 1), children.pop())
+            result = replace(result, subtasks=tuple(children))
+
+            # Restore exact weights when the surviving set/weights have not changed.
+            def signature(task):
+                return {x.id: x.weight for x in task.subtasks}
+
+            if after is not None and signature(current) == signature(after):
+                result = weights.set_weights(result, signature(weights.initialize_weights(before)))
+            return _refresh(result)
+        for item_position, item in enumerate(child.items):
+            if item.id == node_id:
+                parent = next((x for x in current.subtasks if x.id == child.id), None)
+                if parent is None:
+                    raise ValueError("Сначала восстановите родительскую подзадачу из корзины")
+                items = list(parent.items)
+                items.insert(min(item_position, len(items)), item)
+                return _refresh(
+                    replace(
+                        current,
+                        subtasks=tuple(
+                            replace(x, items=tuple(items)) if x.id == parent.id else x
+                            for x in current.subtasks
+                        ),
+                    )
+                )
+    raise KeyError(node_id)

@@ -1,16 +1,17 @@
-"""SQLite v1. Каждый экземпляр используется только в создавшем его потоке."""
+"""SQLite с версионированной схемой. Каждый экземпляр используется только в создавшем его потоке."""
 
 import sqlite3
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
+from ritm.storage.codec import decode_task, encode_task
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SCHEMA = (
     "CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL, "
     "title TEXT NOT NULL CHECK(length(trim(title))>0))",
@@ -45,6 +46,18 @@ SCHEMA = (
 )
 
 
+TRASH_SCHEMA = """CREATE TABLE trash (
+    id TEXT PRIMARY KEY NOT NULL,
+    task_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    kind INTEGER NOT NULL CHECK(kind IN (0,1,2)),
+    deleted_at TEXT NOT NULL,
+    before_json TEXT NOT NULL,
+    after_json TEXT
+)"""
+
+
 class TaskStore:
     def __init__(self, path: Path):
         path = Path(path)
@@ -66,6 +79,11 @@ class TaskStore:
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
+            if version == 1 and app_id == APPLICATION_ID:
+                self._db.execute(TRASH_SCHEMA)
+                self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+                self._db.commit()
+                return
             tables = self._db.execute(
                 "SELECT name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
             ).fetchall()
@@ -73,6 +91,7 @@ class TaskStore:
                 raise ValueError("Неизвестная или более новая схема базы; данные не изменены")
             for statement in SCHEMA:
                 self._db.execute(statement)
+            self._db.execute(TRASH_SCHEMA)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             self._db.commit()
@@ -91,11 +110,14 @@ class TaskStore:
 
     def save_category(self, category: Category):
         with self._db:
-            self._db.execute(
-                "INSERT INTO categories VALUES (?,?) "
-                "ON CONFLICT(id) DO UPDATE SET title=excluded.title",
-                (str(category.id), category.title),
-            )
+            self._write_category(category)
+
+    def _write_category(self, category: Category):
+        self._db.execute(
+            "INSERT INTO categories VALUES (?,?) "
+            "ON CONFLICT(id) DO UPDATE SET title=excluded.title",
+            (str(category.id), category.title),
+        )
 
     def list_categories(self) -> tuple[Category, ...]:
         return tuple(
@@ -107,15 +129,19 @@ class TaskStore:
         with self._db:
             self._write_task(task)
 
-    def create_task(self, task: Task):
+    def create_task(self, task: Task, category: Category | None = None):
         """Создание не может перезаписать существующую задачу или её потомка."""
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
             if self._db.execute("SELECT 1 FROM nodes WHERE id=?", (str(task.id),)).fetchone():
                 raise ValueError("Задача с таким идентификатором уже существует")
+            if category is not None:
+                self._write_category(category)
             self._write_task(task)
 
-    def update_task(self, identifier: UUID, transform: Callable[[Task], Task]) -> Task:
+    def update_task(
+        self, identifier: UUID, transform: Callable[[Task], Task], category: Category | None = None
+    ) -> Task:
         """Прочитать, преобразовать и записать одним изменением.
 
         transform — чистая функция; не должна обращаться к этому соединению.
@@ -129,6 +155,8 @@ class TaskStore:
             updated = transform(task)
             if type(updated) is not Task or updated.id != identifier:
                 raise ValueError("Преобразование должно сохранить задачу и её ID")
+            if category is not None:
+                self._write_category(category)
             self._write_task(updated)
             return updated
 
@@ -236,3 +264,81 @@ class TaskStore:
                 for row in self._db.execute("SELECT id FROM nodes WHERE kind=0 ORDER BY rowid")
             ]
             return tuple(self.get_task(identifier) for identifier in identifiers)
+
+    def archive_node(
+        self,
+        task_id: UUID,
+        node_id: UUID,
+        transform: Callable[[Task], Task | None],
+        deleted_at: datetime,
+    ) -> str:
+        if deleted_at.utcoffset() is None:
+            raise ValueError("Время удаления должно содержать часовой пояс")
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            before = self.get_task(task_id)
+            if before is None:
+                raise KeyError(task_id)
+            candidates = [
+                (before, 0),
+                *((x, 1) for x in before.subtasks),
+                *((x, 2) for child in before.subtasks for x in child.items),
+            ]
+            node, kind = next(
+                ((x, level) for x, level in candidates if x.id == node_id), (None, None)
+            )
+            if node is None:
+                raise KeyError(node_id)
+            after = transform(before)
+            if (after is None) != (node_id == task_id):
+                raise ValueError("Изменение должно удалять только выбранный уровень")
+            if after is not None and (type(after) is not Task or after.id != before.id):
+                raise ValueError("Изменение не должно менять ID задачи")
+            identifier = str(uuid4())
+            self._db.execute(
+                "INSERT INTO trash VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    identifier,
+                    str(task_id),
+                    str(node_id),
+                    node.title,
+                    kind,
+                    deleted_at.astimezone(UTC).isoformat(),
+                    encode_task(before),
+                    encode_task(after) if after is not None else None,
+                ),
+            )
+            if after is None:
+                self._db.execute("DELETE FROM nodes WHERE id=?", (str(task_id),))
+            else:
+                self._write_task(after)
+            return identifier
+
+    def list_trash(self) -> tuple[dict, ...]:
+        return tuple(
+            dict(row)
+            for row in self._db.execute(
+                "SELECT id,task_id,node_id,title,kind,deleted_at FROM trash "
+                "ORDER BY deleted_at DESC,id"
+            )
+        )
+
+    def restore_entry(
+        self, identifier: UUID, transform: Callable[[Task | None, Task, Task | None, UUID], Task]
+    ) -> Task:
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            entry = self._db.execute(
+                "SELECT * FROM trash WHERE id=?", (str(identifier),)
+            ).fetchone()
+            if entry is None:
+                raise KeyError(identifier)
+            before = decode_task(entry["before_json"])
+            after = decode_task(entry["after_json"]) if entry["after_json"] is not None else None
+            current = self.get_task(before.id)
+            restored = transform(current, before, after, UUID(entry["node_id"]))
+            if restored.id != before.id:
+                raise ValueError("Восстановление не должно менять ID задачи")
+            self._write_task(restored)
+            self._db.execute("DELETE FROM trash WHERE id=?", (str(identifier),))
+            return restored

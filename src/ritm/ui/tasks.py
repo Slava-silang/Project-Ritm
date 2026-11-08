@@ -1,6 +1,7 @@
 """Снимки для QML и последовательные фоновые операции с отдельным соединением SQLite."""
 
 import sqlite3
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -8,10 +9,11 @@ from fractions import Fraction
 from pathlib import Path
 from uuid import UUID
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from ritm.application.tasks import TaskService
-from ritm.domain.tasks import ChecklistItem, Subtask, Task
+from ritm.domain.task_list import query_tasks
+from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.domain.weights import initialize_weights, progress
 from ritm.storage.sqlite import TaskStore
 
@@ -35,6 +37,7 @@ def task_view(task: Task) -> dict:
         "title": task.title,
         "description": task.description,
         "completed": task.completed,
+        "categoryId": str(task.category_id) if task.category_id else "",
         "progress": float(percent),
         "progressText": str(percent).replace(".", ","),
         "difficulty": str(task.difficulty) if task.difficulty is not None else "",
@@ -101,17 +104,44 @@ def parse_details(data: dict, current: Task | None = None) -> dict:
     }
 
 
+def select_category(categories, title: str, identifier: str = "") -> Category | None:
+    title = title.strip()
+    if not title:
+        return None
+    selected = next((x for x in categories if str(x.id) == identifier), None)
+    if selected is not None and selected.title.casefold() == title.casefold():
+        return selected
+    return next(
+        (x for x in categories if x.title.casefold() == title.casefold()), None
+    ) or Category(title=title)
+
+
 class TaskController(QObject):
     changed = Signal()
     stateChanged = Signal()
+    listChanged = Signal()
+    categoriesChanged = Signal()
+    filtersChanged = Signal()
+    timeChanged = Signal()
     actionSucceeded = Signal(str)
     _ready = Signal(object, str, str)
 
-    def __init__(self, profile: Path):
+    def __init__(self, profile: Path, clock: Callable[[], datetime] | None = None):
         super().__init__()
         self._profile = profile
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ritm-storage")
         self._rows = []
+        self._source = []
+        self._visible = []
+        self._categories = []
+        self._trash = []
+        self._search, self._state, self._category = "", "active", ""
+        self._expanded = set()
+        self._selected_overdue = False
+        self._clock = clock or (lambda: datetime.now().astimezone())
+        self._ticker = QTimer(self)
+        self._ticker.timeout.connect(self._update_listing)
+        self._ticker.start(1000)
         self._selected = ""
         self._busy = False
         self._error = ""
@@ -119,9 +149,77 @@ class TaskController(QObject):
         self._ready.connect(self._finish)
         self._submit("refresh", {})
 
-    @Property("QVariantList", notify=changed)
+    @Property("QVariantList", notify=listChanged)
     def tasks(self):
-        return self._rows
+        return self._visible
+
+    @Property("QVariantList", notify=categoriesChanged)
+    def categories(self):
+        return self._categories
+
+    @Property("QVariantList", notify=changed)
+    def trash(self):
+        return self._trash
+
+    @Property(str, notify=filtersChanged)
+    def categoryFilter(self):
+        return self._category
+
+    @Property(bool, notify=timeChanged)
+    def selectedOverdue(self):
+        return self._selected_overdue
+
+    @Slot(str, str, str)
+    def setFilters(self, search, state, category):
+        self._search, self._state, self._category = search, state, category
+        self.filtersChanged.emit()
+        self._update_listing()
+        if self._selected not in {row["id"] for row in self._visible}:
+            self._selected = self._visible[0]["id"] if self._visible else ""
+            self._update_listing()
+            self.changed.emit()
+
+    @Slot(str)
+    def toggleExpanded(self, identifier):
+        if identifier in self._expanded:
+            self._expanded.remove(identifier)
+        else:
+            self._expanded.add(identifier)
+        self._update_listing()
+
+    def _update_listing(self):
+        if self._closing:
+            return
+        task = next((x for x in self._source if str(x.id) == self._selected), None)
+        overdue = bool(
+            task and not task.completed and task.deadline and task.deadline < self._clock()
+        )
+        if overdue != self._selected_overdue:
+            self._selected_overdue = overdue
+            self.timeChanged.emit()
+        selected = query_tasks(
+            self._source,
+            now=self._clock(),
+            search=self._search,
+            state=self._state,
+            category_id=UUID(self._category) if self._category not in ("", "none") else None,
+            uncategorized=self._category == "none",
+        )
+        by_id = {row["id"]: row for row in self._rows}
+        visible = [
+            {
+                **by_id[str(row.task.id)],
+                "group": row.group,
+                "overdue": row.overdue,
+                "expanded": str(row.task.id) in self._expanded,
+            }
+            for row in selected
+        ]
+        for index, row in enumerate(visible):
+            row["firstInGroup"] = index == 0 or row["group"] != visible[index - 1]["group"]
+        if visible != self._visible:
+            self._visible = visible
+            self.listChanged.emit()
 
     @Property("QVariantMap", notify=changed)
     def detail(self):
@@ -139,6 +237,7 @@ class TaskController(QObject):
     def selectTask(self, identifier):
         if not self._busy:
             self._selected = identifier
+            self._update_listing()
             self.changed.emit()
 
     @Slot(str, "QVariantMap")
@@ -169,6 +268,14 @@ class TaskController(QObject):
     def equalWeights(self):
         self._submit("equal_weights", {})
 
+    @Slot(str)
+    def deleteNode(self, identifier):
+        self._submit("delete", {"id": identifier})
+
+    @Slot(str)
+    def restoreEntry(self, identifier):
+        self._submit("restore", {"id": identifier})
+
     @Slot()
     def reload(self):
         self._submit("refresh", {})
@@ -190,15 +297,34 @@ class TaskController(QObject):
                     if identifier and current is None:
                         raise KeyError(identifier)
                     fields = parse_details(data["fields"], current)
+                    new_category = None
+                    if "category" in data["fields"]:
+                        categories = store.list_categories()
+                        category = select_category(
+                            categories,
+                            str(data["fields"]["category"]),
+                            str(data["fields"].get("categoryId", "")),
+                        )
+                        new_category = (
+                            category
+                            if category is not None
+                            and category.id not in {x.id for x in categories}
+                            else None
+                        )
+                        fields["category_id"] = category.id if category else None
                     task = (
-                        service.edit_details(current.id, **fields)
+                        service.edit_details(current.id, category=new_category, **fields)
                         if current
-                        else service.create_task(Task(**fields))
+                        else service.create_task(Task(**fields), category=new_category)
                     )
                     selected = str(task.id)
+                elif action == "restore":
+                    selected = str(service.restore(UUID(data["id"])).id)
                 elif action != "refresh":
                     task_id = UUID(selected)
-                    if action == "complete":
+                    if action == "delete":
+                        service.delete_node(task_id, UUID(data["id"]), now=self._clock())
+                    elif action == "complete":
                         service.set_completed(task_id, UUID(data["id"]), data["completed"])
                     elif action == "add_subtask":
                         service.add_subtask(task_id, Subtask(title=data["title"]))
@@ -219,8 +345,23 @@ class TaskController(QObject):
                         service.set_weights(task_id, values)
                     elif action == "equal_weights":
                         service.equal_weights(task_id)
-                rows = [task_view(task) for task in store.list_tasks()]
-            self._ready.emit((rows, selected), "", action)
+                raw = store.list_tasks()
+                categories = [{"id": str(x.id), "title": x.title} for x in store.list_categories()]
+                names = {x["id"]: x["title"] for x in categories}
+                rows = [
+                    {**task_view(task), "category": names.get(str(task.category_id), "")}
+                    for task in raw
+                ]
+                trash = [
+                    {
+                        **entry,
+                        "deletedText": datetime.fromisoformat(entry["deleted_at"])
+                        .astimezone()
+                        .strftime(DATE_FORMAT),
+                    }
+                    for entry in store.list_trash()
+                ]
+            self._ready.emit((rows, selected, categories, trash, raw), "", action)
         except (sqlite3.Error, OSError):
             self._ready.emit(
                 None,
@@ -242,9 +383,14 @@ class TaskController(QObject):
             return
         self._busy, self._error = False, error
         if result is not None:
-            self._rows, self._selected = result
-            if self._selected not in {row["id"] for row in self._rows} and self._rows:
-                self._selected = self._rows[0]["id"]
+            self._rows, self._selected, categories, self._trash, self._source = result
+            if categories != self._categories:
+                self._categories = categories
+                self.categoriesChanged.emit()
+            self._update_listing()
+            if self._selected not in {row["id"] for row in self._rows}:
+                self._selected = self._visible[0]["id"] if self._visible else ""
+                self._update_listing()
             self.changed.emit()
         self.stateChanged.emit()
         if not error:
@@ -252,4 +398,5 @@ class TaskController(QObject):
 
     def close(self):
         self._closing = True
+        self._ticker.stop()
         self._pool.shutdown(wait=True)

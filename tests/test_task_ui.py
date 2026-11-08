@@ -64,7 +64,7 @@ def test_qml_task_scenario_and_restart(tmp_path):
     env = os.environ.copy()
     env.update(
         QT_QPA_PLATFORM=os.environ.get("RITM_UI_PLATFORM", "offscreen"),
-        QSG_RHI_BACKEND="software",
+        QT_QUICK_BACKEND="software",
         XDG_DATA_HOME=str(tmp_path / "data"),
         XDG_CONFIG_HOME=str(tmp_path / "config"),
         XDG_CACHE_HOME=str(tmp_path / "cache"),
@@ -116,7 +116,7 @@ def test_main_process_stops_cleanly(tmp_path, stop_signal):
     env = os.environ.copy()
     env.update(
         QT_QPA_PLATFORM="offscreen",
-        QSG_RHI_BACKEND="software",
+        QT_QUICK_BACKEND="software",
         XDG_DATA_HOME=str(tmp_path / "data"),
         XDG_CONFIG_HOME=str(tmp_path / "config"),
         XDG_CACHE_HOME=str(tmp_path / "cache"),

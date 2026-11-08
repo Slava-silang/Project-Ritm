@@ -2,13 +2,15 @@
 
 from collections.abc import Mapping
 from dataclasses import replace
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
 from ritm.domain import completion, weights
-from ritm.domain.tasks import ChecklistItem, Subtask, Task
+from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.storage.sqlite import TaskStore
+
+_UNCHANGED = object()
 
 
 class TaskService:
@@ -43,9 +45,9 @@ class TaskService:
     def equal_weights(self, task_id: UUID) -> Task:
         return self._store.update_task(task_id, weights.equal_weights)
 
-    def create_task(self, task: Task) -> Task:
+    def create_task(self, task: Task, category: Category | None = None) -> Task:
         task = weights.initialize_weights(task)
-        self._store.create_task(task)
+        self._store.create_task(task, category)
         return task
 
     def edit_details(
@@ -57,6 +59,8 @@ class TaskService:
         difficulty: int | None,
         expected_duration: timedelta | None,
         deadline: datetime | None,
+        category_id: UUID | None | object = _UNCHANGED,
+        category: Category | None = None,
     ) -> Task:
         return self._store.update_task(
             task_id,
@@ -67,7 +71,9 @@ class TaskService:
                 difficulty=difficulty,
                 expected_duration=expected_duration,
                 deadline=deadline,
+                **({"category_id": category_id} if category_id is not _UNCHANGED else {}),
             ),
+            category=category,
         )
 
     def rename_node(self, task_id: UUID, node_id: UUID, title: str) -> Task:
@@ -97,3 +103,14 @@ class TaskService:
             )
 
         return self._store.update_task(task_id, rename)
+
+    def delete_node(self, task_id: UUID, node_id: UUID, now: datetime | None = None) -> str:
+        return self._store.archive_node(
+            task_id,
+            node_id,
+            lambda task: completion.remove_node(task, node_id),
+            now or datetime.now(UTC),
+        )
+
+    def restore(self, identifier: UUID) -> Task:
+        return self._store.restore_entry(identifier, completion.restore_node)

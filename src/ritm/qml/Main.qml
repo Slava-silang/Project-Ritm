@@ -23,8 +23,37 @@ ApplicationWindow {
     palette.accent: "#2b5949"
     palette.base: "#ffffff"
     palette.window: "#ffffff"
+    palette.placeholderText: "#718073"
     property var current: window.backend.detail
     property bool hasTask: !!current.id
+    property bool narrow: width < 850
+    property bool detailOpen: true
+    property var categoryOptions: [
+        {
+            id: "",
+            title: "Все категории"
+        },
+        {
+            id: "none",
+            title: "Без категории"
+        }
+    ].concat(window.backend.categories)
+
+    function toggleTaskTree(identifier) {
+        const position = taskList.contentY;
+        window.backend.toggleExpanded(identifier);
+        Qt.callLater(function () {
+            taskList.contentY = Math.max(0, Math.min(position, taskList.contentHeight - taskList.height));
+        });
+    }
+    function filterList() {
+        window.backend.setFilters(searchInput.text, ["active", "completed", "all"][statusFilter.currentIndex], window.backend.categoryFilter);
+    }
+    function askDelete(data) {
+        deleteEditor.nodeId = data.id;
+        deleteEditor.nodeTitle = data.title;
+        deleteEditor.open();
+    }
     property real savedScrollY: 0
     property string lastTaskId: ""
 
@@ -109,6 +138,8 @@ ApplicationWindow {
         difficultyInput.text = data.difficulty || "";
         minutesInput.text = data.minutes || "";
         deadlineInput.text = data.deadline || "";
+        formCategory.currentIndex = Math.max(0, window.backend.categories.findIndex(x => x.id === data.categoryId) + 1);
+        formCategory.editText = data.category || "";
         taskEditor.open();
         titleInput.forceActiveFocus();
     }
@@ -150,8 +181,12 @@ ApplicationWindow {
             }
             if (action === "equal_weights")
                 weightEditor.close();
-            if (action === "save")
+            if (action === "save") {
                 taskEditor.close();
+                window.detailOpen = true;
+            }
+            if (action === "delete")
+                deleteEditor.close();
             if (action === "rename")
                 renameEditor.close();
             if (action === "weights")
@@ -163,7 +198,7 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 24
+        anchors.margins: window.narrow ? 16 : 24
         spacing: 16
         RowLayout {
             Layout.fillWidth: true
@@ -230,14 +265,55 @@ ApplicationWindow {
                 }
             }
         }
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: !window.narrow || !window.hasTask || !window.detailOpen
+            enabled: !window.backend.busy
+            spacing: 8
+            TextField {
+                id: searchInput
+                objectName: "searchInput"
+                Layout.fillWidth: true
+                placeholderText: qsTr("Поиск по названию, описанию и шагам…")
+                onTextChanged: window.filterList()
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                ComboBox {
+                    id: statusFilter
+                    objectName: "statusFilter"
+                    Layout.preferredWidth: 155
+                    model: [qsTr("Активные"), qsTr("Выполненные"), qsTr("Все задачи")]
+                    onActivated: window.filterList()
+                }
+                ComboBox {
+                    id: categoryFilter
+                    objectName: "categoryFilter"
+                    Layout.fillWidth: true
+                    textRole: "title"
+                    model: window.categoryOptions
+                    currentIndex: Math.max(0, window.categoryOptions.findIndex(x => x.id === window.backend.categoryFilter))
+                    onActivated: index => window.backend.setFilters(searchInput.text, ["active", "completed", "all"][statusFilter.currentIndex], window.categoryOptions[index].id)
+                }
+                Button {
+                    objectName: "trashButton"
+                    text: qsTr("Корзина") + " (" + window.backend.trash.length + ")"
+                    enabled: !window.backend.busy
+                    onClicked: trashEditor.open()
+                }
+            }
+        }
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 18
             enabled: !window.backend.busy
             Rectangle {
-                Layout.preferredWidth: window.width < 850 ? 200 : 300
+                objectName: "listPanel"
+                Layout.preferredWidth: 310
+                Layout.fillWidth: window.narrow
                 Layout.fillHeight: true
+                visible: !window.narrow || !window.hasTask || !window.detailOpen
                 color: "#eaece3"
                 radius: 16
                 ColumnLayout {
@@ -247,7 +323,7 @@ ApplicationWindow {
                     RowLayout {
                         Layout.fillWidth: true
                         Caption {
-                            text: qsTr("ВСЕ ЗАДАЧИ")
+                            text: qsTr("ЗАДАЧИ")
                             font.letterSpacing: 1
                         }
                         Item {
@@ -260,7 +336,7 @@ ApplicationWindow {
                     Label {
                         Layout.fillWidth: true
                         visible: window.backend.tasks.length === 0
-                        text: qsTr("Пока здесь пусто.\nДобавьте первую задачу.")
+                        text: qsTr("Задач не найдено.\nДобавьте задачу или измените фильтры.")
                         wrapMode: Text.Wrap
                         color: "#69766d"
                         padding: 10
@@ -277,17 +353,28 @@ ApplicationWindow {
                         delegate: ItemDelegate {
                             id: taskRow
                             required property var modelData
+                            required property int index
+                            objectName: "taskRow_" + index
                             width: ListView.view.width
-                            height: taskRowContent.implicitHeight + 26
-                            onClicked: window.backend.selectTask(modelData.id)
+                            height: taskRowContent.implicitHeight + 24
+                            onClicked: {
+                                window.backend.selectTask(modelData.id);
+                                window.detailOpen = true;
+                            }
                             background: Rectangle {
                                 radius: 12
-                                color: taskRow.modelData.id === window.current.id ? "#ffffff" : taskRow.hovered ? "#f2f3ec" : "transparent"
+                                color: taskRow.modelData.overdue ? "#fff0e7" : taskRow.modelData.id === window.current.id ? "#ffffff" : taskRow.hovered ? "#f2f3ec" : "transparent"
                                 border.color: taskRow.modelData.id === window.current.id ? "#bdcabb" : "transparent"
                             }
                             contentItem: ColumnLayout {
                                 id: taskRowContent
                                 spacing: 7
+                                Caption {
+                                    visible: taskRow.modelData.firstInGroup
+                                    text: taskRow.modelData.group
+                                    color: taskRow.modelData.overdue ? "#a34425" : "#69766d"
+                                    font.weight: Font.DemiBold
+                                }
                                 Label {
                                     Layout.fillWidth: true
                                     textFormat: Text.PlainText
@@ -299,17 +386,53 @@ ApplicationWindow {
                                 }
                                 Caption {
                                     Layout.fillWidth: true
-                                    text: taskRow.modelData.deadline ? qsTr("До ") + taskRow.modelData.deadline : qsTr("Без дедлайна")
+                                    text: (taskRow.modelData.overdue ? qsTr("Просрочено · ") : taskRow.modelData.deadline ? qsTr("До ") : "") + (taskRow.modelData.deadline || qsTr("Без дедлайна"))
                                     wrapMode: Text.Wrap
+                                }
+                                Caption {
+                                    visible: !!taskRow.modelData.category
+                                    textFormat: Text.PlainText
+                                    text: taskRow.modelData.category
                                 }
                                 TaskProgress {
                                     Layout.fillWidth: true
-                                    from: 0
-                                    to: 100
                                     value: taskRow.modelData.progress
                                 }
                                 Caption {
                                     text: taskRow.modelData.completed ? qsTr("Выполнено") : taskRow.modelData.progressText + qsTr("% · В работе")
+                                }
+                                Button {
+                                    objectName: "expandTask_" + taskRow.index
+                                    visible: taskRow.modelData.subtasks.length > 0
+                                    text: taskRow.modelData.expanded ? qsTr("Скрыть шаги") : qsTr("Показать шаги")
+                                    onClicked: window.toggleTaskTree(taskRow.modelData.id)
+                                }
+                                Repeater {
+                                    model: taskRow.modelData.expanded ? taskRow.modelData.subtasks : []
+                                    delegate: ColumnLayout {
+                                        id: listBranch
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        Label {
+                                            Layout.fillWidth: true
+                                            textFormat: Text.PlainText
+                                            text: (listBranch.modelData.completed ? "✓ " : "○ ") + listBranch.modelData.title
+                                            wrapMode: Text.Wrap
+                                            color: "#48594e"
+                                        }
+                                        Repeater {
+                                            model: listBranch.modelData.items
+                                            delegate: Label {
+                                                required property var modelData
+                                                Layout.fillWidth: true
+                                                Layout.leftMargin: 12
+                                                textFormat: Text.PlainText
+                                                text: (modelData.completed ? "✓ " : "○ ") + modelData.title
+                                                wrapMode: Text.Wrap
+                                                color: "#69766d"
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -319,6 +442,8 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                objectName: "detailPanel"
+                visible: !window.narrow || (window.hasTask && window.detailOpen)
                 color: "#ffffff"
                 radius: 18
                 Label {
@@ -344,18 +469,36 @@ ApplicationWindow {
                         spacing: 16
                         RowLayout {
                             Layout.fillWidth: true
+                            Button {
+                                objectName: "backToListButton"
+                                visible: window.narrow
+                                text: qsTr("← К списку")
+                                onClicked: window.detailOpen = false
+                            }
                             Caption {
-                                text: window.current.completed ? qsTr("ВЫПОЛНЕНО") : qsTr("В РАБОТЕ")
+                                color: window.backend.selectedOverdue ? "#a34425" : "#69766d"
+                                text: window.backend.selectedOverdue ? qsTr("ПРОСРОЧЕНО") : window.current.completed ? qsTr("ВЫПОЛНЕНО") : qsTr("В РАБОТЕ")
                                 font.letterSpacing: 1
                             }
                             Item {
                                 Layout.fillWidth: true
+                            }
+                            ToolButton {
+                                objectName: "deleteTaskButton"
+                                text: qsTr("Удалить")
+                                onClicked: window.askDelete(window.current)
                             }
                             Button {
                                 objectName: "editTaskButton"
                                 text: qsTr("Изменить")
                                 onClicked: window.editTask(window.current)
                             }
+                        }
+                        Caption {
+                            Layout.fillWidth: true
+                            visible: window.hasTask && !window.backend.tasks.some(row => row.id === window.current.id)
+                            text: qsTr("Эта задача не входит в текущий фильтр списка")
+                            wrapMode: Text.Wrap
                         }
                         Label {
                             Layout.fillWidth: true
@@ -377,6 +520,11 @@ ApplicationWindow {
                         Flow {
                             Layout.fillWidth: true
                             spacing: 12
+                            Caption {
+                                textFormat: Text.PlainText
+                                visible: !!window.current.category
+                                text: window.current.category || ""
+                            }
                             Caption {
                                 text: window.current.difficulty ? qsTr("Сложность: ") + window.current.difficulty + "/10" : qsTr("Сложность не задана")
                             }
@@ -479,6 +627,12 @@ ApplicationWindow {
                                             Accessible.name: qsTr("Переименовать подзадачу")
                                             onClicked: window.renameNode(branch.modelData)
                                         }
+                                        ToolButton {
+                                            objectName: "deleteBranch_" + branch.index
+                                            text: "×"
+                                            Accessible.name: qsTr("Удалить подзадачу")
+                                            onClicked: window.askDelete(branch.modelData)
+                                        }
                                     }
                                     Repeater {
                                         model: branch.modelData.items
@@ -506,6 +660,12 @@ ApplicationWindow {
                                                 objectName: "renameItem_" + branch.index + "_" + leaf.index
                                                 Accessible.name: qsTr("Переименовать пункт")
                                                 onClicked: window.renameNode(leaf.modelData)
+                                            }
+                                            ToolButton {
+                                                objectName: "deleteItem_" + branch.index + "_" + leaf.index
+                                                text: "×"
+                                                Accessible.name: qsTr("Удалить пункт")
+                                                onClicked: window.askDelete(leaf.modelData)
                                             }
                                         }
                                     }
@@ -587,6 +747,22 @@ ApplicationWindow {
                     objectName: "titleInput"
                     Layout.fillWidth: true
                     placeholderText: qsTr("Например, лабораторная по физике")
+                }
+                Caption {
+                    text: qsTr("Категория · выберите или введите новую")
+                }
+                ComboBox {
+                    id: formCategory
+                    objectName: "formCategory"
+                    Layout.fillWidth: true
+                    editable: true
+                    textRole: "title"
+                    model: [
+                        {
+                            id: "",
+                            title: ""
+                        }
+                    ].concat(window.backend.categories)
                 }
                 Caption {
                     text: qsTr("Описание")
@@ -673,7 +849,9 @@ ApplicationWindow {
                     description: descriptionInput.text,
                     difficulty: difficultyInput.text,
                     minutes: minutesInput.text,
-                    deadline: deadlineInput.text
+                    deadline: deadlineInput.text,
+                    category: formCategory.editText,
+                    categoryId: formCategory.currentIndex > 0 ? window.backend.categories[formCategory.currentIndex - 1].id : ""
                 })
             }
         }
@@ -778,6 +956,121 @@ ApplicationWindow {
                 enabled: !window.backend.busy
                 onClicked: window.applyWeights()
             }
+        }
+    }
+    EditorDialog {
+        id: deleteEditor
+        property string nodeId: ""
+        property string nodeTitle: ""
+        title: qsTr("Переместить в корзину?")
+        anchors.centerIn: parent
+        width: Math.min(460, window.width - 32)
+        modal: true
+        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
+        contentItem: ColumnLayout {
+            Label {
+                Layout.fillWidth: true
+                textFormat: Text.PlainText
+                text: deleteEditor.nodeTitle
+                wrapMode: Text.Wrap
+                font.bold: true
+            }
+            Caption {
+                Layout.fillWidth: true
+                text: qsTr("Пункт и его вложенные шаги исчезнут из списка. Их можно будет восстановить из корзины.")
+                wrapMode: Text.Wrap
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: !!window.backend.error
+                text: window.backend.error
+                color: "#a34425"
+                wrapMode: Text.Wrap
+            }
+        }
+        footer: RowLayout {
+            Item {
+                Layout.fillWidth: true
+            }
+            Button {
+                objectName: "cancelDeleteButton"
+                text: qsTr("Отмена")
+                enabled: !window.backend.busy
+                onClicked: deleteEditor.close()
+            }
+            AccentButton {
+                objectName: "confirmDeleteButton"
+                text: qsTr("В корзину")
+                enabled: !window.backend.busy
+                onClicked: window.backend.deleteNode(deleteEditor.nodeId)
+            }
+        }
+    }
+    EditorDialog {
+        id: trashEditor
+        title: qsTr("Корзина")
+        anchors.centerIn: parent
+        width: Math.min(600, window.width - 32)
+        height: Math.min(560, window.height - 32)
+        modal: true
+        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
+        contentItem: ScrollView {
+            id: trashScroll
+            contentWidth: availableWidth
+            clip: true
+            ColumnLayout {
+                width: trashScroll.availableWidth
+                spacing: 12
+                Caption {
+                    Layout.fillWidth: true
+                    text: qsTr("Восстановите родительскую задачу перед её отдельно удалёнными пунктами. Если состав или веса менялись, восстановленный шаг получит новую долю.")
+                    wrapMode: Text.Wrap
+                }
+                Label {
+                    visible: window.backend.trash.length === 0
+                    text: qsTr("Корзина пуста")
+                }
+                Repeater {
+                    model: window.backend.trash
+                    delegate: RowLayout {
+                        id: trashRow
+                        required property var modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                Layout.fillWidth: true
+                                textFormat: Text.PlainText
+                                text: trashRow.modelData.title
+                                wrapMode: Text.Wrap
+                            }
+                            Caption {
+                                text: [qsTr("Задача"), qsTr("Подзадача"), qsTr("Пункт")][trashRow.modelData.kind] + " · " + trashRow.modelData.deletedText
+                            }
+                        }
+                        Button {
+                            objectName: "restore_" + trashRow.index
+                            text: qsTr("Восстановить")
+                            enabled: !window.backend.busy
+                            onClicked: window.backend.restoreEntry(trashRow.modelData.id)
+                        }
+                    }
+                }
+                Label {
+                    Layout.fillWidth: true
+                    visible: !!window.backend.error
+                    text: window.backend.error
+                    color: "#a34425"
+                    wrapMode: Text.Wrap
+                }
+            }
+        }
+        footer: Button {
+            objectName: "closeTrashButton"
+            text: qsTr("Закрыть")
+            enabled: !window.backend.busy
+            onClicked: trashEditor.close()
         }
     }
 }
