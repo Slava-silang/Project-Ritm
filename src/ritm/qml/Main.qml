@@ -28,6 +28,7 @@ ApplicationWindow {
     property bool hasTask: !!current.id
     property bool narrow: width < 850
     property bool detailOpen: true
+    property string page: "tasks"
     property var categoryOptions: [
         {
             id: "",
@@ -184,6 +185,7 @@ ApplicationWindow {
             if (action === "save") {
                 taskEditor.close();
                 window.detailOpen = true;
+                window.page = "tasks";
             }
             if (action === "delete")
                 deleteEditor.close();
@@ -217,7 +219,7 @@ ApplicationWindow {
             ColumnLayout {
                 spacing: 2
                 Label {
-                    text: qsTr("Мои задачи")
+                    text: window.page === "tasks" ? qsTr("Мои задачи") : qsTr("Календарь")
                     font.pixelSize: 25
                     font.weight: Font.DemiBold
                     color: "#243d33"
@@ -240,6 +242,23 @@ ApplicationWindow {
                 text: qsTr("+ Задача")
                 enabled: !window.backend.busy
                 onClicked: window.editTask({})
+            }
+        }
+        RowLayout {
+            Button {
+                objectName: "tasksPageButton"
+                text: qsTr("Задачи")
+                highlighted: window.page === "tasks"
+                onClicked: window.page = "tasks"
+            }
+            Button {
+                objectName: "calendarPageButton"
+                text: qsTr("Календарь")
+                highlighted: window.page === "calendar"
+                onClicked: window.page = "calendar"
+            }
+            Item {
+                Layout.fillWidth: true
             }
         }
         Rectangle {
@@ -267,7 +286,7 @@ ApplicationWindow {
         }
         ColumnLayout {
             Layout.fillWidth: true
-            visible: !window.narrow || !window.hasTask || !window.detailOpen
+            visible: window.page === "tasks" && (!window.narrow || !window.hasTask || !window.detailOpen)
             enabled: !window.backend.busy
             spacing: 8
             TextField {
@@ -303,9 +322,22 @@ ApplicationWindow {
                 }
             }
         }
+        CalendarPane {
+            id: calendarPane
+            backend: window.backend
+            visible: window.page === "calendar"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            onOpenTask: identifier => {
+                window.backend.selectTask(identifier);
+                window.detailOpen = true;
+                window.page = "tasks";
+            }
+        }
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            visible: window.page === "tasks"
             spacing: 18
             enabled: !window.backend.busy
             Rectangle {
@@ -529,10 +561,26 @@ ApplicationWindow {
                                 text: window.current.difficulty ? qsTr("Сложность: ") + window.current.difficulty + "/10" : qsTr("Сложность не задана")
                             }
                             Caption {
-                                text: window.current.minutes ? window.current.minutes + qsTr(" мин") : qsTr("Время не задано")
+                                text: window.current.minutes ? qsTr("Ожидается: ") + window.current.minutes + qsTr(" мин") : qsTr("Время не задано")
                             }
                             Caption {
                                 text: window.current.deadline ? qsTr("До ") + window.current.deadline : qsTr("Без дедлайна")
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Caption {
+                                Layout.fillWidth: true
+                                text: qsTr("Запланировано: ") + (window.current.plannedText || "0 мин")
+                                wrapMode: Text.Wrap
+                            }
+                            Button {
+                                objectName: "planTaskButton"
+                                text: qsTr("+ Блок")
+                                onClicked: {
+                                    window.page = "calendar";
+                                    calendarPane.beginCreate(window.current.id);
+                                }
                             }
                         }
                         RowLayout {

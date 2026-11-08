@@ -3,7 +3,7 @@
 import sqlite3
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta, tzinfo
 from decimal import Decimal, InvalidOperation
 from fractions import Fraction
 from pathlib import Path
@@ -11,11 +11,14 @@ from uuid import UUID
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
+from ritm.application.calendar import CalendarService
 from ritm.application.tasks import TaskService
+from ritm.domain.calendar import planned_duration
 from ritm.domain.task_list import query_tasks
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.domain.weights import initialize_weights, progress
 from ritm.storage.sqlite import TaskStore
+from ritm.ui.calendar import block_from_fields, calendar_view, duration_text, shift_period
 
 DATE_FORMAT = "%d.%m.%Y %H:%M"
 
@@ -123,10 +126,13 @@ class TaskController(QObject):
     categoriesChanged = Signal()
     filtersChanged = Signal()
     timeChanged = Signal()
+    calendarChanged = Signal()
     actionSucceeded = Signal(str)
     _ready = Signal(object, str, str)
 
-    def __init__(self, profile: Path, clock: Callable[[], datetime] | None = None):
+    def __init__(
+        self, profile: Path, clock: Callable[[], datetime] | None = None, zone: tzinfo | None = None
+    ):
         super().__init__()
         self._profile = profile
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ritm-storage")
@@ -139,8 +145,13 @@ class TaskController(QObject):
         self._expanded = set()
         self._selected_overdue = False
         self._clock = clock or (lambda: datetime.now().astimezone())
+        self._zone = zone
+        today = self._clock().astimezone(zone).date().isoformat()
+        self._calendar_config = {"mode": "week", "anchor": today, "day": today}
+        self._calendar = {}
+        self._notice = ""
         self._ticker = QTimer(self)
-        self._ticker.timeout.connect(self._update_listing)
+        self._ticker.timeout.connect(self._on_tick)
         self._ticker.start(1000)
         self._selected = ""
         self._busy = False
@@ -148,6 +159,63 @@ class TaskController(QObject):
         self._closing = False
         self._ready.connect(self._finish)
         self._submit("refresh", {})
+
+    def _on_tick(self):
+        self._update_listing()
+        if (
+            self._calendar
+            and not self._busy
+            and self._calendar["today"] != self._clock().astimezone(self._zone).date().isoformat()
+        ):
+            self._submit("refresh", {})
+
+    @Property("QVariantMap", notify=calendarChanged)
+    def calendar(self):
+        return self._calendar
+
+    @Property("QVariantList", notify=changed)
+    def calendarTasks(self):
+        return [{"id": row["id"], "title": row["title"]} for row in self._rows]
+
+    @Property(str, notify=stateChanged)
+    def notice(self):
+        return self._notice
+
+    @Slot(str)
+    def setCalendarMode(self, mode):
+        self._submit(
+            "calendar",
+            {**self._calendar_config, "mode": mode, "anchor": self._calendar_config["day"]},
+        )
+
+    @Slot(int)
+    def navigateCalendar(self, direction):
+        try:
+            anchor = shift_period(
+                date.fromisoformat(self._calendar_config["anchor"]),
+                self._calendar_config["mode"],
+                direction,
+            )
+            self._submit(
+                "calendar",
+                {**self._calendar_config, "anchor": anchor.isoformat(), "day": anchor.isoformat()},
+            )
+        except (ValueError, OverflowError):
+            self._error = "Этот период выходит за поддерживаемый диапазон дат"
+            self.stateChanged.emit()
+
+    @Slot()
+    def calendarToday(self):
+        today = self._clock().astimezone(self._zone).date().isoformat()
+        self._submit("calendar", {**self._calendar_config, "anchor": today, "day": today})
+
+    @Slot(str)
+    def selectCalendarDay(self, day):
+        self._submit("calendar", {**self._calendar_config, "day": day})
+
+    @Slot("QVariantMap")
+    def createBlock(self, fields):
+        self._submit("block_create", dict(fields))
 
     @Property("QVariantList", notify=listChanged)
     def tasks(self):
@@ -283,15 +351,40 @@ class TaskController(QObject):
     def _submit(self, action, data):
         if self._busy or self._closing:
             return
-        self._busy, self._error = True, ""
+        self._busy, self._error, self._notice = True, "", ""
         self.stateChanged.emit()
-        self._pool.submit(self._run, action, data, self._selected)
+        self._pool.submit(self._run, action, data, self._selected, dict(self._calendar_config))
 
-    def _run(self, action, data, selected):
+    def _run(self, action, data, selected, config):
+        notice = ""
         try:
             with TaskStore(self._profile / "tasks.sqlite3") as store:
                 service = TaskService(store)
-                if action == "save":
+                if action == "calendar":
+                    config = data
+                elif action == "block_create":
+                    block = block_from_fields(data, self._zone)
+                    day = block.starts_at.astimezone(self._zone).date()
+                    # Validate the destination period before committing a new record.
+                    calendar_view(
+                        store.list_tasks(),
+                        (),
+                        mode=config["mode"],
+                        anchor=day,
+                        selected=day,
+                        today=self._clock().astimezone(self._zone).date(),
+                        zone=self._zone,
+                    )
+                    result = CalendarService(store).create_block(block)
+                    messages = []
+                    if result.warnings.overlapping_ids:
+                        messages.append("есть пересечение с другими блоками")
+                    if result.warnings.after_deadline:
+                        messages.append("окончание позже дедлайна")
+                    notice = "Блок сохранён" + (": " + "; ".join(messages) if messages else "")
+                    day = block.starts_at.astimezone(self._zone).date().isoformat()
+                    config = {**config, "anchor": day, "day": day}
+                elif action == "save":
                     identifier = data["id"]
                     current = store.get_task(UUID(identifier)) if identifier else None
                     if identifier and current is None:
@@ -346,10 +439,30 @@ class TaskController(QObject):
                     elif action == "equal_weights":
                         service.equal_weights(task_id)
                 raw = store.list_tasks()
+                blocks = store.list_work_blocks()
+                planned = {
+                    task.id: duration_text(
+                        planned_duration(b for b in blocks if b.task_id == task.id)
+                    )
+                    for task in raw
+                }
+                calendar = calendar_view(
+                    raw,
+                    blocks,
+                    mode=config["mode"],
+                    anchor=date.fromisoformat(config["anchor"]),
+                    selected=date.fromisoformat(config["day"]),
+                    today=self._clock().astimezone(self._zone).date(),
+                    zone=self._zone,
+                )
                 categories = [{"id": str(x.id), "title": x.title} for x in store.list_categories()]
                 names = {x["id"]: x["title"] for x in categories}
                 rows = [
-                    {**task_view(task), "category": names.get(str(task.category_id), "")}
+                    {
+                        **task_view(task),
+                        "category": names.get(str(task.category_id), ""),
+                        "plannedText": planned[task.id],
+                    }
                     for task in raw
                 ]
                 trash = [
@@ -361,7 +474,7 @@ class TaskController(QObject):
                     }
                     for entry in store.list_trash()
                 ]
-            self._ready.emit((rows, selected, categories, trash, raw), "", action)
+            self._ready.emit((rows, selected, categories, trash, raw, calendar, notice), "", action)
         except (sqlite3.Error, OSError):
             self._ready.emit(
                 None,
@@ -383,7 +496,21 @@ class TaskController(QObject):
             return
         self._busy, self._error = False, error
         if result is not None:
-            self._rows, self._selected, categories, self._trash, self._source = result
+            (
+                self._rows,
+                self._selected,
+                categories,
+                self._trash,
+                self._source,
+                self._calendar,
+                self._notice,
+            ) = result
+            self._calendar_config = {
+                "mode": self._calendar["mode"],
+                "anchor": self._calendar["anchor"],
+                "day": self._calendar["selected"],
+            }
+            self.calendarChanged.emit()
             if categories != self._categories:
                 self._categories = categories
                 self.categoriesChanged.emit()
