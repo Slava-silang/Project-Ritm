@@ -104,6 +104,16 @@
 
 ## Отчёт о проверке
 
+### T12 — 8 ноября 2026 года
+
+148 pytest passed, Ruff check/format, qmllint Main.qml/CalendarPane.qml/DayTimeline.qml — успешно. tests/test_calendar_drag.py добавляет 9 проверок: UTC-сдвиг и положительный размер, локальный перенос с точностью и DST, несуществующий/повторяющийся час, шкала 25 часов и подписи смещения, разрешения ночных ручек, сохранение неизменённой точности формы, запрет устаревшего expected, перенос продолжения ночного блока и полный GUI-сценарий.
+
+ui_drag_scenario.py через Qt mouse press/move/release проверяет перенос в другой день с конфликтом, сдвиг на 30 мин, растягивание на 15 мин с выходом за срок, Escape, искусственную ошибку SQLite и сброс previewDelta к 0 при прежней записи, точную форму, внешнее изменение и отказ устаревшей команды. Новый процесс восстанавливает тот же блок и сумму. Главная задача и дедлайн не меняются. preventStealing добавлен после воспроизведённого перехвата жеста Flickable; финальный сценарий проходит.
+
+Native-команда `RITM_UI_PLATFORM=xcb uv run --locked pytest tests/test_calendar_drag.py::test_pointer_gui_changes_and_failure_rollback -q --tb=short --basetemp=/tmp/ritm-t12-verified` — 1 passed на Cinnamon/X11, software renderer. Кадры шкалы/ошибки осмотрены и сохранены локально artifacts/t12/. Это программные жесты и осмотр изображений, не приёмка пользователем.
+
+Wheel собран offline; Main.qml, CalendarPane.qml, DayTimeline.qml включены. Извлечённый пакет импортирован из временной папки и запущен оттуда --smoke-test, код 0, ошибок загрузки/типов нет. Standalone остаётся T02. Схема v3, все профили временные; личные данные не использовались, Windows/Wayland не проверены.
+
 ### T11 — 8 ноября 2026 года
 
 Полный pytest — 139 passed. Ruff check/format и qmllint для Main.qml + CalendarPane.qml — успешно. tests/test_calendar_ui.py: 5 новых проверок периодов недели/месяца через год, високосного февраля, локального DST-ввода, дневных частей блока, отдельных дедлайнов и полного QML-сценария с ещё одним процессом.

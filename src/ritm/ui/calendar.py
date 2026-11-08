@@ -2,6 +2,7 @@
 
 import calendar
 from collections.abc import Sequence
+from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from uuid import UUID
 
@@ -26,7 +27,9 @@ MONTHS = (
 WEEKDAYS = ("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
 
 
-def local_instant(text: str, zone: tzinfo | None = None) -> datetime:
+def local_instant(
+    text: str, zone: tzinfo | None = None, preferred_offset: timedelta | None = None
+) -> datetime:
     text = text.strip()
     try:
         if len(text) > 16:
@@ -47,6 +50,10 @@ def local_instant(text: str, zone: tzinfo | None = None) -> datetime:
             continue
     if not candidates:
         raise ValueError("Указанное местное время не существует из-за перевода часов")
+    if len(candidates) > 1 and preferred_offset is not None:
+        matched = [x for x in candidates if x.astimezone(zone).utcoffset() == preferred_offset]
+        if len(matched) == 1:
+            return matched[0]
     if len(candidates) > 1:
         raise ValueError(
             "Этот час повторяется дважды. Добавьте смещение, например: " + text + " +02:00"
@@ -117,6 +124,10 @@ def calendar_view(
             "title": task.title,
             "warning": " · ".join(messages),
             "duration": duration_text(block.duration),
+            "startsAt": block.starts_at.isoformat(),
+            "endsAt": block.ends_at.isoformat(),
+            "startText": block.starts_at.astimezone(zone).strftime(DATE_FORMAT + " %z"),
+            "endText": block.ends_at.astimezone(zone).strftime(DATE_FORMAT + " %z"),
         }
     cells = []
     for day in days:
@@ -136,6 +147,11 @@ def calendar_view(
                     "time": clipped_start.astimezone(zone).strftime("%H:%M") + "–" + end_text,
                     "sort": clipped_start.isoformat(),
                     "segmentDuration": duration_text(clipped_end - clipped_start),
+                    "day": day.isoformat(),
+                    "offsetMinutes": (clipped_start - start) / timedelta(minutes=1),
+                    "segmentMinutes": (clipped_end - clipped_start) / timedelta(minutes=1),
+                    "canMove": clipped_start == block.starts_at,
+                    "canResize": clipped_end == block.ends_at,
                 }
             )
         for task in tasks:
@@ -173,7 +189,41 @@ def calendar_view(
         else days[0].strftime("%d.%m.%Y") + " — " + days[-1].strftime("%d.%m.%Y")
     )
     chosen = next((cell for cell in cells if cell["date"] == selected.isoformat()), cells[0])
+    chosen_day = date.fromisoformat(chosen["date"])
+    day_start = local_instant(chosen_day.strftime("%d.%m.%Y") + " 00:00", zone)
+    day_end = local_instant((chosen_day + timedelta(days=1)).strftime("%d.%m.%Y") + " 00:00", zone)
+    hour_points = [
+        day_start + timedelta(hours=i)
+        for i in range(int((day_end - day_start) / timedelta(hours=1)) + 1)
+    ]
+    labels = [point.astimezone(zone).strftime("%H:%M") for point in hour_points]
+    labels[-1] = "24:00"
+    ticks = [
+        {
+            "minute": (point - day_start) / timedelta(minutes=1),
+            "label": label
+            + (point.astimezone(zone).strftime(" %z") if labels.count(label) > 1 else ""),
+        }
+        for point, label in zip(hour_points, labels, strict=True)
+    ]
+    timeline = []
+    lane_ends = []
+    for entry in chosen["entries"]:
+        if entry["kind"] != "block":
+            continue
+        start_minute = entry["offsetMinutes"]
+        lane = next((i for i, end in enumerate(lane_ends) if end <= start_minute), len(lane_ends))
+        end_minute = start_minute + max(38, entry["segmentMinutes"])
+        if lane == len(lane_ends):
+            lane_ends.append(end_minute)
+        else:
+            lane_ends[lane] = end_minute
+        timeline.append({**entry, "lane": lane})
     return {
+        "timeline": timeline,
+        "timelineLanes": max(1, len(lane_ends)),
+        "timelineMinutes": (day_end - day_start) / timedelta(minutes=1),
+        "ticks": ticks,
         "today": today.isoformat(),
         "mode": mode,
         "anchor": anchor.isoformat(),
@@ -192,3 +242,36 @@ def block_from_fields(data: dict, zone: tzinfo | None = None) -> WorkBlock:
         starts_at=local_instant(str(data.get("start", "")), zone),
         ends_at=local_instant(str(data.get("end", "")), zone),
     )
+
+
+def change_block(block: WorkBlock, data: dict, zone: tzinfo | None = None) -> WorkBlock:
+    """Перенос/изменение использует прежний ID и владельца, не меняя данные задачи."""
+    if data["operation"] == "day":
+        local = block.starts_at.astimezone(zone)
+        source_day = date.fromisoformat(data.get("sourceDay", local.date().isoformat()))
+        target = local.date() + (date.fromisoformat(data["day"]) - source_day)
+        text = target.strftime("%d.%m.%Y") + local.strftime(" %H:%M")
+        start = local_instant(text, zone, preferred_offset=local.utcoffset())
+        start += timedelta(seconds=local.second, microseconds=local.microsecond)
+        return replace(block, starts_at=start, ends_at=start + block.duration)
+    if data["operation"] in ("move", "resize"):
+        minutes = data["minutes"]
+        if type(minutes) is not int or minutes % 15 != 0:
+            raise ValueError("Шаг мышиного изменения — 15 минут")
+        delta = timedelta(minutes=minutes)
+        if data["operation"] == "move":
+            return replace(block, starts_at=block.starts_at + delta, ends_at=block.ends_at + delta)
+        return replace(block, ends_at=block.ends_at + delta)
+    if data["operation"] == "fields":
+        start = (
+            block.starts_at
+            if data["start"] == block.starts_at.astimezone(zone).strftime(DATE_FORMAT + " %z")
+            else local_instant(data["start"], zone)
+        )
+        end = (
+            block.ends_at
+            if data["end"] == block.ends_at.astimezone(zone).strftime(DATE_FORMAT + " %z")
+            else local_instant(data["end"], zone)
+        )
+        return replace(block, starts_at=start, ends_at=end)
+    raise ValueError("Неизвестное изменение рабочего блока")

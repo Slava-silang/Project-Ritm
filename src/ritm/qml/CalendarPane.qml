@@ -5,13 +5,71 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: pane
+    objectName: "calendarPane"
     required property var backend
     property var view: backend.calendar
     property bool narrow: width < 850
     signal openTask(string identifier)
+    property bool dragging: false
+    property var dragEntry: ({})
+    property point dragOrigin: Qt.point(0, 0)
+
+    function beginDrag(entry, point) {
+        dragEntry = entry;
+        dragOrigin = point;
+        dragGhost.x = point.x - 80;
+        dragGhost.y = point.y - 18;
+    }
+    function updateDrag(point) {
+        if (Math.abs(point.x - dragOrigin.x) + Math.abs(point.y - dragOrigin.y) > 8)
+            dragging = true;
+        dragGhost.x = point.x - 80;
+        dragGhost.y = point.y - 18;
+    }
+    function finishDrag(accept) {
+        if (dragging && accept)
+            dragGhost.Drag.drop();
+        dragging = false;
+    }
+    function beginEdit(entry) {
+        blockEditor.entry = entry;
+        blockTask.currentIndex = Math.max(0, pane.backend.calendarTasks.findIndex(task => task.id === entry.taskId));
+        blockStart.text = entry.startText;
+        blockEnd.text = entry.endText;
+        blockEditor.open();
+    }
+    component DragPayload: Rectangle {
+        property var entry
+    }
+    DragPayload {
+        id: dragGhost
+        parent: Overlay.overlay
+        entry: pane.dragEntry
+        visible: pane.dragging
+        width: 160
+        height: 36
+        z: 1000
+        radius: 8
+        color: "#d5e5cc"
+        border.color: "#2b5949"
+        Drag.active: pane.dragging
+        Drag.source: dragGhost
+        Drag.keys: ["ritm-work-block"]
+        Drag.hotSpot.x: 80
+        Drag.hotSpot.y: 18
+        Label {
+            anchors.fill: parent
+            anchors.margins: 6
+            textFormat: Text.PlainText
+            text: pane.dragEntry.title || ""
+            color: "#243d33"
+            elide: Text.ElideRight
+        }
+    }
     spacing: 12
 
     function beginCreate(taskId) {
+        blockEditor.entry = null;
         blockTask.currentIndex = Math.max(0, pane.backend.calendarTasks.findIndex(task => task.id === taskId));
         const day = pane.view.formDate || "";
         blockStart.text = day + " 09:00";
@@ -20,20 +78,74 @@ ColumnLayout {
     }
     Connections {
         target: pane.backend
+        function onStateChanged() {
+            if (pane.backend.busy)
+                pane.finishDrag(false);
+        }
         function onActionSucceeded(action: string) {
-            if (action === "block_create")
+            if (action === "block_create" || action === "block_change")
                 blockEditor.close();
         }
     }
     component EventButton: Button {
         id: eventButton
         required property var entry
+        property string location: "week"
         objectName: "calendarEvent_" + entry.id
         Layout.fillWidth: true
         horizontalPadding: 8
         verticalPadding: 8
         contentItem: ColumnLayout {
             spacing: 3
+            RowLayout {
+                visible: eventButton.entry.kind === "block"
+                Layout.fillWidth: true
+                Rectangle {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 24
+                    radius: 5
+                    color: "#d4e2cd"
+                    Label {
+                        anchors.centerIn: parent
+                        text: "↔"
+                        color: "#2b5949"
+                    }
+                    MouseArea {
+                        objectName: eventButton.location + "DayDrag_" + eventButton.entry.id
+                        anchors.fill: parent
+                        preventStealing: true
+                        enabled: !pane.backend.busy
+                        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                        property bool cancelled: false
+                        onPressed: mouse => {
+                            forceActiveFocus();
+                            cancelled = false;
+                            pane.beginDrag(eventButton.entry, mapToItem(Overlay.overlay, mouse.x, mouse.y));
+                        }
+                        onPositionChanged: mouse => {
+                            if (pressed && !cancelled)
+                                pane.updateDrag(mapToItem(Overlay.overlay, mouse.x, mouse.y));
+                        }
+                        onReleased: pane.finishDrag(true)
+                        onCanceled: pane.finishDrag(false)
+                        Keys.onEscapePressed: {
+                            cancelled = true;
+                            pane.finishDrag(false);
+                        }
+                    }
+                }
+                Item {
+                    Layout.fillWidth: true
+                }
+                ToolButton {
+                    objectName: "editBlock_" + eventButton.entry.id
+                    width: 25
+                    height: 24
+                    text: "⋯"
+                    Accessible.name: qsTr("Изменить рабочий блок")
+                    onClicked: pane.beginEdit(eventButton.entry)
+                }
+            }
             Label {
                 text: (eventButton.entry.kind === "deadline" ? qsTr("◆ Срок · ") : "") + eventButton.entry.time
                 color: eventButton.entry.kind === "deadline" ? "#a34425" : "#2b5949"
@@ -128,7 +240,7 @@ ColumnLayout {
     }
     Label {
         Layout.fillWidth: true
-        text: pane.backend.calendarTasks.length ? qsTr("Зелёный — рабочий блок · ◆ — дедлайн. Нажмите событие, чтобы открыть задачу.") : qsTr("Сначала добавьте задачу, чтобы запланировать время.")
+        text: pane.backend.calendarTasks.length ? qsTr("Зелёный — рабочий блок · ◆ — дедлайн. Событие открывает задачу; ↔ переносит блок между днями. На шкале дня можно двигать блок и тянуть его нижний край.") : qsTr("Сначала добавьте задачу, чтобы запланировать время.")
         wrapMode: Text.Wrap
         color: "#69766d"
         font.pixelSize: 13
@@ -146,6 +258,21 @@ ColumnLayout {
             text: pane.backend.notice
             wrapMode: Text.Wrap
             color: "#2b5949"
+        }
+    }
+    Timer {
+        interval: 40
+        repeat: true
+        running: pane.dragging
+        onTriggered: {
+            const point = dragGhost.mapToItem(calendarScroll, dragGhost.width / 2, dragGhost.height / 2);
+            const view = calendarScroll.contentItem as Flickable;
+            if (!view)
+                return;
+            if (point.y < 16)
+                view.contentY = Math.max(0, view.contentY - 16);
+            else if (point.y > calendarScroll.height - 16)
+                view.contentY = Math.min(Math.max(0, view.contentHeight - view.height), view.contentY + 16);
         }
     }
     ScrollView {
@@ -188,6 +315,26 @@ ColumnLayout {
                         color: dayCell.modelData.today ? "#eaf0e1" : dayCell.modelData.inMonth || pane.view.mode === "week" ? "#ffffff" : "#eceee6"
                         border.color: dayCell.modelData.selected ? "#2b5949" : "#dfe5d9"
                         border.width: dayCell.modelData.selected ? 2 : 1
+                        DropArea {
+                            objectName: "calendarDrop_" + dayCell.index
+                            anchors.fill: parent
+                            keys: ["ritm-work-block"]
+                            enabled: !pane.backend.busy
+                            onDropped: drop => {
+                                const source = drop.source as DragPayload;
+                                if (source) {
+                                    pane.backend.changeBlock({
+                                        id: source.entry.id,
+                                        expectedStart: source.entry.startsAt,
+                                        expectedEnd: source.entry.endsAt,
+                                        operation: "day",
+                                        day: dayCell.modelData.date,
+                                        sourceDay: source.entry.day
+                                    });
+                                    drop.acceptProposedAction();
+                                }
+                            }
+                        }
                         ColumnLayout {
                             id: dayContent
                             anchors.left: parent.left
@@ -230,6 +377,12 @@ ColumnLayout {
                     }
                 }
             }
+            DayTimeline {
+                backend: pane.backend
+                view: pane.view
+                Layout.fillWidth: true
+                onEditBlock: entry => pane.beginEdit(entry)
+            }
             Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: agenda.implicitHeight + 28
@@ -254,6 +407,7 @@ ColumnLayout {
                     Repeater {
                         model: pane.view.selectedEvents || []
                         delegate: EventButton {
+                            location: "agenda"
                             required property var modelData
                             entry: modelData
                             enabled: !pane.backend.busy
@@ -266,7 +420,8 @@ ColumnLayout {
     Dialog {
         id: blockEditor
         objectName: "blockEditor"
-        title: qsTr("Запланировать рабочий блок")
+        property var entry: null
+        title: entry ? qsTr("Изменить рабочий блок") : qsTr("Запланировать рабочий блок")
         parent: Overlay.overlay
         anchors.centerIn: parent
         width: Math.min(520, parent ? parent.width - 32 : 520)
@@ -297,6 +452,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     textRole: "title"
                     model: pane.backend.calendarTasks
+                    enabled: !blockEditor.entry
                 }
                 Label {
                     text: qsTr("Начало")
@@ -347,11 +503,23 @@ ColumnLayout {
                 objectName: "saveBlockButton"
                 text: qsTr("Сохранить")
                 enabled: !pane.backend.busy && blockTask.currentIndex >= 0
-                onClicked: pane.backend.createBlock({
-                    taskId: pane.backend.calendarTasks[blockTask.currentIndex].id,
-                    start: blockStart.text,
-                    end: blockEnd.text
-                })
+                onClicked: {
+                    if (blockEditor.entry)
+                        pane.backend.changeBlock({
+                            id: blockEditor.entry.id,
+                            expectedStart: blockEditor.entry.startsAt,
+                            expectedEnd: blockEditor.entry.endsAt,
+                            operation: "fields",
+                            start: blockStart.text,
+                            end: blockEnd.text
+                        });
+                    else
+                        pane.backend.createBlock({
+                            taskId: pane.backend.calendarTasks[blockTask.currentIndex].id,
+                            start: blockStart.text,
+                            end: blockEnd.text
+                        });
+                }
             }
         }
     }

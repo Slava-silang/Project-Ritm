@@ -439,12 +439,16 @@ class TaskStore:
             )
             return self._block_context(block)
 
-    def update_work_block(self, block: WorkBlock) -> tuple[Task, tuple[WorkBlock, ...]]:
+    def update_work_block(
+        self, block: WorkBlock, *, expected: WorkBlock | None = None
+    ) -> tuple[Task, tuple[WorkBlock, ...]]:
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
             current = self.get_work_block(block.id)
             if current is None:
                 raise KeyError(block.id)
+            if expected is not None and current != expected:
+                raise ValueError("Блок уже изменился. Обновите календарь и повторите действие")
             if current.task_id != block.task_id:
                 raise ValueError("Перенос времени не должен менять задачу рабочего блока")
             self._db.execute(

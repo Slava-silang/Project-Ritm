@@ -18,7 +18,13 @@ from ritm.domain.task_list import query_tasks
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.domain.weights import initialize_weights, progress
 from ritm.storage.sqlite import TaskStore
-from ritm.ui.calendar import block_from_fields, calendar_view, duration_text, shift_period
+from ritm.ui.calendar import (
+    block_from_fields,
+    calendar_view,
+    change_block,
+    duration_text,
+    shift_period,
+)
 
 DATE_FORMAT = "%d.%m.%Y %H:%M"
 
@@ -217,6 +223,10 @@ class TaskController(QObject):
     def createBlock(self, fields):
         self._submit("block_create", dict(fields))
 
+    @Slot("QVariantMap")
+    def changeBlock(self, fields):
+        self._submit("block_change", dict(fields))
+
     @Property("QVariantList", notify=listChanged)
     def tasks(self):
         return self._visible
@@ -362,8 +372,22 @@ class TaskController(QObject):
                 service = TaskService(store)
                 if action == "calendar":
                     config = data
-                elif action == "block_create":
-                    block = block_from_fields(data, self._zone)
+                elif action in ("block_create", "block_change"):
+                    expected = None
+                    if action == "block_change":
+                        expected = store.get_work_block(UUID(data["id"]))
+                        if expected is None:
+                            raise KeyError(data["id"])
+                        if (
+                            expected.starts_at.isoformat() != data["expectedStart"]
+                            or expected.ends_at.isoformat() != data["expectedEnd"]
+                        ):
+                            raise ValueError(
+                                "Блок уже изменился. Обновите календарь и повторите действие"
+                            )
+                        block = change_block(expected, data, self._zone)
+                    else:
+                        block = block_from_fields(data, self._zone)
                     day = block.starts_at.astimezone(self._zone).date()
                     # Validate the destination period before committing a new record.
                     calendar_view(
@@ -375,13 +399,19 @@ class TaskController(QObject):
                         today=self._clock().astimezone(self._zone).date(),
                         zone=self._zone,
                     )
-                    result = CalendarService(store).create_block(block)
+                    result = (
+                        CalendarService(store).update_block(block, expected=expected)
+                        if expected is not None
+                        else CalendarService(store).create_block(block)
+                    )
                     messages = []
                     if result.warnings.overlapping_ids:
                         messages.append("есть пересечение с другими блоками")
                     if result.warnings.after_deadline:
                         messages.append("окончание позже дедлайна")
-                    notice = "Блок сохранён" + (": " + "; ".join(messages) if messages else "")
+                    notice = ("Блок изменён" if expected is not None else "Блок сохранён") + (
+                        ": " + "; ".join(messages) if messages else ""
+                    )
                     day = block.starts_at.astimezone(self._zone).date().isoformat()
                     config = {**config, "anchor": day, "day": day}
                 elif action == "save":
