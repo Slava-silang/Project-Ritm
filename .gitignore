@@ -12,6 +12,7 @@ htmlcov/
 # Build output and local diagnostics
 /dist/
 /build/
+/src/deployment/
 /artifacts/
 *.build/
 *.dist/

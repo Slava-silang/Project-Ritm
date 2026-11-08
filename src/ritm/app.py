@@ -2,13 +2,14 @@
 
 import argparse
 import sys
-from importlib.metadata import version
 from pathlib import Path
 
 from PySide6.QtCore import QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
+
+from ritm import __version__
 
 
 def load_window() -> QQmlApplicationEngine:
@@ -23,7 +24,7 @@ def load_window() -> QQmlApplicationEngine:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Ритм — задачи и время в своём темпе.")
-    parser.add_argument("--version", action="version", version=version("project-ritm"))
+    parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument(
         "--smoke-test",
         action="store_true",
@@ -36,7 +37,7 @@ def main() -> int:
     app.setOrganizationName("ProjectRitm")
     app.setApplicationName("Ritm")
     app.setApplicationDisplayName("Ритм")
-    app.setApplicationVersion(version("project-ritm"))
+    app.setApplicationVersion(__version__)
 
     try:
         engine = load_window()
