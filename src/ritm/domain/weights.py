@@ -55,6 +55,7 @@ def set_weights(task: Task, values: Mapping[UUID, Decimal]) -> Task:
             not isinstance(value, Decimal)
             or not value.is_finite()
             or not 0 <= value <= 100
+            or (value != 0 and value < Decimal("0.01"))
             or (Fraction(value) * 100).denominator != 1
         ):
             raise ValueError("Вес должен быть Decimal от 0 до 100 с точностью до 0,01%")

@@ -107,6 +107,14 @@ class TaskStore:
         with self._db:
             self._write_task(task)
 
+    def create_task(self, task: Task):
+        """Создание не может перезаписать существующую задачу или её потомка."""
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            if self._db.execute("SELECT 1 FROM nodes WHERE id=?", (str(task.id),)).fetchone():
+                raise ValueError("Задача с таким идентификатором уже существует")
+            self._write_task(task)
+
     def update_task(self, identifier: UUID, transform: Callable[[Task], Task]) -> Task:
         """Прочитать, преобразовать и записать одним изменением.
 

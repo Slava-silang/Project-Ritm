@@ -1,6 +1,8 @@
 """Атомарные изменения сохранённой задачи."""
 
 from collections.abc import Mapping
+from dataclasses import replace
+from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -40,3 +42,58 @@ class TaskService:
 
     def equal_weights(self, task_id: UUID) -> Task:
         return self._store.update_task(task_id, weights.equal_weights)
+
+    def create_task(self, task: Task) -> Task:
+        task = weights.initialize_weights(task)
+        self._store.create_task(task)
+        return task
+
+    def edit_details(
+        self,
+        task_id: UUID,
+        *,
+        title: str,
+        description: str,
+        difficulty: int | None,
+        expected_duration: timedelta | None,
+        deadline: datetime | None,
+    ) -> Task:
+        return self._store.update_task(
+            task_id,
+            lambda task: replace(
+                task,
+                title=title,
+                description=description,
+                difficulty=difficulty,
+                expected_duration=expected_duration,
+                deadline=deadline,
+            ),
+        )
+
+    def rename_node(self, task_id: UUID, node_id: UUID, title: str) -> Task:
+        def rename(task):
+            if task.id == node_id:
+                return replace(task, title=title)
+            found = any(
+                child.id == node_id or any(item.id == node_id for item in child.items)
+                for child in task.subtasks
+            )
+            if not found:
+                raise KeyError(node_id)
+            return replace(
+                task,
+                subtasks=tuple(
+                    replace(child, title=title)
+                    if child.id == node_id
+                    else replace(
+                        child,
+                        items=tuple(
+                            replace(item, title=title) if item.id == node_id else item
+                            for item in child.items
+                        ),
+                    )
+                    for child in task.subtasks
+                ),
+            )
+
+        return self._store.update_task(task_id, rename)

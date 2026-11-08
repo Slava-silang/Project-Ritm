@@ -61,6 +61,7 @@ def test_manual_weights_match_ids_and_allow_reset():
         Decimal("NaN"),
         Decimal("Infinity"),
         Decimal("99.999"),
+        Decimal("1e-999999999"),
         100,
         100.0,
         True,
