@@ -7,11 +7,12 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import UUID, uuid4
 
+from ritm.domain.calendar import WorkBlock, from_instant_us, instant_us
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.storage.codec import decode_task, encode_task
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 SCHEMA = (
     "CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL, "
     "title TEXT NOT NULL CHECK(length(trim(title))>0))",
@@ -58,6 +59,22 @@ TRASH_SCHEMA = """CREATE TABLE trash (
 )"""
 
 
+CALENDAR_SCHEMA = (
+    "CREATE TABLE task_identities (id TEXT PRIMARY KEY NOT NULL)",
+    "INSERT INTO task_identities SELECT id FROM nodes WHERE kind=0 UNION SELECT task_id FROM trash",
+    """CREATE TABLE work_blocks (
+        id TEXT PRIMARY KEY NOT NULL,
+        task_id TEXT NOT NULL REFERENCES task_identities(id),
+        starts_us INTEGER NOT NULL CHECK(typeof(starts_us)='integer'
+            AND starts_us BETWEEN -62135596800000000 AND 253402300799999999),
+        ends_us INTEGER NOT NULL CHECK(typeof(ends_us)='integer'
+            AND ends_us BETWEEN -62135596800000000 AND 253402300799999999 AND ends_us>starts_us)
+    )""",
+    "CREATE INDEX work_blocks_task ON work_blocks(task_id,starts_us)",
+    "CREATE INDEX work_blocks_time ON work_blocks(starts_us,ends_us)",
+)
+
+
 class TaskStore:
     def __init__(self, path: Path):
         path = Path(path)
@@ -79,8 +96,11 @@ class TaskStore:
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version == 1 and app_id == APPLICATION_ID:
-                self._db.execute(TRASH_SCHEMA)
+            if version in (1, 2) and app_id == APPLICATION_ID:
+                if version == 1:
+                    self._db.execute(TRASH_SCHEMA)
+                for statement in CALENDAR_SCHEMA:
+                    self._db.execute(statement)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._db.commit()
                 return
@@ -92,6 +112,8 @@ class TaskStore:
             for statement in SCHEMA:
                 self._db.execute(statement)
             self._db.execute(TRASH_SCHEMA)
+            for statement in CALENDAR_SCHEMA:
+                self._db.execute(statement)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             self._db.commit()
@@ -133,7 +155,10 @@ class TaskStore:
         """Создание не может перезаписать существующую задачу или её потомка."""
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
-            if self._db.execute("SELECT 1 FROM nodes WHERE id=?", (str(task.id),)).fetchone():
+            if self._db.execute(
+                "SELECT 1 FROM nodes WHERE id=? UNION ALL SELECT 1 FROM task_identities WHERE id=?",
+                (str(task.id), str(task.id)),
+            ).fetchone():
                 raise ValueError("Задача с таким идентификатором уже существует")
             if category is not None:
                 self._write_category(category)
@@ -161,6 +186,7 @@ class TaskStore:
             return updated
 
     def _write_task(self, task: Task):
+        self._db.execute("INSERT OR IGNORE INTO task_identities VALUES (?)", (str(task.id),))
         duration = task.expected_duration
         microseconds = (
             None
@@ -342,3 +368,100 @@ class TaskStore:
             self._write_task(restored)
             self._db.execute("DELETE FROM trash WHERE id=?", (str(identifier),))
             return restored
+
+    def list_work_blocks(
+        self,
+        *,
+        task_id: UUID | None = None,
+        window_start: datetime | None = None,
+        window_end: datetime | None = None,
+    ) -> tuple[WorkBlock, ...]:
+        start = instant_us(window_start) if window_start is not None else None
+        end = instant_us(window_end) if window_end is not None else None
+        if start is not None and end is not None and end <= start:
+            raise ValueError("Конец периода должен быть позже начала")
+        conditions = ["n.kind=0"]
+        parameters = []
+        if task_id is not None:
+            conditions.append("b.task_id=?")
+            parameters.append(str(task_id))
+        if start is not None:
+            conditions.append("b.ends_us>?")
+            parameters.append(start)
+        if end is not None:
+            conditions.append("b.starts_us<?")
+            parameters.append(end)
+        rows = self._db.execute(
+            "SELECT b.* FROM work_blocks b JOIN nodes n ON n.id=b.task_id WHERE "
+            + " AND ".join(conditions)
+            + " ORDER BY b.starts_us,b.id",
+            parameters,
+        )
+        return tuple(self._read_work_block(row) for row in rows)
+
+    @staticmethod
+    def _read_work_block(row) -> WorkBlock:
+        return WorkBlock(
+            id=UUID(row["id"]),
+            task_id=UUID(row["task_id"]),
+            starts_at=from_instant_us(row["starts_us"]),
+            ends_at=from_instant_us(row["ends_us"]),
+        )
+
+    def get_work_block(self, identifier: UUID) -> WorkBlock | None:
+        row = self._db.execute(
+            "SELECT b.* FROM work_blocks b JOIN nodes n ON n.id=b.task_id "
+            "WHERE b.id=? AND n.kind=0",
+            (str(identifier),),
+        ).fetchone()
+        return self._read_work_block(row) if row is not None else None
+
+    def _block_context(self, block: WorkBlock) -> tuple[Task, tuple[WorkBlock, ...]]:
+        task = self.get_task(block.task_id)
+        if task is None:
+            raise KeyError(block.task_id)
+        nearby = self.list_work_blocks(window_start=block.starts_at, window_end=block.ends_at)
+        return task, nearby
+
+    def create_work_block(self, block: WorkBlock) -> tuple[Task, tuple[WorkBlock, ...]]:
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            if self.get_task(block.task_id) is None:
+                raise KeyError(block.task_id)
+            self._db.execute(
+                "INSERT INTO work_blocks VALUES (?,?,?,?)",
+                (
+                    str(block.id),
+                    str(block.task_id),
+                    instant_us(block.starts_at),
+                    instant_us(block.ends_at),
+                ),
+            )
+            return self._block_context(block)
+
+    def update_work_block(self, block: WorkBlock) -> tuple[Task, tuple[WorkBlock, ...]]:
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            current = self.get_work_block(block.id)
+            if current is None:
+                raise KeyError(block.id)
+            if current.task_id != block.task_id:
+                raise ValueError("Перенос времени не должен менять задачу рабочего блока")
+            self._db.execute(
+                "UPDATE work_blocks SET starts_us=?,ends_us=? WHERE id=?",
+                (
+                    instant_us(block.starts_at),
+                    instant_us(block.ends_at),
+                    str(block.id),
+                ),
+            )
+            return self._block_context(block)
+
+    def work_block_context(self, identifier: UUID) -> tuple[Task, WorkBlock, tuple[WorkBlock, ...]]:
+        with self._db:
+            self._db.execute("BEGIN")
+            block = self.get_work_block(identifier)
+            if block is None:
+                raise KeyError(identifier)
+            task, nearby = self._block_context(block)
+            return task, block, nearby
