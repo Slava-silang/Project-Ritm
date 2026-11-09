@@ -10,10 +10,11 @@ from uuid import UUID, uuid4
 from ritm.domain.calendar import WorkBlock, from_instant_us, instant_us
 from ritm.domain.focus import FocusSession
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
+from ritm.storage.attachments import Attachment
 from ritm.storage.codec import decode_task, encode_task
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 SCHEMA = (
     "CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL, "
     "title TEXT NOT NULL CHECK(length(trim(title))>0))",
@@ -125,6 +126,22 @@ COMPLETION_SCHEMA = """CREATE TABLE task_completion_dates (
 )"""
 
 
+ATTACHMENT_SCHEMA = """CREATE TABLE attachments (
+    id TEXT PRIMARY KEY NOT NULL,
+    task_id TEXT NOT NULL REFERENCES task_identities(id),
+    node_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    suffix TEXT NOT NULL,
+    size INTEGER NOT NULL CHECK(size>=0)
+)"""
+
+ATTACHMENT_OWNER = """
+    FROM nodes n
+    LEFT JOIN nodes parent ON parent.id=n.parent_id
+    LEFT JOIN nodes grandparent ON grandparent.id=parent.parent_id
+"""
+
+
 class TaskStore:
     def __init__(self, path: Path, *, clock: Callable[[], datetime] | None = None):
         self._clock = clock or (lambda: datetime.now(UTC))
@@ -147,7 +164,7 @@ class TaskStore:
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in (1, 2, 3, 4, 5) and app_id == APPLICATION_ID:
+            if version in (1, 2, 3, 4, 5, 6) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -159,7 +176,9 @@ class TaskStore:
                 if version < 5:
                     for statement in FOCUS_SCHEMA:
                         self._db.execute(statement)
-                self._db.execute(COMPLETION_SCHEMA)
+                if version < 6:
+                    self._db.execute(COMPLETION_SCHEMA)
+                self._db.execute(ATTACHMENT_SCHEMA)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._db.commit()
                 return
@@ -174,6 +193,7 @@ class TaskStore:
             for statement in (*CALENDAR_SCHEMA, *EVENT_SCHEMA, *FOCUS_SCHEMA):
                 self._db.execute(statement)
             self._db.execute(COMPLETION_SCHEMA)
+            self._db.execute(ATTACHMENT_SCHEMA)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             self._db.commit()
@@ -736,3 +756,47 @@ class TaskStore:
                 "UPDATE focus_sessions SET finished_us=?,revision=revision+1 WHERE id=?",
                 (end, str(identifier)),
             )
+
+    def add_attachment(self, attachment: Attachment):
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            owner = self._db.execute(
+                "SELECT COALESCE(grandparent.id,parent.id,n.id)"
+                + ATTACHMENT_OWNER
+                + " WHERE n.id=?",
+                (str(attachment.node_id),),
+            ).fetchone()
+            if owner is None or owner[0] != str(attachment.task_id):
+                raise KeyError(attachment.node_id)
+            self._db.execute(
+                "INSERT INTO attachments VALUES (?,?,?,?,?,?)",
+                (
+                    str(attachment.id),
+                    str(attachment.task_id),
+                    str(attachment.node_id),
+                    attachment.name,
+                    attachment.suffix,
+                    attachment.size,
+                ),
+            )
+
+    def list_attachments(self, identifier: UUID | None = None) -> tuple[Attachment, ...]:
+        query = (
+            "SELECT a.*" + ATTACHMENT_OWNER + " JOIN attachments a ON a.node_id=n.id "
+            "AND a.task_id=COALESCE(grandparent.id,parent.id,n.id)"
+        )
+        values = ()
+        if identifier is not None:
+            query += " WHERE a.id=?"
+            values = (str(identifier),)
+        return tuple(
+            Attachment(
+                UUID(row["id"]),
+                UUID(row["task_id"]),
+                UUID(row["node_id"]),
+                row["name"],
+                row["suffix"],
+                row["size"],
+            )
+            for row in self._db.execute(query + " ORDER BY a.rowid", values)
+        )

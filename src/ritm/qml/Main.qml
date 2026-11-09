@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 
 ApplicationWindow {
@@ -63,6 +64,14 @@ ApplicationWindow {
     function filterList() {
         window.backend.setFilters(searchInput.text, ["active", "completed", "all"][statusFilter.currentIndex], window.backend.categoryFilter);
     }
+    function showAttachments(data) {
+        attachmentDialog.taskId = window.current.id;
+        attachmentDialog.nodeId = data.id;
+        attachmentDialog.nodeTitle = data.title;
+        attachmentDialog.attempted = false;
+        attachmentDialog.open();
+    }
+
     function askDelete(data) {
         deleteEditor.nodeId = data.id;
         deleteEditor.nodeTitle = data.title;
@@ -645,6 +654,11 @@ ApplicationWindow {
                             wrapMode: Text.Wrap
                             color: "#243d33"
                         }
+                        Button {
+                            objectName: "taskAttachments"
+                            text: qsTr("Вложения (%1)").arg((window.backend.attachments[window.current.id] || []).length)
+                            onClicked: window.showAttachments(window.current)
+                        }
                         Label {
                             Layout.fillWidth: true
                             textFormat: Text.PlainText
@@ -838,6 +852,12 @@ ApplicationWindow {
                                             onClicked: window.renameNode(branch.modelData)
                                         }
                                         ToolButton {
+                                            objectName: "branchAttachments_" + branch.index
+                                            text: qsTr("Файлы")
+                                            Accessible.name: qsTr("Вложения подзадачи")
+                                            onClicked: window.showAttachments(branch.modelData)
+                                        }
+                                        ToolButton {
                                             objectName: "deleteBranch_" + branch.index
                                             text: "×"
                                             Accessible.name: qsTr("Удалить подзадачу")
@@ -870,6 +890,12 @@ ApplicationWindow {
                                                 objectName: "renameItem_" + branch.index + "_" + leaf.index
                                                 Accessible.name: qsTr("Переименовать пункт")
                                                 onClicked: window.renameNode(leaf.modelData)
+                                            }
+                                            ToolButton {
+                                                objectName: "itemAttachments_" + branch.index + "_" + leaf.index
+                                                text: qsTr("Файлы")
+                                                Accessible.name: qsTr("Вложения пункта")
+                                                onClicked: window.showAttachments(leaf.modelData)
                                             }
                                             ToolButton {
                                                 objectName: "deleteItem_" + branch.index + "_" + leaf.index
@@ -929,6 +955,95 @@ ApplicationWindow {
             Layout.fillWidth: true
             text: qsTr("В своём темпе. Шаг за шагом.")
             horizontalAlignment: Text.AlignHCenter
+        }
+    }
+
+    FileDialog {
+        id: attachmentPicker
+        objectName: "attachmentPicker"
+        title: qsTr("Выбрать файл для вложения")
+        fileMode: FileDialog.OpenFile
+        onAccepted: {
+            attachmentDialog.attempted = true;
+            window.backend.attachFile(attachmentDialog.taskId, attachmentDialog.nodeId, selectedFile);
+        }
+    }
+
+    EditorDialog {
+        id: attachmentDialog
+        property string taskId: ""
+        property string nodeId: ""
+        property string nodeTitle: ""
+        property bool attempted: false
+        property var files: window.backend.attachments[nodeId] || []
+        title: qsTr("Вложения")
+        anchors.centerIn: parent
+        width: Math.min(540, window.width - 32)
+        height: Math.min(400, window.height - 32)
+        modal: true
+        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
+        contentItem: ColumnLayout {
+            Label {
+                Layout.fillWidth: true
+                text: attachmentDialog.nodeTitle
+                textFormat: Text.PlainText
+                elide: Text.ElideRight
+                font.weight: Font.DemiBold
+            }
+            Caption {
+                visible: attachmentDialog.files.length === 0
+                text: qsTr("Вложений пока нет")
+            }
+            ListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                spacing: 6
+                model: attachmentDialog.files
+                ScrollBar.vertical: ScrollBar {}
+                delegate: RowLayout {
+                    id: attachmentRow
+                    required property var modelData
+                    width: ListView.view.width - 12
+                    Label {
+                        Layout.fillWidth: true
+                        text: attachmentRow.modelData.name
+                        textFormat: Text.PlainText
+                        elide: Text.ElideMiddle
+                    }
+                    Button {
+                        objectName: "openAttachment_" + attachmentRow.modelData.id
+                        text: qsTr("Открыть")
+                        enabled: !window.backend.busy
+                        onClicked: {
+                            attachmentDialog.attempted = true;
+                            window.backend.openAttachment(attachmentRow.modelData.id);
+                        }
+                    }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: attachmentDialog.attempted && window.backend.error.length > 0
+                text: window.backend.error
+                wrapMode: Text.Wrap
+                color: "#853b22"
+            }
+        }
+        footer: RowLayout {
+            Item { Layout.fillWidth: true }
+            Button {
+                objectName: "closeAttachments"
+                text: qsTr("Закрыть")
+                enabled: !window.backend.busy
+                onClicked: attachmentDialog.close()
+            }
+            AccentButton {
+                objectName: "chooseAttachment"
+                text: qsTr("+ Файл")
+                enabled: !window.backend.busy
+                onClicked: attachmentPicker.open()
+            }
         }
     }
 

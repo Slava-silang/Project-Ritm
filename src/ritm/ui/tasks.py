@@ -10,7 +10,8 @@ from fractions import Fraction
 from pathlib import Path
 from uuid import UUID
 
-from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
+from PySide6.QtGui import QDesktopServices
 
 from ritm.application.calendar import CalendarService
 from ritm.application.tasks import TaskService
@@ -20,6 +21,7 @@ from ritm.domain.statistics import week_start, weekly_statistics
 from ritm.domain.task_list import is_overdue, query_tasks
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.domain.weights import initialize_weights, progress
+from ritm.storage.attachments import copy_attachment, saved_attachment_path
 from ritm.storage.sqlite import TaskStore
 from ritm.ui.calendar import (
     WEEKDAYS,
@@ -226,6 +228,7 @@ class TaskController(QObject):
         self._visible = []
         self._categories = []
         self._trash = []
+        self._attachments = {}
         self._search, self._state, self._category = "", "active", ""
         self._expanded = set()
         self._selected_overdue = False
@@ -548,6 +551,20 @@ class TaskController(QObject):
     def deleteNode(self, identifier):
         self._submit("delete", {"id": identifier})
 
+    @Property("QVariantMap", notify=changed)
+    def attachments(self):
+        return self._attachments
+
+    @Slot(str, str, QUrl)
+    def attachFile(self, task_id, node_id, url):
+        self._submit(
+            "attach", {"task_id": task_id, "node_id": node_id, "source": url.toLocalFile()}
+        )
+
+    @Slot(str)
+    def openAttachment(self, identifier):
+        self._submit("open_attachment", {"id": identifier})
+
     @Slot(str)
     def restoreEntry(self, identifier):
         self._submit("restore", {"id": identifier})
@@ -577,6 +594,28 @@ class TaskController(QObject):
                 service = TaskService(store)
                 if action == "calendar":
                     config = data
+                elif action == "attach":
+                    if not data["source"]:
+                        raise ValueError("Выберите локальный файл")
+                    try:
+                        copy_attachment(
+                            store,
+                            self._profile,
+                            UUID(data["task_id"]),
+                            UUID(data["node_id"]),
+                            Path(data["source"]),
+                        )
+                    except OSError as error:
+                        raise ValueError(
+                            "Не удалось скопировать файл. Проверьте доступ и свободное место."
+                        ) from error
+                elif action == "open_attachment":
+                    matches = store.list_attachments(UUID(data["id"]))
+                    if not matches:
+                        raise ValueError("Вложение больше не доступно")
+                    path = saved_attachment_path(self._profile, matches[0])
+                    self._ready.emit(path, "", action)
+                    return
                 elif action == "statistics":
                     statistics_anchor = data["anchor"]
                 elif action == "system_pause":
@@ -784,6 +823,11 @@ class TaskController(QObject):
                     self._clock(),
                     self._zone,
                 )
+                attachments = {}
+                for entry in store.list_attachments():
+                    attachments.setdefault(str(entry.node_id), []).append(
+                        {"id": str(entry.id), "name": entry.name}
+                    )
                 trash = [
                     {
                         **entry,
@@ -805,6 +849,7 @@ class TaskController(QObject):
                     active,
                     statistics,
                     statistics_anchor,
+                    attachments,
                 ),
                 "",
                 action,
@@ -828,6 +873,10 @@ class TaskController(QObject):
     def _finish(self, result, error, action):
         if self._closing:
             return
+        if action == "open_attachment" and result is not None:
+            if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(result.absolute()))):
+                error = "Не удалось открыть вложение. Проверьте программу для этого типа файла."
+            result = None
         self._busy, self._error = False, error
         if result is not None:
             (
@@ -841,6 +890,7 @@ class TaskController(QObject):
                 self._active_focus,
                 self._statistics,
                 self._statistics_anchor,
+                self._attachments,
             ) = result
             self.statisticsChanged.emit()
             if not self._focus_loaded:
