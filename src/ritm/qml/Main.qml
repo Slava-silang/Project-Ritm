@@ -30,6 +30,18 @@ ApplicationWindow {
     property bool narrow: width < 850
     property bool detailOpen: true
     property string page: "tasks"
+    property bool closeWhenIdle: false
+
+    onClosing: event => {
+        if (window.backend.busy) {
+            event.accepted = false;
+            window.closeWhenIdle = true;
+        } else if (window.activeFocus.elapsed && !window.activeFocus.recovery) {
+            event.accepted = false;
+            exitFocusDialog.open();
+        }
+    }
+
     property var categoryOptions: [
         {
             id: "",
@@ -165,6 +177,10 @@ ApplicationWindow {
         function onStateChanged() {
             if (window.backend.busy)
                 window.savedScrollY = detailScroll.contentItem.contentY;
+            else if (window.closeWhenIdle) {
+                window.closeWhenIdle = false;
+                Qt.callLater(window.close);
+            }
         }
         function onChanged() {
             const selected = window.backend.detail.id || "";
@@ -184,6 +200,10 @@ ApplicationWindow {
                     const view = detailScroll.contentItem;
                     view.contentY = Math.max(0, Math.min(window.savedScrollY, view.contentHeight - view.height));
                 });
+            }
+            if (action === "focus_exit") {
+                exitFocusDialog.close();
+                window.close();
             }
             if (action === "focus" && focusEditor.visible)
                 focusEditor.close();
@@ -891,6 +911,45 @@ ApplicationWindow {
             Layout.fillWidth: true
             text: qsTr("В своём темпе. Шаг за шагом.")
             horizontalAlignment: Text.AlignHCenter
+        }
+    }
+
+    EditorDialog {
+        id: exitFocusDialog
+        objectName: "exitFocusDialog"
+        title: qsTr("Завершить фокус и выйти?")
+        anchors.centerIn: parent
+        width: Math.min(460, window.width - 32)
+        modal: true
+        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
+        contentItem: ColumnLayout {
+            Caption {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("Текущее рабочее время сохранится в истории задачи.")
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: window.backend.error.length > 0
+                wrapMode: Text.Wrap
+                text: window.backend.error
+                color: "#853b22"
+            }
+        }
+        footer: RowLayout {
+            Item { Layout.fillWidth: true }
+            Button {
+                objectName: "cancelFocusExit"
+                text: qsTr("Остаться")
+                enabled: !window.backend.busy
+                onClicked: exitFocusDialog.close()
+            }
+            AccentButton {
+                objectName: "confirmFocusExit"
+                text: qsTr("Завершить и выйти")
+                enabled: !window.backend.busy
+                onClicked: window.backend.finishFocusForExit()
+            }
         }
     }
 

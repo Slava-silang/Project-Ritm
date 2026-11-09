@@ -60,8 +60,13 @@ def main() -> int:
     heartbeat.timeout.connect(lambda: None)
     heartbeat.start(100)
     engine = None
+    power = None
     try:
         engine = load_window(controller)
+        if sys.platform.startswith("linux") and not args.smoke_test:
+            from ritm.platform.power import LinuxPowerMonitor
+
+            power = LinuxPowerMonitor(controller)
         if args.smoke_test:
             QTimer.singleShot(800, engine.rootObjects()[0].close)
         return app.exec()
@@ -69,6 +74,8 @@ def main() -> int:
         print(error, file=sys.stderr)
         return 1
     finally:
+        if power is not None:
+            power.close()
         controller.close()
         engine = None
         for sig, handler in previous.items():

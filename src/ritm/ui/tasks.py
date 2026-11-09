@@ -173,6 +173,7 @@ class TaskController(QObject):
     timeChanged = Signal()
     calendarChanged = Signal()
     focusChanged = Signal()
+    systemPauseDone = Signal()
     actionSucceeded = Signal(str)
     _ready = Signal(object, str, str)
 
@@ -199,6 +200,7 @@ class TaskController(QObject):
         self._active_focus = None
         self._focus_loaded = False
         self._recovering = None
+        self._pending_system_pause = None
         self._focus_view = {}
         self._ticker = QTimer(self)
         self._ticker.timeout.connect(self._on_tick)
@@ -259,6 +261,35 @@ class TaskController(QObject):
             return
         expected = (str(active.id), active.revision) if active else None
         self._submit("focus", {"command": action, "expected": expected, **data})
+
+    @Slot()
+    def finishFocusForExit(self):
+        active = self._active_focus
+        if active is not None and self._recovering is None:
+            self._submit("focus_exit", {"expected": (str(active.id), active.revision)})
+
+    def pauseForSystem(self, reason: str):
+        if self._pending_system_pause is None:
+            self._pending_system_pause = (self._clock(), reason)
+        self._drain_system_pause()
+
+    def _drain_system_pause(self):
+        if self._pending_system_pause is None or self._busy or self._closing:
+            return
+        moment, reason = self._pending_system_pause
+        self._pending_system_pause = None
+        active = self._active_focus
+        if active is None or active.running_since_us is None or self._recovering is not None:
+            self.systemPauseDone.emit()
+            return
+        self._submit(
+            "system_pause",
+            {
+                "expected": (str(active.id), active.revision),
+                "moment": moment,
+                "reason": reason,
+            },
+        )
 
     @Slot(str, str, bool)
     def startFocus(self, task_id, minutes, replace_current):
@@ -482,6 +513,15 @@ class TaskController(QObject):
                 service = TaskService(store)
                 if action == "calendar":
                     config = data
+                elif action == "system_pause":
+                    store.change_focus("pause", data["moment"], data["expected"])
+                    notice = (
+                        "Фокус-сессия на паузе после сна компьютера"
+                        if data["reason"] == "sleep"
+                        else "Фокус-сессия на паузе после блокировки экрана"
+                    )
+                elif action == "focus_exit":
+                    store.change_focus("finish", self._clock(), data["expected"])
                 elif action == "focus_history":
                     if "task_id" in data:
                         store.add_focus_record(
@@ -729,6 +769,9 @@ class TaskController(QObject):
                 self._update_listing()
             self.changed.emit()
         self.stateChanged.emit()
+        if action == "system_pause":
+            self.systemPauseDone.emit()
+        self._drain_system_pause()
         if not error:
             self.actionSucceeded.emit(action)
 

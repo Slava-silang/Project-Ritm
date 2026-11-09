@@ -1,4 +1,5 @@
 import os
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -185,3 +186,38 @@ def test_day_split_uses_actual_length_of_dst_days():
         MINUTE * 60 * 23,
         MINUTE * 15,
     ]
+
+
+def test_dbus_pauses_and_exit_confirmation(tmp_path):
+    dbus = shutil.which("dbus-run-session")
+    if dbus is None or not sys.platform.startswith("linux"):
+        pytest.skip("Requires Linux and a private D-Bus session")
+    env = {
+        **os.environ,
+        "QT_QPA_PLATFORM": os.environ.get("RITM_UI_PLATFORM", "offscreen"),
+        "QT_QUICK_BACKEND": "software",
+        "XDG_CACHE_HOME": str(tmp_path / "cache"),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
+        "XDG_CONFIG_HOME": str(tmp_path / "config"),
+    }
+    script = Path(__file__).with_name("ui_power_scenario.py")
+    result = subprocess.run(
+        [dbus, "--", sys.executable, str(script), str(tmp_path)],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if "Failed to bind socket" in result.stderr and "Operation not permitted" in result.stderr:
+        result = subprocess.run(
+            [sys.executable, str(script), str(tmp_path), "--direct"],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    assert result.returncode == 0, result.stdout + result.stderr
+    for warning in ("TypeError", "ReferenceError", "Binding loop", "failed to load"):
+        assert warning not in result.stderr, result.stderr
