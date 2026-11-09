@@ -25,6 +25,7 @@ ApplicationWindow {
     palette.window: "#ffffff"
     palette.placeholderText: "#718073"
     property var current: window.backend.detail
+    property var activeFocus: window.backend.focus
     property bool hasTask: !!current.id
     property bool narrow: width < 850
     property bool detailOpen: true
@@ -180,6 +181,8 @@ ApplicationWindow {
                     view.contentY = Math.max(0, Math.min(window.savedScrollY, view.contentHeight - view.height));
                 });
             }
+            if (action === "focus" && focusEditor.visible)
+                focusEditor.close();
             if (action === "equal_weights")
                 weightEditor.close();
             if (action === "save") {
@@ -281,6 +284,53 @@ ApplicationWindow {
                     text: qsTr("Обновить")
                     enabled: !window.backend.busy
                     onClicked: window.backend.reload()
+                }
+            }
+        }
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: !!window.activeFocus.elapsed
+            spacing: 4
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    Layout.fillWidth: true
+                    textFormat: Text.PlainText
+                    elide: Text.ElideRight
+                    text: (window.activeFocus.paused ? qsTr("Пауза · ") : qsTr("Фокус · "))
+                        + (window.activeFocus.title || "")
+                }
+                Label {
+                    text: (window.activeFocus.elapsed || "") + (window.activeFocus.target
+                        ? " / " + window.activeFocus.target : "")
+                    font.weight: Font.DemiBold
+                }
+                Button {
+                    objectName: "focusPauseResume"
+                    text: window.activeFocus.paused ? qsTr("Продолжить") : qsTr("Пауза")
+                    enabled: !window.backend.busy
+                    onClicked: window.backend.changeFocus(window.activeFocus.paused ? "resume" : "pause")
+                }
+                Button {
+                    objectName: "finishFocusButton"
+                    text: qsTr("Завершить")
+                    enabled: !window.backend.busy
+                    onClicked: window.backend.changeFocus("finish")
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                visible: !!window.activeFocus.reached
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Плановое время вышло. Можно завершить сессию или продолжить.")
+                }
+                Button {
+                    objectName: "focusOvertimeButton"
+                    text: qsTr("Продолжить сверх плана")
+                    enabled: !window.backend.busy
+                    onClicked: window.backend.changeFocus("overtime")
                 }
             }
         }
@@ -585,6 +635,46 @@ ApplicationWindow {
                         }
                         RowLayout {
                             Layout.fillWidth: true
+                            Caption {
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                text: qsTr("Затрачено: ") + (window.current.focusTotal || "00:00:00")
+                            }
+                            Button {
+                                objectName: "startFocusButton"
+                                text: qsTr("Начать фокус")
+                                onClicked: {
+                                    focusEditor.taskId = window.current.id;
+                                    focusEditor.replacing = !!window.activeFocus.elapsed;
+                                    focusEditor.attempted = false;
+                                    focusMinutes.text = "";
+                                    focusEditor.open();
+                                }
+                            }
+                        }
+                        Button {
+                            id: focusHistoryToggle
+                            objectName: "focusHistoryButton"
+                            checkable: true
+                            text: qsTr("История фокуса") + " (" + (window.current.focusHistory || []).length + ")"
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            visible: focusHistoryToggle.checked
+                            Caption {
+                                visible: !(window.current.focusHistory || []).length
+                                text: qsTr("Завершённых сессий пока нет")
+                            }
+                            Repeater {
+                                model: focusHistoryToggle.checked ? window.current.focusHistory || [] : []
+                                delegate: Caption {
+                                    required property var modelData
+                                    text: modelData.started + " · " + modelData.elapsed
+                                }
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
                             TaskProgress {
                                 Layout.fillWidth: true
                                 from: 0
@@ -767,6 +857,62 @@ ApplicationWindow {
             Layout.fillWidth: true
             text: qsTr("В своём темпе. Шаг за шагом.")
             horizontalAlignment: Text.AlignHCenter
+        }
+    }
+
+    EditorDialog {
+        id: focusEditor
+        property string taskId: ""
+        property bool replacing: false
+        property bool attempted: false
+        title: qsTr("Начать фокус-сессию")
+        anchors.centerIn: parent
+        width: Math.min(460, window.width - 32)
+        modal: true
+        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
+        contentItem: ColumnLayout {
+            Caption {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("Оставь поле пустым для секундомера или укажи плановую длительность.")
+            }
+            TextField {
+                id: focusMinutes
+                objectName: "focusMinutesInput"
+                Layout.fillWidth: true
+                placeholderText: qsTr("Плановая длительность, мин")
+                inputMethodHints: Qt.ImhDigitsOnly
+            }
+            Caption {
+                Layout.fillWidth: true
+                visible: focusEditor.replacing
+                wrapMode: Text.Wrap
+                text: qsTr("Текущая сессия завершится и сохранится в истории.")
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: focusEditor.attempted && window.backend.error.length > 0
+                wrapMode: Text.Wrap
+                text: window.backend.error
+                color: "#853b22"
+            }
+        }
+        footer: RowLayout {
+            Item { Layout.fillWidth: true }
+            Button {
+                text: qsTr("Отмена")
+                enabled: !window.backend.busy
+                onClicked: focusEditor.close()
+            }
+            AccentButton {
+                objectName: "confirmFocusButton"
+                enabled: !window.backend.busy
+                text: focusEditor.replacing ? qsTr("Завершить текущую и начать") : qsTr("Начать")
+                onClicked: {
+                    focusEditor.attempted = true;
+                    window.backend.startFocus(focusEditor.taskId, focusMinutes.text, focusEditor.replacing);
+                }
+            }
         }
     }
 

@@ -13,7 +13,7 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from ritm.application.calendar import CalendarService
 from ritm.application.tasks import TaskService
-from ritm.domain.calendar import planned_duration
+from ritm.domain.calendar import from_instant_us, instant_us, planned_duration
 from ritm.domain.task_list import query_tasks
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.domain.weights import initialize_weights, progress
@@ -125,6 +125,12 @@ def select_category(categories, title: str, identifier: str = "") -> Category | 
     ) or Category(title=title)
 
 
+def focus_time(microseconds: int) -> str:
+    minutes, seconds = divmod(microseconds // 1_000_000, 60)
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours:02}:{minutes:02}:{seconds:02}"
+
+
 class TaskController(QObject):
     changed = Signal()
     stateChanged = Signal()
@@ -133,6 +139,7 @@ class TaskController(QObject):
     filtersChanged = Signal()
     timeChanged = Signal()
     calendarChanged = Signal()
+    focusChanged = Signal()
     actionSucceeded = Signal(str)
     _ready = Signal(object, str, str)
 
@@ -156,6 +163,8 @@ class TaskController(QObject):
         self._calendar_config = {"mode": "week", "anchor": today, "day": today}
         self._calendar = {}
         self._notice = ""
+        self._active_focus = None
+        self._focus_view = {}
         self._ticker = QTimer(self)
         self._ticker.timeout.connect(self._on_tick)
         self._ticker.start(1000)
@@ -168,12 +177,51 @@ class TaskController(QObject):
 
     def _on_tick(self):
         self._update_listing()
+        self._update_focus()
         if (
             self._calendar
             and not self._busy
             and self._calendar["today"] != self._clock().astimezone(self._zone).date().isoformat()
         ):
             self._submit("refresh", {})
+
+    def _update_focus(self):
+        session = self._active_focus
+        view = {}
+        if session is not None:
+            now_us = instant_us(self._clock())
+            view = {
+                "title": next(
+                    (row["title"] for row in self._rows if row["id"] == str(session.task_id)),
+                    "Задача в корзине",
+                ),
+                "elapsed": focus_time(session.elapsed(now_us)),
+                "target": focus_time(session.target_us) if session.target_us else "",
+                "paused": session.running_since_us is None,
+                "reached": session.target_reached(now_us),
+            }
+        if view != self._focus_view:
+            self._focus_view = view
+            self.focusChanged.emit()
+
+    @Property("QVariantMap", notify=focusChanged)
+    def focus(self):
+        return self._focus_view
+
+    def _focus_command(self, action, **data):
+        active = self._active_focus
+        expected = (str(active.id), active.revision) if active else None
+        self._submit("focus", {"command": action, "expected": expected, **data})
+
+    @Slot(str, str, bool)
+    def startFocus(self, task_id, minutes, replace_current):
+        self._focus_command(
+            "start", task_id=task_id, minutes=minutes, replace_current=replace_current
+        )
+
+    @Slot(str)
+    def changeFocus(self, action):
+        self._focus_command(action)
 
     @Property("QVariantMap", notify=calendarChanged)
     def calendar(self):
@@ -372,6 +420,28 @@ class TaskController(QObject):
                 service = TaskService(store)
                 if action == "calendar":
                     config = data
+                elif action == "focus":
+                    command, expected = data["command"], data["expected"]
+                    if command == "start":
+                        if expected and not data["replace_current"]:
+                            raise ValueError("Подтвердите завершение текущей сессии")
+                        minutes = data["minutes"].strip()
+                        if minutes and (
+                            not minutes.isascii()
+                            or not minutes.isdecimal()
+                            or len(minutes) > 12
+                            or int(minutes) == 0
+                        ):
+                            raise ValueError("Укажите целое положительное число минут")
+                        store.change_focus(
+                            command,
+                            self._clock(),
+                            expected,
+                            task_id=UUID(data["task_id"]),
+                            target_us=int(minutes) * 60_000_000 if minutes else None,
+                        )
+                    else:
+                        store.change_focus(command, self._clock(), expected)
                 elif action in ("block_create", "block_change"):
                     expected = None
                     if action == "block_change":
@@ -474,6 +544,13 @@ class TaskController(QObject):
                         service.equal_weights(task_id)
                 raw = store.list_tasks()
                 blocks = store.list_work_blocks()
+                active = None
+                history = {}
+                for session in store.list_focus_sessions():
+                    if session.finished_us is None:
+                        active = session
+                    else:
+                        history.setdefault(session.task_id, []).append(session)
                 planned = {
                     task.id: duration_text(
                         planned_duration(b for b in blocks if b.task_id == task.id)
@@ -496,6 +573,18 @@ class TaskController(QObject):
                         **task_view(task),
                         "category": names.get(str(task.category_id), ""),
                         "plannedText": planned[task.id],
+                        "focusTotal": focus_time(
+                            sum(x.worked_us for x in history.get(task.id, ()))
+                        ),
+                        "focusHistory": [
+                            {
+                                "started": from_instant_us(x.started_us)
+                                .astimezone(self._zone)
+                                .strftime(DATE_FORMAT),
+                                "elapsed": focus_time(x.worked_us),
+                            }
+                            for x in history.get(task.id, ())
+                        ],
                     }
                     for task in raw
                 ]
@@ -508,7 +597,9 @@ class TaskController(QObject):
                     }
                     for entry in store.list_trash()
                 ]
-            self._ready.emit((rows, selected, categories, trash, raw, calendar, notice), "", action)
+            self._ready.emit(
+                (rows, selected, categories, trash, raw, calendar, notice, active), "", action
+            )
         except (sqlite3.Error, OSError):
             self._ready.emit(
                 None,
@@ -538,7 +629,9 @@ class TaskController(QObject):
                 self._source,
                 self._calendar,
                 self._notice,
+                self._active_focus,
             ) = result
+            self._update_focus()
             self._calendar_config = {
                 "mode": self._calendar["mode"],
                 "anchor": self._calendar["anchor"],

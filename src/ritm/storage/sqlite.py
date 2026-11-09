@@ -8,11 +8,12 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from ritm.domain.calendar import WorkBlock, from_instant_us, instant_us
+from ritm.domain.focus import FocusSession
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.storage.codec import decode_task, encode_task
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 SCHEMA = (
     "CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL, "
     "title TEXT NOT NULL CHECK(length(trim(title))>0))",
@@ -95,6 +96,29 @@ EVENT_SCHEMA = (
 )
 
 
+FOCUS_SCHEMA = (
+    """CREATE TABLE focus_sessions (
+        id TEXT PRIMARY KEY NOT NULL,
+        task_id TEXT NOT NULL REFERENCES task_identities(id),
+        started_us INTEGER NOT NULL,
+        target_us INTEGER CHECK(target_us>0),
+        finished_us INTEGER CHECK(finished_us>=started_us),
+        overtime INTEGER NOT NULL DEFAULT 0 CHECK(overtime IN (0,1)),
+        revision INTEGER NOT NULL DEFAULT 0
+    )""",
+    "CREATE UNIQUE INDEX focus_one_active ON focus_sessions((1)) WHERE finished_us IS NULL",
+    """CREATE TABLE focus_intervals (
+        session_id TEXT NOT NULL REFERENCES focus_sessions(id) ON DELETE CASCADE,
+        position INTEGER NOT NULL,
+        starts_us INTEGER NOT NULL,
+        ends_us INTEGER CHECK(ends_us>=starts_us),
+        PRIMARY KEY(session_id,position)
+    )""",
+    "CREATE UNIQUE INDEX focus_one_open_interval ON focus_intervals(session_id) "
+    "WHERE ends_us IS NULL",
+)
+
+
 class TaskStore:
     def __init__(self, path: Path):
         path = Path(path)
@@ -116,13 +140,16 @@ class TaskStore:
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in (1, 2, 3) and app_id == APPLICATION_ID:
+            if version in (1, 2, 3, 4) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
                     for statement in CALENDAR_SCHEMA:
                         self._db.execute(statement)
-                for statement in EVENT_SCHEMA:
+                if version < 4:
+                    for statement in EVENT_SCHEMA:
+                        self._db.execute(statement)
+                for statement in FOCUS_SCHEMA:
                     self._db.execute(statement)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._db.commit()
@@ -135,7 +162,7 @@ class TaskStore:
             for statement in SCHEMA:
                 self._db.execute(statement)
             self._db.execute(TRASH_SCHEMA)
-            for statement in (*CALENDAR_SCHEMA, *EVENT_SCHEMA):
+            for statement in (*CALENDAR_SCHEMA, *EVENT_SCHEMA, *FOCUS_SCHEMA):
                 self._db.execute(statement)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -497,3 +524,97 @@ class TaskStore:
                 raise KeyError(identifier)
             task, nearby = self._block_context(block)
             return task, block, nearby
+
+    def list_focus_sessions(self) -> tuple[FocusSession, ...]:
+        rows = self._db.execute(
+            """SELECT s.*, MAX(CASE WHEN i.ends_us IS NULL THEN i.starts_us END) AS running,
+                      COALESCE(SUM(i.ends_us-i.starts_us),0) AS worked
+               FROM focus_sessions s LEFT JOIN focus_intervals i ON i.session_id=s.id
+               GROUP BY s.id ORDER BY s.started_us DESC, s.rowid DESC"""
+        )
+        return tuple(
+            FocusSession(
+                UUID(row["id"]),
+                UUID(row["task_id"]),
+                row["started_us"],
+                row["target_us"],
+                row["finished_us"],
+                row["running"],
+                row["worked"],
+                bool(row["overtime"]),
+                row["revision"],
+            )
+            for row in rows
+        )
+
+    def change_focus(
+        self,
+        action: str,
+        now: datetime,
+        expected: tuple[str, int] | None,
+        *,
+        task_id: UUID | None = None,
+        target_us: int | None = None,
+    ):
+        now_us = instant_us(now)
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            active = next((x for x in self.list_focus_sessions() if x.finished_us is None), None)
+            actual = (str(active.id), active.revision) if active else None
+            if expected != actual:
+                raise ValueError("Сессия уже изменилась. Обновите список и повторите действие")
+            if action == "start":
+                if task_id is None or self.get_task(task_id) is None:
+                    raise KeyError(task_id)
+                if target_us is not None and not 0 < target_us <= 2**63 - 1:
+                    raise ValueError("Укажите положительную длительность")
+                if active:
+                    self._finish_focus(active, now_us)
+                identifier = str(uuid4())
+                self._db.execute(
+                    "INSERT INTO focus_sessions(id,task_id,started_us,target_us) VALUES (?,?,?,?)",
+                    (identifier, str(task_id), now_us, target_us),
+                )
+                self._db.execute(
+                    "INSERT INTO focus_intervals VALUES (?,0,?,NULL)", (identifier, now_us)
+                )
+                return
+            if active is None:
+                raise ValueError("Нет активной фокус-сессии")
+            identifier = str(active.id)
+            if action == "finish":
+                self._finish_focus(active, now_us)
+                return
+            if action == "pause" and active.running_since_us is not None:
+                self._close_focus_interval(identifier, now_us)
+            elif action == "resume" and active.running_since_us is None:
+                self._db.execute(
+                    """INSERT INTO focus_intervals
+                       SELECT ?,MAX(position)+1,MAX(?,MAX(ends_us)),NULL
+                       FROM focus_intervals WHERE session_id=?""",
+                    (identifier, now_us, identifier),
+                )
+            elif action == "overtime" and active.target_reached(now_us):
+                self._db.execute("UPDATE focus_sessions SET overtime=1 WHERE id=?", (identifier,))
+            else:
+                raise ValueError("Это действие недоступно в текущем состоянии сессии")
+            self._db.execute(
+                "UPDATE focus_sessions SET revision=revision+1 WHERE id=?", (identifier,)
+            )
+
+    def _close_focus_interval(self, identifier: str, now_us: int):
+        self._db.execute(
+            """UPDATE focus_intervals SET ends_us=MAX(starts_us,?)
+               WHERE session_id=? AND ends_us IS NULL""",
+            (now_us, identifier),
+        )
+
+    def _finish_focus(self, session: FocusSession, now_us: int):
+        identifier = str(session.id)
+        self._close_focus_interval(identifier, now_us)
+        self._db.execute(
+            """UPDATE focus_sessions SET finished_us=MAX(?,(
+                   SELECT MAX(ends_us) FROM focus_intervals WHERE session_id=?
+               )), revision=revision+1 WHERE id=?""",
+            (now_us, identifier, identifier),
+        )
