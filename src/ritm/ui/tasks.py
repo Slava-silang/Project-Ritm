@@ -16,11 +16,13 @@ from ritm.application.calendar import CalendarService
 from ritm.application.tasks import TaskService
 from ritm.domain.calendar import from_instant_us, instant_us, planned_duration
 from ritm.domain.focus import focus_by_day
-from ritm.domain.task_list import query_tasks
+from ritm.domain.statistics import week_start, weekly_statistics
+from ritm.domain.task_list import is_overdue, query_tasks
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.domain.weights import initialize_weights, progress
 from ritm.storage.sqlite import TaskStore
 from ritm.ui.calendar import (
+    WEEKDAYS,
     block_from_fields,
     calendar_view,
     change_block,
@@ -164,6 +166,41 @@ def focus_history_view(session, intervals, zone):
     }
 
 
+def statistics_view(tasks, rows, completed, focus, anchor, now, zone):
+    week = weekly_statistics(tasks, completed, focus, anchor or now.astimezone(zone).date(), zone)
+    last = week.end - timedelta(days=1)
+    maximum = max(week.daily_focus, default=0)
+    return {
+        "start": week.start.isoformat(),
+        "period": f"{week.start:%d.%m.%Y} — {last:%d.%m.%Y}",
+        "taskCount": week.task_count,
+        "percent": float(week.progress or 0),
+        "percentText": str(week.progress).replace(".", ",") if week.task_count else "",
+        "completedCount": week.completed_count,
+        "undatedCount": week.undated_count,
+        "overdueCount": sum(is_overdue(task, now) for task in tasks),
+        "days": [
+            {
+                "label": f"{WEEKDAYS[i]} {(week.start + timedelta(days=i)):%d.%m}",
+                "time": focus_time(value),
+                "fraction": value / maximum if maximum else 0.0,
+            }
+            for i, value in enumerate(week.daily_focus)
+        ],
+        "totalFocus": focus_time(sum(week.daily_focus)),
+        "tasks": [
+            {
+                "id": row["id"],
+                "title": row["title"],
+                "expected": row["minutes"],
+                "time": focus_time(week.task_focus.get(UUID(row["id"]), 0)),
+            }
+            for row in rows
+            if UUID(row["id"]) in week.task_ids
+        ],
+    }
+
+
 class TaskController(QObject):
     changed = Signal()
     stateChanged = Signal()
@@ -172,6 +209,7 @@ class TaskController(QObject):
     filtersChanged = Signal()
     timeChanged = Signal()
     calendarChanged = Signal()
+    statisticsChanged = Signal()
     focusChanged = Signal()
     systemPauseDone = Signal()
     actionSucceeded = Signal(str)
@@ -196,6 +234,8 @@ class TaskController(QObject):
         today = self._clock().astimezone(zone).date().isoformat()
         self._calendar_config = {"mode": "week", "anchor": today, "day": today}
         self._calendar = {}
+        self._statistics = {}
+        self._statistics_anchor = None
         self._notice = ""
         self._active_focus = None
         self._focus_loaded = False
@@ -215,6 +255,12 @@ class TaskController(QObject):
     def _on_tick(self):
         self._update_listing()
         self._update_focus()
+        if self._statistics:
+            now = self._clock()
+            overdue = sum(is_overdue(task, now) for task in self._source)
+            if overdue != self._statistics["overdueCount"]:
+                self._statistics = {**self._statistics, "overdueCount": overdue}
+                self.statisticsChanged.emit()
         if (
             self._calendar
             and not self._busy
@@ -315,6 +361,17 @@ class TaskController(QObject):
         self._submit(
             "focus_history", {"id": identifier, "revision": revision, "duration": duration}
         )
+
+    @Property("QVariantMap", notify=statisticsChanged)
+    def statistics(self):
+        return self._statistics
+
+    @Slot(int)
+    def navigateStatistics(self, direction):
+        if not self._statistics or direction not in (-1, 0, 1):
+            return
+        anchor = date.fromisoformat(self._statistics["start"]) + timedelta(days=7 * direction)
+        self._submit("statistics", {"anchor": week_start(anchor) if direction else None})
 
     @Property("QVariantMap", notify=calendarChanged)
     def calendar(self):
@@ -504,15 +561,24 @@ class TaskController(QObject):
             return
         self._busy, self._error, self._notice = True, "", ""
         self.stateChanged.emit()
-        self._pool.submit(self._run, action, data, self._selected, dict(self._calendar_config))
+        self._pool.submit(
+            self._run,
+            action,
+            data,
+            self._selected,
+            dict(self._calendar_config),
+            self._statistics_anchor,
+        )
 
-    def _run(self, action, data, selected, config):
+    def _run(self, action, data, selected, config, statistics_anchor):
         notice = ""
         try:
-            with TaskStore(self._profile / "tasks.sqlite3") as store:
+            with TaskStore(self._profile / "tasks.sqlite3", clock=self._clock) as store:
                 service = TaskService(store)
                 if action == "calendar":
                     config = data
+                elif action == "statistics":
+                    statistics_anchor = data["anchor"]
                 elif action == "system_pause":
                     store.change_focus("pause", data["moment"], data["expected"])
                     notice = (
@@ -704,6 +770,20 @@ class TaskController(QObject):
                     }
                     for task in raw
                 ]
+                statistics = statistics_view(
+                    raw,
+                    rows,
+                    store.list_completion_dates(),
+                    {
+                        task_id: [
+                            pair for session in sessions for pair in intervals.get(session.id, ())
+                        ]
+                        for task_id, sessions in history.items()
+                    },
+                    statistics_anchor,
+                    self._clock(),
+                    self._zone,
+                )
                 trash = [
                     {
                         **entry,
@@ -714,7 +794,20 @@ class TaskController(QObject):
                     for entry in store.list_trash()
                 ]
             self._ready.emit(
-                (rows, selected, categories, trash, raw, calendar, notice, active), "", action
+                (
+                    rows,
+                    selected,
+                    categories,
+                    trash,
+                    raw,
+                    calendar,
+                    notice,
+                    active,
+                    statistics,
+                    statistics_anchor,
+                ),
+                "",
+                action,
             )
         except (sqlite3.Error, OSError):
             self._ready.emit(
@@ -746,7 +839,10 @@ class TaskController(QObject):
                 self._calendar,
                 self._notice,
                 self._active_focus,
+                self._statistics,
+                self._statistics_anchor,
             ) = result
+            self.statisticsChanged.emit()
             if not self._focus_loaded:
                 self._focus_loaded = True
                 if self._active_focus is not None:

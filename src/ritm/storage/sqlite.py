@@ -13,7 +13,7 @@ from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.storage.codec import decode_task, encode_task
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 SCHEMA = (
     "CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL, "
     "title TEXT NOT NULL CHECK(length(trim(title))>0))",
@@ -119,8 +119,15 @@ FOCUS_SCHEMA = (
 )
 
 
+COMPLETION_SCHEMA = """CREATE TABLE task_completion_dates (
+    task_id TEXT PRIMARY KEY NOT NULL REFERENCES task_identities(id),
+    completed_us INTEGER NOT NULL
+)"""
+
+
 class TaskStore:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, *, clock: Callable[[], datetime] | None = None):
+        self._clock = clock or (lambda: datetime.now(UTC))
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         self._db = sqlite3.connect(path)
@@ -140,7 +147,7 @@ class TaskStore:
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in (1, 2, 3, 4) and app_id == APPLICATION_ID:
+            if version in (1, 2, 3, 4, 5) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -149,8 +156,10 @@ class TaskStore:
                 if version < 4:
                     for statement in EVENT_SCHEMA:
                         self._db.execute(statement)
-                for statement in FOCUS_SCHEMA:
-                    self._db.execute(statement)
+                if version < 5:
+                    for statement in FOCUS_SCHEMA:
+                        self._db.execute(statement)
+                self._db.execute(COMPLETION_SCHEMA)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._db.commit()
                 return
@@ -164,6 +173,7 @@ class TaskStore:
             self._db.execute(TRASH_SCHEMA)
             for statement in (*CALENDAR_SCHEMA, *EVENT_SCHEMA, *FOCUS_SCHEMA):
                 self._db.execute(statement)
+            self._db.execute(COMPLETION_SCHEMA)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             self._db.commit()
@@ -235,7 +245,17 @@ class TaskStore:
             self._write_task(updated)
             return updated
 
-    def _write_task(self, task: Task):
+    def list_completion_dates(self) -> dict[UUID, datetime]:
+        return {
+            UUID(row["task_id"]): from_instant_us(row["completed_us"])
+            for row in self._db.execute("SELECT task_id,completed_us FROM task_completion_dates")
+        }
+
+    def _write_task(self, task: Task, *, restore_root: bool = False):
+        task_id = str(task.id)
+        previous = self._db.execute(
+            "SELECT completed FROM nodes WHERE id=? AND kind=0", (task_id,)
+        ).fetchone()
         self._db.execute("INSERT OR IGNORE INTO task_identities VALUES (?)", (str(task.id),))
         duration = task.expected_duration
         microseconds = (
@@ -268,7 +288,15 @@ class TaskStore:
         )
         if not result.rowcount:
             raise ValueError("ID задачи занят подзадачей")
-        self._db.execute("DELETE FROM nodes WHERE parent_id=?", (str(task.id),))
+        if not task.completed:
+            self._db.execute("DELETE FROM task_completion_dates WHERE task_id=?", (task_id,))
+        elif not restore_root and (previous is None or not previous["completed"]):
+            self._db.execute(
+                """INSERT INTO task_completion_dates VALUES (?,?)
+                   ON CONFLICT(task_id) DO UPDATE SET completed_us=excluded.completed_us""",
+                (task_id, instant_us(self._clock())),
+            )
+        self._db.execute("DELETE FROM nodes WHERE parent_id=?", (task_id,))
         for position, child in enumerate(task.subtasks):
             self._save_child(child, task.id, position, 1, child.weight)
             for item_position, item in enumerate(child.items):
@@ -415,7 +443,7 @@ class TaskStore:
             restored = transform(current, before, after, UUID(entry["node_id"]))
             if restored.id != before.id:
                 raise ValueError("Восстановление не должно менять ID задачи")
-            self._write_task(restored)
+            self._write_task(restored, restore_root=current is None and entry["kind"] == 0)
             self._db.execute("DELETE FROM trash WHERE id=?", (str(identifier),))
             return restored
 

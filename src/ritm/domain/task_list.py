@@ -15,6 +15,14 @@ class ListedTask:
     overdue: bool
 
 
+def is_overdue(task: Task, now: datetime) -> bool:
+    return bool(
+        not task.completed
+        and task.deadline is not None
+        and task.deadline.astimezone(UTC) < now.astimezone(UTC)
+    )
+
+
 def query_tasks(
     tasks: Sequence[Task],
     *,
@@ -48,13 +56,12 @@ def query_tasks(
             )
             if query not in text.casefold():
                 continue
-        deadline = task.deadline.astimezone(UTC) if task.deadline else None
-        overdue = not task.completed and deadline is not None and deadline < now.astimezone(UTC)
+        overdue = is_overdue(task, now)
         if task.completed:
             group = "Выполненные"
         elif overdue:
             group = "Просроченные"
-        elif deadline:
+        elif task.deadline:
             group = "Предстоящие"
         else:
             group = "Без дедлайна"

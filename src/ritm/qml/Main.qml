@@ -248,7 +248,8 @@ ApplicationWindow {
             ColumnLayout {
                 spacing: 2
                 Label {
-                    text: window.page === "tasks" ? qsTr("Мои задачи") : qsTr("Календарь")
+                    text: window.page === "tasks" ? qsTr("Мои задачи")
+                        : window.page === "calendar" ? qsTr("Календарь") : qsTr("Статистика")
                     font.pixelSize: 25
                     font.weight: Font.DemiBold
                     color: "#243d33"
@@ -285,6 +286,12 @@ ApplicationWindow {
                 text: qsTr("Календарь")
                 highlighted: window.page === "calendar"
                 onClicked: window.page = "calendar"
+            }
+            Button {
+                objectName: "statisticsPageButton"
+                text: qsTr("Статистика")
+                highlighted: window.page === "statistics"
+                onClicked: window.page = "statistics"
             }
             Item {
                 Layout.fillWidth: true
@@ -406,6 +413,17 @@ ApplicationWindow {
                     enabled: !window.backend.busy
                     onClicked: trashEditor.open()
                 }
+            }
+        }
+        StatisticsPane {
+            backend: window.backend
+            visible: window.page === "statistics"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            onOpenTask: identifier => {
+                window.backend.selectTask(identifier);
+                window.detailOpen = true;
+                window.page = "tasks";
             }
         }
         CalendarPane {
