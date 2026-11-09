@@ -69,6 +69,7 @@ ApplicationWindow {
         attachmentDialog.nodeId = data.id;
         attachmentDialog.nodeTitle = data.title;
         attachmentDialog.attempted = false;
+        attachmentDialog.choosingMaterial = false;
         attachmentDialog.open();
     }
 
@@ -210,6 +211,8 @@ ApplicationWindow {
                     view.contentY = Math.max(0, Math.min(window.savedScrollY, view.contentHeight - view.height));
                 });
             }
+            if (action === "link_material")
+                attachmentDialog.choosingMaterial = false;
             if (action === "focus_exit") {
                 exitFocusDialog.close();
                 window.close();
@@ -258,7 +261,8 @@ ApplicationWindow {
                 spacing: 2
                 Label {
                     text: window.page === "tasks" ? qsTr("Мои задачи")
-                        : window.page === "calendar" ? qsTr("Календарь") : qsTr("Статистика")
+                        : window.page === "calendar" ? qsTr("Календарь")
+                        : window.page === "statistics" ? qsTr("Статистика") : qsTr("Материалы")
                     font.pixelSize: 25
                     font.weight: Font.DemiBold
                     color: "#243d33"
@@ -301,6 +305,12 @@ ApplicationWindow {
                 text: qsTr("Статистика")
                 highlighted: window.page === "statistics"
                 onClicked: window.page = "statistics"
+            }
+            Button {
+                objectName: "materialsPageButton"
+                text: qsTr("Материалы")
+                highlighted: window.page === "materials"
+                onClicked: window.page = "materials"
             }
             Item {
                 Layout.fillWidth: true
@@ -421,6 +431,57 @@ ApplicationWindow {
                     text: qsTr("Корзина") + " (" + window.backend.trash.length + ")"
                     enabled: !window.backend.busy
                     onClicked: trashEditor.open()
+                }
+            }
+        }
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: window.page === "materials"
+            RowLayout {
+                Layout.fillWidth: true
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Книги и другие файлы, которые можно использовать в нескольких задачах.")
+                }
+                AccentButton {
+                    objectName: "addMaterialButton"
+                    text: qsTr("+ Материал")
+                    enabled: !window.backend.busy
+                    onClicked: {
+                        attachmentPicker.forLibrary = true;
+                        attachmentPicker.open();
+                    }
+                }
+            }
+            Caption {
+                visible: window.backend.materials.length === 0
+                text: qsTr("Материалов пока нет")
+            }
+            ListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                spacing: 6
+                model: window.backend.materials
+                ScrollBar.vertical: ScrollBar {}
+                delegate: RowLayout {
+                    id: materialRow
+                    required property var modelData
+                    width: ListView.view.width - 12
+                    Label {
+                        Layout.fillWidth: true
+                        textFormat: Text.PlainText
+                        text: materialRow.modelData.name
+                        elide: Text.ElideMiddle
+                    }
+                    Button {
+                        objectName: "openMaterial_" + materialRow.modelData.id
+                        text: qsTr("Открыть")
+                        enabled: !window.backend.busy
+                        onClicked: window.backend.openAttachment(materialRow.modelData.id)
+                    }
                 }
             }
         }
@@ -961,11 +1022,16 @@ ApplicationWindow {
     FileDialog {
         id: attachmentPicker
         objectName: "attachmentPicker"
-        title: qsTr("Выбрать файл для вложения")
+        property bool forLibrary: false
+        title: forLibrary ? qsTr("Выбрать файл для материалов") : qsTr("Выбрать файл для вложения")
         fileMode: FileDialog.OpenFile
         onAccepted: {
-            attachmentDialog.attempted = true;
-            window.backend.attachFile(attachmentDialog.taskId, attachmentDialog.nodeId, selectedFile);
+            if (forLibrary) {
+                window.backend.addMaterial(selectedFile);
+            } else {
+                attachmentDialog.attempted = true;
+                window.backend.attachFile(attachmentDialog.taskId, attachmentDialog.nodeId, selectedFile);
+            }
         }
     }
 
@@ -975,7 +1041,11 @@ ApplicationWindow {
         property string nodeId: ""
         property string nodeTitle: ""
         property bool attempted: false
+        property bool choosingMaterial: false
         property var files: window.backend.attachments[nodeId] || []
+        property var availableMaterials: window.backend.materials.filter(
+            material => !attachmentDialog.files.some(file => file.id === material.id)
+        )
         title: qsTr("Вложения")
         anchors.centerIn: parent
         width: Math.min(540, window.width - 32)
@@ -1011,6 +1081,10 @@ ApplicationWindow {
                         textFormat: Text.PlainText
                         elide: Text.ElideMiddle
                     }
+                    Caption {
+                        visible: attachmentRow.modelData.shared
+                        text: qsTr("Из материалов")
+                    }
                     Button {
                         objectName: "openAttachment_" + attachmentRow.modelData.id
                         text: qsTr("Открыть")
@@ -1019,6 +1093,36 @@ ApplicationWindow {
                             attachmentDialog.attempted = true;
                             window.backend.openAttachment(attachmentRow.modelData.id);
                         }
+                    }
+                }
+            }
+            Caption {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                visible: attachmentDialog.choosingMaterial && !attachmentDialog.availableMaterials.length
+                text: window.backend.materials.length
+                    ? qsTr("Все материалы уже прикреплены")
+                    : qsTr("Сначала добавь файл во вкладке «Материалы»")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                visible: attachmentDialog.choosingMaterial && attachmentDialog.availableMaterials.length > 0
+                ComboBox {
+                    id: materialChoice
+                    objectName: "materialChoice"
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    model: attachmentDialog.availableMaterials
+                    textRole: "name"
+                    valueRole: "id"
+                }
+                Button {
+                    objectName: "linkMaterialButton"
+                    text: qsTr("Прикрепить")
+                    enabled: !window.backend.busy && materialChoice.currentIndex >= 0
+                    onClicked: {
+                        attachmentDialog.attempted = true;
+                        window.backend.linkMaterial(attachmentDialog.taskId, attachmentDialog.nodeId, materialChoice.currentValue);
                     }
                 }
             }
@@ -1038,11 +1142,20 @@ ApplicationWindow {
                 enabled: !window.backend.busy
                 onClicked: attachmentDialog.close()
             }
+            Button {
+                objectName: "chooseFromMaterials"
+                text: qsTr("Из материалов")
+                enabled: !window.backend.busy
+                onClicked: attachmentDialog.choosingMaterial = !attachmentDialog.choosingMaterial
+            }
             AccentButton {
                 objectName: "chooseAttachment"
                 text: qsTr("+ Файл")
                 enabled: !window.backend.busy
-                onClicked: attachmentPicker.open()
+                onClicked: {
+                    attachmentPicker.forLibrary = false;
+                    attachmentPicker.open();
+                }
             }
         }
     }

@@ -14,7 +14,7 @@ from ritm.storage.attachments import Attachment
 from ritm.storage.codec import decode_task, encode_task
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 SCHEMA = (
     "CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL, "
     "title TEXT NOT NULL CHECK(length(trim(title))>0))",
@@ -135,6 +135,21 @@ ATTACHMENT_SCHEMA = """CREATE TABLE attachments (
     size INTEGER NOT NULL CHECK(size>=0)
 )"""
 
+MATERIAL_SCHEMA = (
+    """CREATE TABLE materials (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        suffix TEXT NOT NULL,
+        size INTEGER NOT NULL CHECK(size>=0)
+    )""",
+    """CREATE TABLE material_links (
+        task_id TEXT NOT NULL REFERENCES task_identities(id),
+        node_id TEXT NOT NULL,
+        material_id TEXT NOT NULL REFERENCES materials(id),
+        PRIMARY KEY(task_id,node_id,material_id)
+    )""",
+)
+
 ATTACHMENT_OWNER = """
     FROM nodes n
     LEFT JOIN nodes parent ON parent.id=n.parent_id
@@ -164,7 +179,7 @@ class TaskStore:
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in (1, 2, 3, 4, 5, 6) and app_id == APPLICATION_ID:
+            if version in (1, 2, 3, 4, 5, 6, 7) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -178,7 +193,10 @@ class TaskStore:
                         self._db.execute(statement)
                 if version < 6:
                     self._db.execute(COMPLETION_SCHEMA)
-                self._db.execute(ATTACHMENT_SCHEMA)
+                if version < 7:
+                    self._db.execute(ATTACHMENT_SCHEMA)
+                for statement in MATERIAL_SCHEMA:
+                    self._db.execute(statement)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._db.commit()
                 return
@@ -194,6 +212,8 @@ class TaskStore:
                 self._db.execute(statement)
             self._db.execute(COMPLETION_SCHEMA)
             self._db.execute(ATTACHMENT_SCHEMA)
+            for statement in MATERIAL_SCHEMA:
+                self._db.execute(statement)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             self._db.commit()
@@ -757,46 +777,78 @@ class TaskStore:
                 (end, str(identifier)),
             )
 
+    def _require_attachment_owner(self, task_id: UUID, node_id: UUID):
+        owner = self._db.execute(
+            "SELECT COALESCE(grandparent.id,parent.id,n.id)" + ATTACHMENT_OWNER + " WHERE n.id=?",
+            (str(node_id),),
+        ).fetchone()
+        if owner is None or owner[0] != str(task_id):
+            raise KeyError(node_id)
+
     def add_attachment(self, attachment: Attachment):
+        fields = (attachment.name, attachment.suffix, attachment.size)
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
-            owner = self._db.execute(
-                "SELECT COALESCE(grandparent.id,parent.id,n.id)"
-                + ATTACHMENT_OWNER
-                + " WHERE n.id=?",
-                (str(attachment.node_id),),
-            ).fetchone()
-            if owner is None or owner[0] != str(attachment.task_id):
-                raise KeyError(attachment.node_id)
+            if attachment.task_id is None and attachment.node_id is None:
+                self._db.execute(
+                    "INSERT INTO materials VALUES (?,?,?,?)", (str(attachment.id), *fields)
+                )
+            elif attachment.task_id is not None and attachment.node_id is not None:
+                self._require_attachment_owner(attachment.task_id, attachment.node_id)
+                self._db.execute(
+                    "INSERT INTO attachments VALUES (?,?,?,?,?,?)",
+                    (str(attachment.id), str(attachment.task_id), str(attachment.node_id), *fields),
+                )
+            else:
+                raise ValueError("Укажите задачу и пункт либо добавьте файл в материалы")
+
+    def link_material(self, task_id: UUID, node_id: UUID, material_id: UUID):
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            self._require_attachment_owner(task_id, node_id)
+            if not self.list_materials(material_id):
+                raise ValueError("Материал больше не доступен")
             self._db.execute(
-                "INSERT INTO attachments VALUES (?,?,?,?,?,?)",
-                (
-                    str(attachment.id),
-                    str(attachment.task_id),
-                    str(attachment.node_id),
-                    attachment.name,
-                    attachment.suffix,
-                    attachment.size,
-                ),
+                "INSERT INTO material_links VALUES (?,?,?) ON CONFLICT DO NOTHING",
+                (str(task_id), str(node_id), str(material_id)),
             )
 
+    def list_materials(self, identifier: UUID | None = None) -> tuple[Attachment, ...]:
+        query = "SELECT id,NULL AS task_id,NULL AS node_id,name,suffix,size FROM materials"
+        args = () if identifier is None else (str(identifier),)
+        if args:
+            query += " WHERE id=?"
+        return tuple(
+            self._read_attachment(row) for row in self._db.execute(query + " ORDER BY rowid", args)
+        )
+
     def list_attachments(self, identifier: UUID | None = None) -> tuple[Attachment, ...]:
-        query = (
+        direct = (
             "SELECT a.*" + ATTACHMENT_OWNER + " JOIN attachments a ON a.node_id=n.id "
             "AND a.task_id=COALESCE(grandparent.id,parent.id,n.id)"
         )
-        values = ()
-        if identifier is not None:
-            query += " WHERE a.id=?"
-            values = (str(identifier),)
+        linked = (
+            "SELECT a.id,l.task_id,l.node_id,a.name,a.suffix,a.size"
+            + ATTACHMENT_OWNER
+            + " JOIN material_links l ON l.node_id=n.id "
+            "AND l.task_id=COALESCE(grandparent.id,parent.id,n.id)"
+            " JOIN materials a ON a.id=l.material_id"
+        )
+        where = " WHERE a.id=?" if identifier is not None else ""
+        values = (str(identifier),) if identifier is not None else ()
         return tuple(
-            Attachment(
-                UUID(row["id"]),
-                UUID(row["task_id"]),
-                UUID(row["node_id"]),
-                row["name"],
-                row["suffix"],
-                row["size"],
-            )
-            for row in self._db.execute(query + " ORDER BY a.rowid", values)
+            self._read_attachment(row)
+            for query, order in ((direct, "a.rowid"), (linked, "l.rowid"))
+            for row in self._db.execute(query + where + " ORDER BY " + order, values)
+        )
+
+    @staticmethod
+    def _read_attachment(row) -> Attachment:
+        return Attachment(
+            UUID(row["id"]),
+            UUID(row["task_id"]) if row["task_id"] is not None else None,
+            UUID(row["node_id"]) if row["node_id"] is not None else None,
+            row["name"],
+            row["suffix"],
+            row["size"],
         )

@@ -58,14 +58,9 @@ try:
             None,
         )
 
-    for button, owner in (
-        ("taskAttachments", task),
-        ("branchAttachments_0", step),
-        ("itemAttachments_0_0", leaf),
-    ):
-        gui.click(button)
+    def pick_file(button):
         picker.setProperty("currentFolder", QUrl.fromLocalFile(str(profile)))
-        gui.click("chooseAttachment")
+        gui.click(button)
         gui.wait_for(lambda: picker.property("visible"), "file picker opens")
         gui.wait_for(source_item, "source file listed")
         item = source_item()
@@ -79,9 +74,35 @@ try:
         picker.accept()
         gui.idle()
         assert not controller.error, (controller.error, picker.property("selectedFile"))
+
+    for button, owner in (
+        ("taskAttachments", task),
+        ("branchAttachments_0", step),
+        ("itemAttachments_0_0", leaf),
+    ):
+        gui.click(button)
+        pick_file("chooseAttachment")
         assert len(controller.attachments[str(owner.id)]) == 1
         gui.click("closeAttachments")
+    gui.click("materialsPageButton")
+    pick_file("addMaterialButton")
+    material = controller.materials[0]
+    gui.screenshot(profile / "materials.png")
     source.rename(profile / "перемещён.txt")
+    gui.click("openMaterial_" + material["id"])
+    library_copy = handler.received
+    assert library_copy.read_text() == "Рабочий материал"
+    gui.click("tasksPageButton")
+    for button, owner in (("taskAttachments", task), ("itemAttachments_0_0", leaf)):
+        gui.click(button)
+        gui.click("chooseFromMaterials")
+        assert gui.item("materialChoice").property("currentValue") == material["id"]
+        gui.click("linkMaterialButton")
+        assert controller.attachments[str(owner.id)][-1]["shared"]
+        gui.click("openAttachment_" + material["id"])
+        assert handler.received == library_copy
+        gui.click("closeAttachments")
+    assert len(list((profile / "attachments").iterdir())) == 4
     gui.click("itemAttachments_0_0")
     entry = controller.attachments[str(leaf.id)][0]
     gui.screenshot(profile / "attachments.png")

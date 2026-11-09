@@ -85,6 +85,8 @@ def test_v6_profile_migrates_without_rewriting_task_or_focus(tmp_path):
         store.create_task(task)
         completed = store.list_completion_dates()
     with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE material_links")
+        db.execute("DROP TABLE materials")
         db.execute("DROP TABLE attachments")
         db.execute("PRAGMA user_version=6")
     with TaskStore(path) as store:
@@ -116,3 +118,44 @@ def test_attachment_dialog_selects_file_and_opens_saved_copy(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     for warning in ("TypeError", "ReferenceError", "Binding loop", "failed to load"):
         assert warning not in result.stderr, result.stderr
+
+
+def test_library_links_survive_restart_and_trash_without_copying(tmp_path):
+    path = tmp_path / "tasks.sqlite3"
+    step = Subtask(title="Подзадача")
+    first = Task(title="Первая", subtasks=(step,))
+    second = Task(title="Вторая")
+    source = tmp_path / "Книга.txt"
+    source.write_text("Книга")
+    with TaskStore(path) as store:
+        service = TaskService(store)
+        service.create_task(first)
+        service.create_task(second)
+        direct = attachments.copy_attachment(store, tmp_path, second.id, second.id, source)
+    with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE material_links")
+        db.execute("DROP TABLE materials")
+        db.execute("PRAGMA user_version=7")
+    with TaskStore(path) as store:
+        assert store.list_attachments() == (direct,)
+        material = attachments.copy_attachment(store, tmp_path, None, None, source)
+        assert store.list_attachments() == (direct,)
+        assert store.list_materials() == (material,)
+        with pytest.raises(KeyError):
+            store.link_material(second.id, step.id, material.id)
+        store.link_material(first.id, step.id, material.id)
+        store.link_material(second.id, second.id, material.id)
+        store.link_material(second.id, second.id, material.id)
+        assert len(list((tmp_path / "attachments").iterdir())) == 2
+        source.unlink()
+        trash_id = TaskService(store).delete_node(first.id, step.id)
+        assert [entry.node_id for entry in store.list_attachments(material.id)] == [second.id]
+    with TaskStore(path) as store:
+        TaskService(store).restore(UUID(trash_id))
+        entries = store.list_attachments(material.id)
+        assert [entry.node_id for entry in entries] == [step.id, second.id]
+        assert all(
+            attachments.saved_attachment_path(tmp_path, entry).read_text() == "Книга"
+            for entry in entries
+        )
+        assert store.list_materials() == (material,)

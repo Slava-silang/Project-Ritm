@@ -229,6 +229,7 @@ class TaskController(QObject):
         self._categories = []
         self._trash = []
         self._attachments = {}
+        self._materials = []
         self._search, self._state, self._category = "", "active", ""
         self._expanded = set()
         self._selected_overdue = False
@@ -555,6 +556,18 @@ class TaskController(QObject):
     def attachments(self):
         return self._attachments
 
+    @Property("QVariantList", notify=changed)
+    def materials(self):
+        return self._materials
+
+    @Slot(QUrl)
+    def addMaterial(self, url):
+        self._submit("attach", {"task_id": None, "node_id": None, "source": url.toLocalFile()})
+
+    @Slot(str, str, str)
+    def linkMaterial(self, task_id, node_id, material_id):
+        self._submit("link_material", {"task_id": task_id, "node_id": node_id, "id": material_id})
+
     @Slot(str, str, QUrl)
     def attachFile(self, task_id, node_id, url):
         self._submit(
@@ -601,16 +614,21 @@ class TaskController(QObject):
                         copy_attachment(
                             store,
                             self._profile,
-                            UUID(data["task_id"]),
-                            UUID(data["node_id"]),
+                            UUID(data["task_id"]) if data["task_id"] is not None else None,
+                            UUID(data["node_id"]) if data["node_id"] is not None else None,
                             Path(data["source"]),
                         )
                     except OSError as error:
                         raise ValueError(
                             "Не удалось скопировать файл. Проверьте доступ и свободное место."
                         ) from error
+                elif action == "link_material":
+                    store.link_material(
+                        UUID(data["task_id"]), UUID(data["node_id"]), UUID(data["id"])
+                    )
                 elif action == "open_attachment":
-                    matches = store.list_attachments(UUID(data["id"]))
+                    identifier = UUID(data["id"])
+                    matches = store.list_materials(identifier) or store.list_attachments(identifier)
                     if not matches:
                         raise ValueError("Вложение больше не доступно")
                     path = saved_attachment_path(self._profile, matches[0])
@@ -823,10 +841,18 @@ class TaskController(QObject):
                     self._clock(),
                     self._zone,
                 )
+                materials = [
+                    {"id": str(entry.id), "name": entry.name} for entry in store.list_materials()
+                ]
+                material_ids = {entry["id"] for entry in materials}
                 attachments = {}
                 for entry in store.list_attachments():
                     attachments.setdefault(str(entry.node_id), []).append(
-                        {"id": str(entry.id), "name": entry.name}
+                        {
+                            "id": str(entry.id),
+                            "name": entry.name,
+                            "shared": str(entry.id) in material_ids,
+                        }
                     )
                 trash = [
                     {
@@ -850,6 +876,7 @@ class TaskController(QObject):
                     statistics,
                     statistics_anchor,
                     attachments,
+                    materials,
                 ),
                 "",
                 action,
@@ -891,6 +918,7 @@ class TaskController(QObject):
                 self._statistics,
                 self._statistics_anchor,
                 self._attachments,
+                self._materials,
             ) = result
             self.statisticsChanged.emit()
             if not self._focus_loaded:

@@ -20,8 +20,8 @@ SAFE_SUFFIX = re.compile(r"(?:\.[a-zA-Z0-9]{1,16})?")
 @dataclass(frozen=True)
 class Attachment:
     id: UUID
-    task_id: UUID
-    node_id: UUID
+    task_id: UUID | None
+    node_id: UUID | None
     name: str
     suffix: str
     size: int
@@ -39,7 +39,7 @@ def _attachment_path(profile: Path, attachment: Attachment) -> Path:
 
 
 def copy_attachment(
-    store: TaskStore, profile: Path, task_id: UUID, node_id: UUID, source: Path
+    store: TaskStore, profile: Path, task_id: UUID | None, node_id: UUID | None, source: Path
 ) -> Attachment:
     suffix = source.suffix
     if not SAFE_SUFFIX.fullmatch(suffix):
