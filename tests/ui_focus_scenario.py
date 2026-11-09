@@ -1,5 +1,6 @@
 """Проверка управления фокусом через QML с управляемыми часами."""
 
+import os
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -14,10 +15,10 @@ from ritm.storage.sqlite import TaskStore
 from ritm.ui.tasks import TaskController
 
 profile = Path(sys.argv[1])
-reopen = sys.argv[2] == "reopen"
+mode = sys.argv[2]
 now = datetime(2026, 11, 9, 10, tzinfo=UTC)
 with TaskStore(profile / "tasks.sqlite3") as store:
-    if not reopen:
+    if mode in ("run", "interrupt"):
         store.create_task(Task(title="Лабораторная"))
         store.create_task(Task(title="Курсовая"))
     ids = {task.title: str(task.id) for task in store.list_tasks()}
@@ -40,7 +41,41 @@ def advance(seconds):
 try:
     gui.idle()
     controller.selectTask(ids["Лабораторная"])
-    if reopen:
+    if mode == "interrupt":
+        gui.click("startFocusButton")
+        gui.click("confirmFocusButton")
+        assert controller.focus["elapsed"] == "00:00:00"
+        os._exit(0)
+    elif mode == "recover":
+        advance(3600)
+        assert controller.focus["recovery"]
+        assert controller.focus["elapsed"] == "00:00:00"
+        gui.fill("focusRecordEnd", "09.11.2026 12:00")
+        gui.click("saveFocusRecordButton")
+        assert "Окончание" in controller.error
+        gui.fill("focusRecordEnd", "09.11.2026 10:07")
+        gui.screenshot(profile / "focus-recovery.png")
+        gui.click("saveFocusRecordButton")
+        assert not controller.focus
+        assert controller.detail["focusTotal"] == "00:07:00"
+        gui.click("focusHistoryButton")
+        gui.click("addFocusRecordButton")
+        gui.fill("focusRecordStart", "08.11.2026 23:50")
+        gui.fill("focusRecordEnd", "09.11.2026 00:10")
+        gui.click("saveFocusRecordButton")
+        assert controller.detail["focusTotal"] == "00:27:00"
+        entry = controller.detail["focusHistory"][-1]
+        assert entry["days"] == "08.11: 00:10:00 · 09.11: 00:10:00"
+        gui.click("editFocusRecord_" + entry["id"])
+        gui.fill("focusRecordDuration", "00:12:30")
+        gui.click("saveFocusRecordButton")
+        assert controller.detail["focusTotal"] == "00:19:30"
+        gui.screenshot(profile / "focus-edited.png")
+    elif mode == "verify_history":
+        assert not controller.focus
+        assert controller.detail["focusTotal"] == "00:19:30"
+        assert controller.detail["progress"] == 0
+    elif mode == "reopen":
         assert not controller.focus
         assert controller.detail["focusTotal"] == "00:01:15"
         assert len(controller.detail["focusHistory"]) == 1

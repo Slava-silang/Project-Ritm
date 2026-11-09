@@ -1,5 +1,6 @@
 """Снимки для QML и последовательные фоновые операции с отдельным соединением SQLite."""
 
+import re
 import sqlite3
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -14,6 +15,7 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from ritm.application.calendar import CalendarService
 from ritm.application.tasks import TaskService
 from ritm.domain.calendar import from_instant_us, instant_us, planned_duration
+from ritm.domain.focus import focus_by_day
 from ritm.domain.task_list import query_tasks
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.domain.weights import initialize_weights, progress
@@ -23,6 +25,7 @@ from ritm.ui.calendar import (
     calendar_view,
     change_block,
     duration_text,
+    local_instant,
     shift_period,
 )
 
@@ -131,6 +134,36 @@ def focus_time(microseconds: int) -> str:
     return f"{hours:02}:{minutes:02}:{seconds:02}"
 
 
+def focus_duration_input(value: str) -> int:
+    match = re.fullmatch(
+        r"([0-9]{1,9}):([0-5][0-9]):([0-5][0-9])(?:\.([0-9]{1,6}))?", value.strip()
+    )
+    if match is None:
+        raise ValueError("Длительность: ЧЧ:ММ:СС")
+    hours, minutes, seconds, fraction = match.groups()
+    return (int(hours) * 3600 + int(minutes) * 60 + int(seconds)) * 1_000_000 + int(
+        (fraction or "").ljust(6, "0")
+    )
+
+
+def focus_history_view(session, intervals, zone):
+    days = focus_by_day(intervals, zone)
+    fraction = session.worked_us % 1_000_000
+    elapsed = focus_time(session.worked_us)
+    return {
+        "id": str(session.id),
+        "revision": session.revision,
+        "started": from_instant_us(session.started_us).astimezone(zone).strftime(DATE_FORMAT),
+        "elapsed": elapsed,
+        "durationInput": f"{elapsed}.{fraction:06d}" if fraction else elapsed,
+        "days": " · ".join(
+            f"{day:%d.%m}: {focus_time(value)}" for day, value in sorted(days.items())
+        )
+        if len(days) > 1
+        else "",
+    }
+
+
 class TaskController(QObject):
     changed = Signal()
     stateChanged = Signal()
@@ -164,6 +197,8 @@ class TaskController(QObject):
         self._calendar = {}
         self._notice = ""
         self._active_focus = None
+        self._focus_loaded = False
+        self._recovering = None
         self._focus_view = {}
         self._ticker = QTimer(self)
         self._ticker.timeout.connect(self._on_tick)
@@ -190,15 +225,25 @@ class TaskController(QObject):
         view = {}
         if session is not None:
             now_us = instant_us(self._clock())
+            recovery = self._recovering == session.id
             view = {
                 "title": next(
                     (row["title"] for row in self._rows if row["id"] == str(session.task_id)),
                     "Задача в корзине",
                 ),
-                "elapsed": focus_time(session.elapsed(now_us)),
+                "elapsed": focus_time(session.worked_us if recovery else session.elapsed(now_us)),
+                "recovery": recovery,
+                "recoveryId": str(session.id) if recovery else "",
+                "lastStart": (
+                    from_instant_us(session.running_since_us)
+                    .astimezone(self._zone)
+                    .strftime(DATE_FORMAT + ":%S %z")
+                    if recovery and session.running_since_us is not None
+                    else ""
+                ),
                 "target": focus_time(session.target_us) if session.target_us else "",
                 "paused": session.running_since_us is None,
-                "reached": session.target_reached(now_us),
+                "reached": not recovery and session.target_reached(now_us),
             }
         if view != self._focus_view:
             self._focus_view = view
@@ -210,6 +255,8 @@ class TaskController(QObject):
 
     def _focus_command(self, action, **data):
         active = self._active_focus
+        if self._recovering is not None and action != "recover":
+            return
         expected = (str(active.id), active.revision) if active else None
         self._submit("focus", {"command": action, "expected": expected, **data})
 
@@ -222,6 +269,21 @@ class TaskController(QObject):
     @Slot(str)
     def changeFocus(self, action):
         self._focus_command(action)
+
+    @Slot(str, str, bool)
+    def recoverFocus(self, identifier, end, last_known):
+        if self._recovering is not None and str(self._recovering) == identifier:
+            self._focus_command("recover", end=end, last_known=last_known)
+
+    @Slot(str, str, str)
+    def addFocusRecord(self, task_id, start, end):
+        self._submit("focus_history", {"task_id": task_id, "start": start, "end": end})
+
+    @Slot(str, int, str)
+    def editFocusRecord(self, identifier, revision, duration):
+        self._submit(
+            "focus_history", {"id": identifier, "revision": revision, "duration": duration}
+        )
 
     @Property("QVariantMap", notify=calendarChanged)
     def calendar(self):
@@ -420,6 +482,21 @@ class TaskController(QObject):
                 service = TaskService(store)
                 if action == "calendar":
                     config = data
+                elif action == "focus_history":
+                    if "task_id" in data:
+                        store.add_focus_record(
+                            UUID(data["task_id"]),
+                            local_instant(data["start"], self._zone),
+                            local_instant(data["end"], self._zone),
+                            self._clock(),
+                        )
+                    else:
+                        store.edit_focus_duration(
+                            UUID(data["id"]),
+                            data["revision"],
+                            focus_duration_input(data["duration"]),
+                            self._clock(),
+                        )
                 elif action == "focus":
                     command, expected = data["command"], data["expected"]
                     if command == "start":
@@ -440,6 +517,9 @@ class TaskController(QObject):
                             task_id=UUID(data["task_id"]),
                             target_us=int(minutes) * 60_000_000 if minutes else None,
                         )
+                    elif command == "recover":
+                        end = None if data["last_known"] else local_instant(data["end"], self._zone)
+                        store.change_focus(command, self._clock(), expected, recovered_end=end)
                     else:
                         store.change_focus(command, self._clock(), expected)
                 elif action in ("block_create", "block_change"):
@@ -551,6 +631,7 @@ class TaskController(QObject):
                         active = session
                     else:
                         history.setdefault(session.task_id, []).append(session)
+                intervals = store.list_finished_focus_intervals()
                 planned = {
                     task.id: duration_text(
                         planned_duration(b for b in blocks if b.task_id == task.id)
@@ -577,12 +658,7 @@ class TaskController(QObject):
                             sum(x.worked_us for x in history.get(task.id, ()))
                         ),
                         "focusHistory": [
-                            {
-                                "started": from_instant_us(x.started_us)
-                                .astimezone(self._zone)
-                                .strftime(DATE_FORMAT),
-                                "elapsed": focus_time(x.worked_us),
-                            }
+                            focus_history_view(x, intervals.get(x.id, ()), self._zone)
                             for x in history.get(task.id, ())
                         ],
                     }
@@ -631,6 +707,12 @@ class TaskController(QObject):
                 self._notice,
                 self._active_focus,
             ) = result
+            if not self._focus_loaded:
+                self._focus_loaded = True
+                if self._active_focus is not None:
+                    self._recovering = self._active_focus.id
+            if self._active_focus is None or self._active_focus.id != self._recovering:
+                self._recovering = None
             self._update_focus()
             self._calendar_config = {
                 "mode": self._calendar["mode"],

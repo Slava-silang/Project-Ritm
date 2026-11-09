@@ -555,6 +555,7 @@ class TaskStore:
         *,
         task_id: UUID | None = None,
         target_us: int | None = None,
+        recovered_end: datetime | None = None,
     ):
         now_us = instant_us(now)
         with self._db:
@@ -582,6 +583,19 @@ class TaskStore:
             if active is None:
                 raise ValueError("Нет активной фокус-сессии")
             identifier = str(active.id)
+            if action == "recover":
+                last_known = self._db.execute(
+                    "SELECT MAX(COALESCE(ends_us,starts_us)) "
+                    "FROM focus_intervals WHERE session_id=?",
+                    (identifier,),
+                ).fetchone()[0]
+                end = last_known if recovered_end is None else instant_us(recovered_end)
+                if recovered_end is not None and not last_known <= end <= now_us:
+                    raise ValueError(
+                        "Окончание должно быть между последней отметкой и текущим временем"
+                    )
+                self._finish_focus(active, end)
+                return
             if action == "finish":
                 self._finish_focus(active, now_us)
                 return
@@ -618,3 +632,79 @@ class TaskStore:
                )), revision=revision+1 WHERE id=?""",
             (now_us, identifier, identifier),
         )
+
+    def list_finished_focus_intervals(self) -> dict[UUID, list[tuple[int, int]]]:
+        result = {}
+        rows = self._db.execute(
+            """SELECT i.session_id,i.starts_us,i.ends_us FROM focus_intervals i
+               JOIN focus_sessions s ON s.id=i.session_id
+               WHERE s.finished_us IS NOT NULL ORDER BY i.session_id,i.position"""
+        )
+        for row in rows:
+            result.setdefault(UUID(row["session_id"]), []).append(
+                (row["starts_us"], row["ends_us"])
+            )
+        return result
+
+    def add_focus_record(self, task_id: UUID, start: datetime, end: datetime, now: datetime):
+        start_us, end_us = instant_us(start), instant_us(end)
+        if not start_us < end_us <= instant_us(now):
+            raise ValueError("Окончание должно быть позже начала и не в будущем")
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            if self.get_task(task_id) is None:
+                raise KeyError(task_id)
+            identifier = str(uuid4())
+            self._db.execute(
+                "INSERT INTO focus_sessions(id,task_id,started_us,finished_us) VALUES (?,?,?,?)",
+                (identifier, str(task_id), start_us, end_us),
+            )
+            self._db.execute(
+                "INSERT INTO focus_intervals VALUES (?,0,?,?)", (identifier, start_us, end_us)
+            )
+
+    def edit_focus_duration(self, identifier: UUID, revision: int, duration_us: int, now: datetime):
+        if duration_us <= 0:
+            raise ValueError("Длительность должна быть больше нуля")
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            session = self._db.execute(
+                """SELECT s.finished_us,s.revision FROM focus_sessions s
+                   JOIN nodes n ON n.id=s.task_id AND n.kind=0
+                   WHERE s.id=?""",
+                (str(identifier),),
+            ).fetchone()
+            if session is None or session["finished_us"] is None or session["revision"] != revision:
+                raise ValueError("Запись уже изменилась. Обновите список и повторите действие")
+            intervals = self._db.execute(
+                "SELECT * FROM focus_intervals WHERE session_id=? ORDER BY position",
+                (str(identifier),),
+            ).fetchall()
+            worked = sum(row["ends_us"] - row["starts_us"] for row in intervals)
+            if duration_us == worked:
+                return
+            if duration_us > worked:
+                last = intervals[-1]
+                end = last["ends_us"] + duration_us - worked
+                if end > instant_us(now):
+                    raise ValueError("Исправленное окончание попадает в будущее")
+            else:
+                remaining = duration_us
+                for last in intervals:
+                    span = last["ends_us"] - last["starts_us"]
+                    if remaining <= span:
+                        break
+                    remaining -= span
+                end = last["starts_us"] + remaining
+                self._db.execute(
+                    "DELETE FROM focus_intervals WHERE session_id=? AND position>?",
+                    (str(identifier), last["position"]),
+                )
+            self._db.execute(
+                "UPDATE focus_intervals SET ends_us=? WHERE session_id=? AND position=?",
+                (end, str(identifier), last["position"]),
+            )
+            self._db.execute(
+                "UPDATE focus_sessions SET finished_us=?,revision=revision+1 WHERE id=?",
+                (end, str(identifier)),
+            )

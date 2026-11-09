@@ -5,11 +5,13 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import pytest
 
 from ritm.application.tasks import TaskService
 from ritm.domain.calendar import instant_us
+from ritm.domain.focus import focus_by_day
 from ritm.domain.tasks import Task
 from ritm.storage.sqlite import TaskStore
 
@@ -90,7 +92,7 @@ def test_stale_start_and_failed_replacement_keep_current_session(tmp_path):
         ]
 
 
-def test_focus_card_and_global_controls(tmp_path):
+def run_focus_gui(tmp_path, modes):
     env = {
         **os.environ,
         "QT_QPA_PLATFORM": os.environ.get("RITM_UI_PLATFORM", "offscreen"),
@@ -100,7 +102,7 @@ def test_focus_card_and_global_controls(tmp_path):
         "XDG_CONFIG_HOME": str(tmp_path / "config"),
     }
     script = Path(__file__).with_name("ui_focus_scenario.py")
-    for mode in ("run", "reopen"):
+    for mode in modes:
         result = subprocess.run(
             [sys.executable, str(script), str(tmp_path), mode],
             cwd=tmp_path,
@@ -112,3 +114,74 @@ def test_focus_card_and_global_controls(tmp_path):
         assert result.returncode == 0, result.stdout + result.stderr
         for warning in ("TypeError", "ReferenceError", "Binding loop", "failed to load"):
             assert warning not in result.stderr, result.stderr
+
+
+def test_focus_card_and_global_controls(tmp_path):
+    run_focus_gui(tmp_path, ("run", "reopen"))
+
+
+def test_focus_recovery_and_editing_in_gui(tmp_path):
+    run_focus_gui(tmp_path, ("interrupt", "recover", "verify_history"))
+
+
+def test_recovery_uses_last_mark_and_rejects_invalid_end(tmp_path):
+    task = Task(title="Сессия")
+    with TaskStore(tmp_path / "tasks.sqlite3") as store:
+        store.create_task(task)
+        store.change_focus("start", START, None, task_id=task.id)
+        (session,) = store.list_focus_sessions()
+        expected = (str(session.id), 0)
+        now = START + timedelta(hours=1)
+        for invalid in (START - timedelta(seconds=1), now + timedelta(seconds=1)):
+            with pytest.raises(ValueError, match="Окончание"):
+                store.change_focus("recover", now, expected, recovered_end=invalid)
+        store.change_focus("pause", START + timedelta(seconds=30), expected)
+        store.change_focus("resume", START + timedelta(minutes=1), (str(session.id), 1))
+        store.change_focus("recover", now, (str(session.id), 2))
+        (finished,) = store.list_focus_sessions()
+        assert finished.finished_us == instant_us(START + timedelta(minutes=1))
+        assert finished.worked_us == 30_000_000
+
+
+def test_edit_preserves_pauses_and_rejects_stale_revision(tmp_path):
+    task = Task(title="Два рабочих интервала")
+    with TaskStore(tmp_path / "tasks.sqlite3") as store:
+        store.create_task(task)
+        store.change_focus("start", START, None, task_id=task.id)
+        (session,) = store.list_focus_sessions()
+        key = str(session.id)
+        store.change_focus("pause", START + timedelta(seconds=30), (key, 0))
+        resume = START + timedelta(minutes=2)
+        store.change_focus("resume", resume, (key, 1))
+        store.change_focus("finish", resume + timedelta(minutes=1), (key, 2))
+        now = START + timedelta(hours=1)
+        with pytest.raises(ValueError, match="будущее"):
+            store.edit_focus_duration(session.id, 3, MINUTE * 61, now)
+        store.edit_focus_duration(session.id, 3, MINUTE, now)
+        with pytest.raises(ValueError, match="изменилась"):
+            store.edit_focus_duration(session.id, 3, MINUTE * 2, now)
+        store.edit_focus_duration(session.id, 4, MINUTE * 2, now)
+        intervals = store.list_finished_focus_intervals()[session.id]
+        assert intervals == [
+            (instant_us(START), instant_us(START) + 30_000_000),
+            (instant_us(resume), instant_us(resume) + 90_000_000),
+        ]
+        assert focus_by_day(intervals, UTC) == {
+            START.date(): 30_000_000,
+            resume.date(): 90_000_000,
+        }
+        store.edit_focus_duration(session.id, 5, 15_000_000, now)
+        assert store.list_finished_focus_intervals()[session.id] == [
+            (instant_us(START), instant_us(START) + 15_000_000)
+        ]
+
+
+def test_day_split_uses_actual_length_of_dst_days():
+    zone = ZoneInfo("Europe/Berlin")
+    start = datetime(2026, 3, 28, 23, 30, tzinfo=zone)
+    end = datetime(2026, 3, 30, 0, 15, tzinfo=zone)
+    assert list(focus_by_day([(instant_us(start), instant_us(end))], zone).values()) == [
+        MINUTE * 30,
+        MINUTE * 60 * 23,
+        MINUTE * 15,
+    ]

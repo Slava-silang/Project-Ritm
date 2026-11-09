@@ -174,6 +174,10 @@ ApplicationWindow {
                 window.savedScrollY = 0;
             }
         }
+        function onFocusChanged() {
+            if (window.activeFocus.recovery && focusRecordEditor.recoveryId !== window.activeFocus.recoveryId)
+                focusRecordEditor.review();
+        }
         function onActionSucceeded(action: string) {
             if (action !== "save" && action !== "refresh") {
                 Qt.callLater(function () {
@@ -183,6 +187,8 @@ ApplicationWindow {
             }
             if (action === "focus" && focusEditor.visible)
                 focusEditor.close();
+            if (action === "focus_history" || (action === "focus" && !window.activeFocus.recovery))
+                focusRecordEditor.close();
             if (action === "equal_weights")
                 weightEditor.close();
             if (action === "save") {
@@ -297,7 +303,8 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
-                    text: (window.activeFocus.paused ? qsTr("Пауза · ") : qsTr("Фокус · "))
+                    text: (window.activeFocus.recovery ? qsTr("Незавершённая сессия · ")
+                        : window.activeFocus.paused ? qsTr("Пауза · ") : qsTr("Фокус · "))
                         + (window.activeFocus.title || "")
                 }
                 Label {
@@ -306,16 +313,25 @@ ApplicationWindow {
                     font.weight: Font.DemiBold
                 }
                 Button {
+                    visible: !window.activeFocus.recovery
                     objectName: "focusPauseResume"
                     text: window.activeFocus.paused ? qsTr("Продолжить") : qsTr("Пауза")
                     enabled: !window.backend.busy
                     onClicked: window.backend.changeFocus(window.activeFocus.paused ? "resume" : "pause")
                 }
                 Button {
+                    visible: !window.activeFocus.recovery
                     objectName: "finishFocusButton"
                     text: qsTr("Завершить")
                     enabled: !window.backend.busy
                     onClicked: window.backend.changeFocus("finish")
+                }
+                Button {
+                    objectName: "reviewFocusButton"
+                    visible: !!window.activeFocus.recovery
+                    enabled: !window.backend.busy
+                    text: qsTr("Проверить окончание")
+                    onClicked: focusRecordEditor.review()
                 }
             }
             RowLayout {
@@ -642,6 +658,7 @@ ApplicationWindow {
                             }
                             Button {
                                 objectName: "startFocusButton"
+                                enabled: !window.activeFocus.recovery
                                 text: qsTr("Начать фокус")
                                 onClicked: {
                                     focusEditor.taskId = window.current.id;
@@ -661,15 +678,32 @@ ApplicationWindow {
                         ColumnLayout {
                             Layout.fillWidth: true
                             visible: focusHistoryToggle.checked
+                            Button {
+                                objectName: "addFocusRecordButton"
+                                text: qsTr("+ Запись вручную")
+                                onClicked: focusRecordEditor.prepare("manual", {})
+                            }
                             Caption {
                                 visible: !(window.current.focusHistory || []).length
                                 text: qsTr("Завершённых сессий пока нет")
                             }
                             Repeater {
                                 model: focusHistoryToggle.checked ? window.current.focusHistory || [] : []
-                                delegate: Caption {
+                                delegate: RowLayout {
+                                    id: historyRow
                                     required property var modelData
-                                    text: modelData.started + " · " + modelData.elapsed
+                                    Layout.fillWidth: true
+                                    Caption {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.Wrap
+                                        text: historyRow.modelData.started + " · " + historyRow.modelData.elapsed
+                                            + (historyRow.modelData.days ? "\n" + historyRow.modelData.days : "")
+                                    }
+                                    ToolButton {
+                                        objectName: "editFocusRecord_" + historyRow.modelData.id
+                                        text: qsTr("Исправить")
+                                        onClicked: focusRecordEditor.prepare("edit", historyRow.modelData)
+                                    }
                                 }
                             }
                         }
@@ -857,6 +891,112 @@ ApplicationWindow {
             Layout.fillWidth: true
             text: qsTr("В своём темпе. Шаг за шагом.")
             horizontalAlignment: Text.AlignHCenter
+        }
+    }
+
+    EditorDialog {
+        id: focusRecordEditor
+        property string mode: "manual"
+        property string taskId: ""
+        property string recordId: ""
+        property string recoveryId: ""
+        property int revision: 0
+        property bool attempted: false
+        title: mode === "recover" ? qsTr("Проверить окончание сессии")
+            : mode === "edit" ? qsTr("Исправить длительность") : qsTr("Запись времени вручную")
+        anchors.centerIn: parent
+        width: Math.min(540, window.width - 32)
+        modal: true
+        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
+
+        function prepare(kind, entry) {
+            mode = kind;
+            taskId = window.current.id || "";
+            recordId = entry.id || "";
+            revision = entry.revision || 0;
+            recordStart.text = "";
+            recordEnd.text = "";
+            recordDuration.text = entry.durationInput || "";
+            attempted = false;
+            open();
+        }
+        function review() {
+            recoveryId = window.activeFocus.recoveryId;
+            prepare("recover", {});
+        }
+        contentItem: ColumnLayout {
+            spacing: 8
+            Caption {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: focusRecordEditor.mode === "edit"
+                    ? qsTr("При сокращении убирается время с конца записи. При увеличении продлевается последний рабочий интервал.")
+                    : focusRecordEditor.mode === "recover"
+                        ? (window.activeFocus.lastStart
+                            ? qsTr("Последний рабочий интервал начался: ") + window.activeFocus.lastStart
+                            : qsTr("Сессия была на паузе. Уже записанное рабочее время сохранится."))
+                        : qsTr("Укажи начало и окончание в местном времени.")
+            }
+            TextField {
+                id: recordStart
+                objectName: "focusRecordStart"
+                visible: focusRecordEditor.mode === "manual"
+                Layout.fillWidth: true
+                placeholderText: qsTr("Начало · ДД.ММ.ГГГГ ЧЧ:ММ")
+            }
+            TextField {
+                id: recordEnd
+                objectName: "focusRecordEnd"
+                visible: focusRecordEditor.mode !== "edit"
+                Layout.fillWidth: true
+                placeholderText: qsTr("Окончание · ДД.ММ.ГГГГ ЧЧ:ММ")
+            }
+            TextField {
+                id: recordDuration
+                objectName: "focusRecordDuration"
+                visible: focusRecordEditor.mode === "edit"
+                Layout.fillWidth: true
+                placeholderText: qsTr("Длительность · ЧЧ:ММ:СС")
+            }
+            Button {
+                objectName: "recoverKnownFocusButton"
+                visible: focusRecordEditor.mode === "recover"
+                enabled: !window.backend.busy
+                text: qsTr("Завершить по последней отметке")
+                onClicked: {
+                    focusRecordEditor.attempted = true;
+                    window.backend.recoverFocus(focusRecordEditor.recoveryId, "", true);
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: focusRecordEditor.attempted && window.backend.error.length > 0
+                wrapMode: Text.Wrap
+                text: window.backend.error
+                color: "#853b22"
+            }
+        }
+        footer: RowLayout {
+            Item { Layout.fillWidth: true }
+            Button {
+                text: focusRecordEditor.mode === "recover" ? qsTr("Позже") : qsTr("Отмена")
+                enabled: !window.backend.busy
+                onClicked: focusRecordEditor.close()
+            }
+            AccentButton {
+                objectName: "saveFocusRecordButton"
+                text: qsTr("Сохранить")
+                enabled: !window.backend.busy
+                onClicked: {
+                    focusRecordEditor.attempted = true;
+                    if (focusRecordEditor.mode === "recover")
+                        window.backend.recoverFocus(focusRecordEditor.recoveryId, recordEnd.text, false);
+                    else if (focusRecordEditor.mode === "manual")
+                        window.backend.addFocusRecord(focusRecordEditor.taskId, recordStart.text, recordEnd.text);
+                    else
+                        window.backend.editFocusRecord(focusRecordEditor.recordId, focusRecordEditor.revision, recordDuration.text);
+                }
+            }
         }
     }
 
