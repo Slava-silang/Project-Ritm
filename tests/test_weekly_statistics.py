@@ -87,6 +87,7 @@ def test_v5_migration_and_completion_transition_dates(tmp_path):
         store.add_focus_record(task.id, now - timedelta(minutes=10), now, now)
     with sqlite3.connect(path) as db:
         db.execute("DROP TABLE task_completion_dates")
+        db.execute("DROP TABLE attachment_cleanup")
         db.execute("DROP TABLE material_links")
         db.execute("DROP TABLE materials")
         db.execute("DROP TABLE attachments")

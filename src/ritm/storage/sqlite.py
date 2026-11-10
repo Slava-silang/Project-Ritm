@@ -14,7 +14,7 @@ from ritm.storage.attachments import Attachment
 from ritm.storage.codec import decode_task, encode_task
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 SCHEMA = (
     "CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL, "
     "title TEXT NOT NULL CHECK(length(trim(title))>0))",
@@ -150,6 +150,11 @@ MATERIAL_SCHEMA = (
     )""",
 )
 
+CLEANUP_SCHEMA = """CREATE TABLE attachment_cleanup (
+    id TEXT PRIMARY KEY NOT NULL,
+    suffix TEXT NOT NULL
+)"""
+
 ATTACHMENT_OWNER = """
     FROM nodes n
     LEFT JOIN nodes parent ON parent.id=n.parent_id
@@ -179,7 +184,7 @@ class TaskStore:
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in (1, 2, 3, 4, 5, 6, 7) and app_id == APPLICATION_ID:
+            if version in (1, 2, 3, 4, 5, 6, 7, 8) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -195,8 +200,10 @@ class TaskStore:
                     self._db.execute(COMPLETION_SCHEMA)
                 if version < 7:
                     self._db.execute(ATTACHMENT_SCHEMA)
-                for statement in MATERIAL_SCHEMA:
-                    self._db.execute(statement)
+                if version < 8:
+                    for statement in MATERIAL_SCHEMA:
+                        self._db.execute(statement)
+                self._db.execute(CLEANUP_SCHEMA)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._db.commit()
                 return
@@ -214,6 +221,7 @@ class TaskStore:
             self._db.execute(ATTACHMENT_SCHEMA)
             for statement in MATERIAL_SCHEMA:
                 self._db.execute(statement)
+            self._db.execute(CLEANUP_SCHEMA)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             self._db.commit()
@@ -466,6 +474,102 @@ class TaskStore:
                 "ORDER BY deleted_at DESC,id"
             )
         )
+
+    def purge_trash(self, identifiers: set[UUID]):
+        """Удалить выбранные архивы и поставить их копии в очередь очистки."""
+        if not identifiers:
+            raise ValueError("Выберите записи для удаления")
+        selected = {str(identifier) for identifier in identifiers}
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            entries = {row["id"]: row for row in self._db.execute("SELECT * FROM trash")}
+            if selected - entries.keys():
+                raise ValueError("Корзина изменилась. Обновите список и выберите записи снова")
+            roots = {entries[key]["task_id"] for key in selected if entries[key]["kind"] == 0}
+            branches = {
+                (entries[key]["task_id"], entries[key]["node_id"])
+                for key in selected
+                if entries[key]["kind"] == 1
+            }
+            for key in entries.keys() - selected:
+                entry = entries[key]
+                if entry["task_id"] in roots:
+                    raise ValueError("Выберите также отдельно удалённые пункты этой задачи")
+                if entry["kind"] == 2 and any(
+                    task_id == entry["task_id"] for task_id, _ in branches
+                ):
+                    before = decode_task(entry["before_json"])
+                    if any(
+                        (entry["task_id"], str(step.id)) in branches
+                        and any(str(item.id) == entry["node_id"] for item in step.items)
+                        for step in before.subtasks
+                    ):
+                        raise ValueError("Выберите также отдельно удалённые пункты этой подзадачи")
+
+            for task_id in roots:
+                self._require_archived_node(task_id)
+                if self._db.execute(
+                    "SELECT 1 FROM focus_sessions WHERE task_id=? AND finished_us IS NULL",
+                    (task_id,),
+                ).fetchone():
+                    raise ValueError("Сначала завершите или восстановите фокус-сессию этой задачи")
+
+            for key in selected:
+                entry = entries[key]
+                task_id, node_id = entry["task_id"], entry["node_id"]
+                if task_id in roots:
+                    continue
+                node_ids = [node_id]
+                if entry["kind"] == 1:
+                    before = decode_task(entry["before_json"])
+                    branch = next(step for step in before.subtasks if str(step.id) == node_id)
+                    node_ids.extend(str(item.id) for item in branch.items)
+                for archived_id in node_ids:
+                    self._require_archived_node(archived_id)
+                    self._purge_attachment_rows(task_id, archived_id)
+
+            for task_id in roots:
+                self._purge_attachment_rows(task_id)
+                self._db.execute("DELETE FROM work_blocks WHERE task_id=?", (task_id,))
+                self._db.execute("DELETE FROM focus_sessions WHERE task_id=?", (task_id,))
+                self._db.execute("DELETE FROM task_completion_dates WHERE task_id=?", (task_id,))
+                self._db.execute("DELETE FROM task_identities WHERE id=?", (task_id,))
+            self._db.executemany("DELETE FROM trash WHERE id=?", ((key,) for key in selected))
+
+    def _require_archived_node(self, identifier: str):
+        if self._db.execute("SELECT 1 FROM nodes WHERE id=?", (identifier,)).fetchone():
+            raise ValueError("Запись уже восстановлена. Обновите список корзины")
+
+    def _purge_attachment_rows(self, task_id: str, node_id: str | None = None):
+        condition = " WHERE task_id=?" if node_id is None else " WHERE task_id=? AND node_id=?"
+        args = (task_id,) if node_id is None else (task_id, node_id)
+        self._db.execute(
+            "INSERT INTO attachment_cleanup SELECT id,suffix FROM attachments" + condition, args
+        )
+        self._db.execute("DELETE FROM attachments" + condition, args)
+        self._db.execute("DELETE FROM material_links" + condition, args)
+
+    def pending_attachment_cleanup(self) -> tuple[tuple[UUID, str], ...]:
+        return tuple(
+            (UUID(row["id"]), row["suffix"])
+            for row in self._db.execute("SELECT id,suffix FROM attachment_cleanup")
+        )
+
+    def finish_attachment_cleanup(self, identifier: UUID, remove: Callable[[], None]):
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            key = str(identifier)
+            if not self._db.execute(
+                "SELECT 1 FROM attachment_cleanup WHERE id=?", (key,)
+            ).fetchone():
+                return
+            if self._db.execute(
+                "SELECT 1 FROM materials WHERE id=? UNION ALL SELECT 1 FROM attachments WHERE id=?",
+                (key, key),
+            ).fetchone():
+                raise ValueError("Копия всё ещё используется")
+            remove()
+            self._db.execute("DELETE FROM attachment_cleanup WHERE id=?", (key,))
 
     def restore_entry(
         self, identifier: UUID, transform: Callable[[Task | None, Task, Task | None, UUID], Task]

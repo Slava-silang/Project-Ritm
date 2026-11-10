@@ -21,7 +21,11 @@ from ritm.domain.statistics import week_start, weekly_statistics
 from ritm.domain.task_list import is_overdue, query_tasks
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.domain.weights import initialize_weights, progress
-from ritm.storage.attachments import copy_attachment, saved_attachment_path
+from ritm.storage.attachments import (
+    clean_deleted_attachments,
+    copy_attachment,
+    saved_attachment_path,
+)
 from ritm.storage.sqlite import TaskStore
 from ritm.ui.calendar import (
     WEEKDAYS,
@@ -228,6 +232,7 @@ class TaskController(QObject):
         self._visible = []
         self._categories = []
         self._trash = []
+        self._pending_cleanup = 0
         self._attachments = {}
         self._materials = []
         self._search, self._state, self._category = "", "active", ""
@@ -578,6 +583,14 @@ class TaskController(QObject):
     def openAttachment(self, identifier):
         self._submit("open_attachment", {"id": identifier})
 
+    @Property(int, notify=changed)
+    def pendingCleanup(self):
+        return self._pending_cleanup
+
+    @Slot("QVariantList")
+    def purgeTrash(self, identifiers):
+        self._submit("purge_trash", {"ids": list(identifiers)})
+
     @Slot(str)
     def restoreEntry(self, identifier):
         self._submit("restore", {"id": identifier})
@@ -758,6 +771,8 @@ class TaskController(QObject):
                         else service.create_task(Task(**fields), category=new_category)
                     )
                     selected = str(task.id)
+                elif action == "purge_trash":
+                    store.purge_trash({UUID(identifier) for identifier in data["ids"]})
                 elif action == "restore":
                     selected = str(service.restore(UUID(data["id"])).id)
                 elif action != "refresh":
@@ -785,6 +800,9 @@ class TaskController(QObject):
                         service.set_weights(task_id, values)
                     elif action == "equal_weights":
                         service.equal_weights(task_id)
+                if action in ("refresh", "purge_trash"):
+                    clean_deleted_attachments(store, self._profile)
+                pending_cleanup = len(store.pending_attachment_cleanup())
                 raw = store.list_tasks()
                 blocks = store.list_work_blocks()
                 active = None
@@ -877,6 +895,7 @@ class TaskController(QObject):
                     statistics_anchor,
                     attachments,
                     materials,
+                    pending_cleanup,
                 ),
                 "",
                 action,
@@ -919,6 +938,7 @@ class TaskController(QObject):
                 self._statistics_anchor,
                 self._attachments,
                 self._materials,
+                self._pending_cleanup,
             ) = result
             self.statisticsChanged.emit()
             if not self._focus_loaded:

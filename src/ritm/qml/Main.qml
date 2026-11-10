@@ -230,6 +230,10 @@ ApplicationWindow {
             }
             if (action === "delete")
                 deleteEditor.close();
+            if (action === "purge_trash") {
+                purgeEditor.close();
+                trashEditor.selection = [];
+            }
             if (action === "rename")
                 renameEditor.close();
             if (action === "weights")
@@ -1647,6 +1651,9 @@ ApplicationWindow {
     }
     EditorDialog {
         id: trashEditor
+        property var selection: []
+        property var selectedRows: window.backend.trash.filter(row => trashEditor.selection.includes(row.id))
+        onOpened: selection = []
         title: qsTr("Корзина")
         anchors.centerIn: parent
         width: Math.min(600, window.width - 32)
@@ -1669,6 +1676,19 @@ ApplicationWindow {
                     visible: window.backend.trash.length === 0
                     text: qsTr("Корзина пуста")
                 }
+                Caption {
+                    Layout.fillWidth: true
+                    visible: window.backend.pendingCleanup > 0
+                    wrapMode: Text.Wrap
+                    text: qsTr("Осталось удалить копий файлов: %1. Повтори очистку, когда файлы будут доступны.")
+                        .arg(window.backend.pendingCleanup)
+                }
+                Button {
+                    visible: window.backend.pendingCleanup > 0
+                    enabled: !window.backend.busy
+                    text: qsTr("Повторить очистку файлов")
+                    onClicked: window.backend.reload()
+                }
                 Repeater {
                     model: window.backend.trash
                     delegate: RowLayout {
@@ -1676,6 +1696,20 @@ ApplicationWindow {
                         required property var modelData
                         required property int index
                         Layout.fillWidth: true
+                        CheckBox {
+                            objectName: "selectTrash_" + trashRow.index
+                            Accessible.name: qsTr("Выбрать: %1").arg(trashRow.modelData.title)
+                            checked: trashEditor.selection.includes(trashRow.modelData.id)
+                            enabled: !window.backend.busy
+                            nextCheckState: () => checked ? Qt.Unchecked : Qt.Checked
+                            onClicked: {
+                                const id = trashRow.modelData.id;
+                                if (trashEditor.selection.includes(id))
+                                    trashEditor.selection = trashEditor.selection.filter(value => value !== id);
+                                else
+                                    trashEditor.selection = trashEditor.selection.concat([id]);
+                            }
+                        }
                         ColumnLayout {
                             Layout.fillWidth: true
                             Label {
@@ -1705,11 +1739,81 @@ ApplicationWindow {
                 }
             }
         }
-        footer: Button {
-            objectName: "closeTrashButton"
-            text: qsTr("Закрыть")
-            enabled: !window.backend.busy
-            onClicked: trashEditor.close()
+        footer: RowLayout {
+            Item { Layout.fillWidth: true }
+            Button {
+                objectName: "closeTrashButton"
+                text: qsTr("Закрыть")
+                enabled: !window.backend.busy
+                onClicked: trashEditor.close()
+            }
+            Button {
+                objectName: "purgeSelectedButton"
+                text: qsTr("Удалить выбранное (%1)").arg(trashEditor.selectedRows.length)
+                enabled: !window.backend.busy && trashEditor.selectedRows.length > 0
+                onClicked: {
+                    purgeEditor.entries = trashEditor.selectedRows;
+                    purgeEditor.attempted = false;
+                    purgeEditor.open();
+                }
+            }
         }
     }
+    EditorDialog {
+        id: purgeEditor
+        property var entries: []
+        property bool attempted: false
+        title: qsTr("Удалить без восстановления?")
+        anchors.centerIn: parent
+        width: Math.min(500, window.width - 32)
+        height: Math.min(370, window.height - 32)
+        modal: true
+        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
+        contentItem: ColumnLayout {
+            Caption {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("Выбранные записи и их связанные данные будут удалены. Исходные файлы и общая библиотека сохранятся.")
+            }
+            ListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                model: purgeEditor.entries
+                delegate: Label {
+                    required property var modelData
+                    width: ListView.view.width
+                    text: modelData.title
+                    textFormat: Text.PlainText
+                    elide: Text.ElideRight
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: purgeEditor.attempted && !!window.backend.error
+                text: window.backend.error
+                color: "#a34425"
+                wrapMode: Text.Wrap
+            }
+        }
+        footer: RowLayout {
+            Item { Layout.fillWidth: true }
+            Button {
+                objectName: "cancelPurgeButton"
+                text: qsTr("Отмена")
+                enabled: !window.backend.busy
+                onClicked: purgeEditor.close()
+            }
+            AccentButton {
+                objectName: "confirmPurgeButton"
+                text: qsTr("Удалить навсегда")
+                enabled: !window.backend.busy
+                onClicked: {
+                    purgeEditor.attempted = true;
+                    window.backend.purgeTrash(purgeEditor.entries.map(entry => entry.id));
+                }
+            }
+        }
+    }
+
 }
