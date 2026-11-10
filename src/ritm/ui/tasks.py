@@ -26,6 +26,14 @@ from ritm.storage.attachments import (
     copy_attachment,
     saved_attachment_path,
 )
+from ritm.storage.backup import (
+    backup_folder,
+    create_backup,
+    daily_backup,
+    inspect_backup,
+    restore_backup,
+    set_backup_folder,
+)
 from ritm.storage.sqlite import TaskStore
 from ritm.ui.calendar import (
     WEEKDAYS,
@@ -216,16 +224,23 @@ class TaskController(QObject):
     timeChanged = Signal()
     calendarChanged = Signal()
     statisticsChanged = Signal()
+    backupsChanged = Signal()
     focusChanged = Signal()
     systemPauseDone = Signal()
     actionSucceeded = Signal(str)
     _ready = Signal(object, str, str)
 
     def __init__(
-        self, profile: Path, clock: Callable[[], datetime] | None = None, zone: tzinfo | None = None
+        self,
+        profile: Path,
+        clock: Callable[[], datetime] | None = None,
+        zone: tzinfo | None = None,
+        *,
+        automatic_backup: bool = False,
     ):
         super().__init__()
         self._profile = profile
+        self._backups = {"folder": str((profile / "backups").absolute())}
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ritm-storage")
         self._rows = []
         self._source = []
@@ -259,7 +274,7 @@ class TaskController(QObject):
         self._error = ""
         self._closing = False
         self._ready.connect(self._finish)
-        self._submit("refresh", {})
+        self._submit("refresh", {"startup": True, "automatic": automatic_backup})
 
     def _on_tick(self):
         self._update_listing()
@@ -591,6 +606,32 @@ class TaskController(QObject):
     def purgeTrash(self, identifiers):
         self._submit("purge_trash", {"ids": list(identifiers)})
 
+    @Property("QVariantMap", notify=backupsChanged)
+    def backups(self):
+        return self._backups
+
+    @Property(QUrl, notify=backupsChanged)
+    def backupFolderUrl(self):
+        return QUrl.fromLocalFile(self._backups["folder"])
+
+    @Slot(QUrl)
+    def setBackupFolder(self, url):
+        self._submit("backup_folder", {"path": url.toLocalFile()})
+
+    @Slot()
+    def createBackup(self):
+        self._submit("create_backup", {})
+
+    @Slot(QUrl)
+    def inspectBackup(self, url):
+        self._submit("inspect_backup", {"path": url.toLocalFile()})
+
+    @Slot()
+    def restoreBackup(self):
+        preview = self._backups.get("preview")
+        if preview:
+            self._submit("restore_backup", dict(preview))
+
     @Slot(str)
     def restoreEntry(self, identifier):
         self._submit("restore", {"id": identifier})
@@ -615,7 +656,19 @@ class TaskController(QObject):
 
     def _run(self, action, data, selected, config, statistics_anchor):
         notice = ""
+        backup_state = None
         try:
+            if action in ("backup_folder", "create_backup", "inspect_backup", "restore_backup"):
+                try:
+                    backup_state = self._run_backup(action, data)
+                except (OSError, sqlite3.Error) as error:
+                    raise ValueError(
+                        "Не удалось прочитать или записать копию. Проверьте папку и место на диске."
+                    ) from error
+                if action != "restore_backup":
+                    self._ready.emit(backup_state, "", action)
+                    return
+                selected = ""
             with TaskStore(self._profile / "tasks.sqlite3", clock=self._clock) as store:
                 service = TaskService(store)
                 if action == "calendar":
@@ -775,7 +828,7 @@ class TaskController(QObject):
                     store.purge_trash({UUID(identifier) for identifier in data["ids"]})
                 elif action == "restore":
                     selected = str(service.restore(UUID(data["id"])).id)
-                elif action != "refresh":
+                elif action not in ("refresh", "restore_backup"):
                     task_id = UUID(selected)
                     if action == "delete":
                         service.delete_node(task_id, UUID(data["id"]), now=self._clock())
@@ -800,8 +853,24 @@ class TaskController(QObject):
                         service.set_weights(task_id, values)
                     elif action == "equal_weights":
                         service.equal_weights(task_id)
-                if action in ("refresh", "purge_trash"):
+                if action in ("refresh", "purge_trash", "restore_backup"):
                     clean_deleted_attachments(store, self._profile)
+                if data.get("startup") and action == "refresh":
+                    try:
+                        folder = backup_folder(self._profile)
+                        backup_state = {"folder": str(folder)}
+                        if data["automatic"]:
+                            daily_backup(
+                                self._profile, folder, self._clock().astimezone(self._zone)
+                            )
+                    except (ValueError, OSError, sqlite3.Error):
+                        backup_state = {
+                            **(backup_state or {}),
+                            "automaticError": (
+                                "Не удалось создать ежедневную копию. "
+                                "Проверьте папку и файлы профиля."
+                            ),
+                        }
                 pending_cleanup = len(store.pending_attachment_cleanup())
                 raw = store.list_tasks()
                 blocks = store.list_work_blocks()
@@ -896,6 +965,7 @@ class TaskController(QObject):
                     attachments,
                     materials,
                     pending_cleanup,
+                    backup_state,
                 ),
                 "",
                 action,
@@ -915,10 +985,41 @@ class TaskController(QObject):
                 None, "Не удалось выполнить действие. Повторите после перезапуска.", action
             )
 
+    def _run_backup(self, action, data):
+        if action == "backup_folder":
+            if not data["path"]:
+                raise ValueError("Выберите локальную папку")
+            set_backup_folder(self._profile, Path(data["path"]))
+            return {"folder": str(backup_folder(self._profile)), "automaticError": ""}
+        if action == "create_backup":
+            folder = backup_folder(self._profile)
+            saved = create_backup(self._profile, folder, self._clock().astimezone(self._zone))
+            return {"saved": saved.name, "automaticError": ""}
+        if action == "inspect_backup":
+            if not data["path"]:
+                raise ValueError("Выберите локальный архив")
+            archive = Path(data["path"])
+            preview = inspect_backup(archive)
+            created = datetime.fromisoformat(preview["created"]).astimezone(self._zone)
+            return {
+                "preview": {
+                    **preview,
+                    "path": str(archive),
+                    "dateText": created.strftime(DATE_FORMAT),
+                }
+            }
+        restore_backup(self._profile, Path(data["path"]), data["token"])
+        return {"preview": {}, "restored": True}
+
     @Slot(object, str, str)
     def _finish(self, result, error, action):
         if self._closing:
             return
+        if action in ("backup_folder", "create_backup", "inspect_backup"):
+            update = result or ({"preview": {}} if action == "inspect_backup" else {})
+            self._backups = {**self._backups, **update}
+            self.backupsChanged.emit()
+            result = None
         if action == "open_attachment" and result is not None:
             if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(result.absolute()))):
                 error = "Не удалось открыть вложение. Проверьте программу для этого типа файла."
@@ -939,7 +1040,13 @@ class TaskController(QObject):
                 self._attachments,
                 self._materials,
                 self._pending_cleanup,
+                backup_state,
             ) = result
+            if backup_state is not None:
+                self._backups = {**self._backups, **backup_state}
+                self.backupsChanged.emit()
+            if action == "restore_backup":
+                self._focus_loaded = False
             self.statisticsChanged.emit()
             if not self._focus_loaded:
                 self._focus_loaded = True

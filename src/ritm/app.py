@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from PySide6.QtCore import QStandardPaths, QTimer, QUrl
+from PySide6.QtCore import QLockFile, QStandardPaths, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
@@ -52,7 +52,17 @@ def main() -> int:
         if temporary
         else QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)
     )
-    controller = TaskController(profile)
+    try:
+        profile.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        print("Не удалось открыть папку профиля «Ритма».", file=sys.stderr)
+        return 1
+    lock = QLockFile(str(profile / "ritm.lock"))
+    lock.setStaleLockTime(0)
+    if not lock.tryLock(0):
+        print("Профиль «Ритма» уже открыт или недоступен для записи.", file=sys.stderr)
+        return 1
+    controller = TaskController(profile, automatic_backup=not args.smoke_test)
     previous = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
     for sig in previous:
         signal.signal(sig, lambda *_: QTimer.singleShot(0, app.quit))
@@ -78,6 +88,7 @@ def main() -> int:
             power.close()
         controller.close()
         engine = None
+        lock.unlock()
         for sig, handler in previous.items():
             signal.signal(sig, handler)
         if temporary:

@@ -211,6 +211,13 @@ ApplicationWindow {
                     view.contentY = Math.max(0, Math.min(window.savedScrollY, view.contentHeight - view.height));
                 });
             }
+            if (action === "inspect_backup")
+                restoreBackupDialog.open();
+            if (action === "restore_backup") {
+                restoreBackupDialog.close();
+                window.detailOpen = false;
+                window.page = "tasks";
+            }
             if (action === "link_material")
                 attachmentDialog.choosingMaterial = false;
             if (action === "focus_exit") {
@@ -315,6 +322,15 @@ ApplicationWindow {
                 text: qsTr("Материалы")
                 highlighted: window.page === "materials"
                 onClicked: window.page = "materials"
+            }
+            Button {
+                objectName: "backupsButton"
+                text: qsTr("Копии")
+                enabled: !window.backend.busy
+                onClicked: {
+                    backupDialog.attempted = false;
+                    backupDialog.open();
+                }
             }
             Item {
                 Layout.fillWidth: true
@@ -1020,6 +1036,149 @@ ApplicationWindow {
             Layout.fillWidth: true
             text: qsTr("В своём темпе. Шаг за шагом.")
             horizontalAlignment: Text.AlignHCenter
+        }
+    }
+
+    FolderDialog {
+        id: backupFolderPicker
+        title: qsTr("Папка резервных копий")
+        onAccepted: {
+            backupDialog.attempted = true;
+            window.backend.setBackupFolder(selectedFolder);
+        }
+    }
+    FileDialog {
+        id: backupFilePicker
+        objectName: "backupFilePicker"
+        title: qsTr("Выбрать резервную копию")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("Архивы Ритма (*.zip)")]
+        onAccepted: {
+            backupDialog.attempted = true;
+            window.backend.inspectBackup(selectedFile);
+        }
+    }
+
+    EditorDialog {
+        id: backupDialog
+        property bool attempted: false
+        title: qsTr("Резервные копии")
+        anchors.centerIn: parent
+        width: Math.min(550, window.width - 32)
+        modal: true
+        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
+        contentItem: ColumnLayout {
+            Caption {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("Ритм создаёт копию при первом запуске за день и хранит семь последних ежедневных копий.")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    Layout.fillWidth: true
+                    textFormat: Text.PlainText
+                    text: window.backend.backups.folder || ""
+                    wrapMode: Text.WrapAnywhere
+                }
+                Button {
+                    text: qsTr("Выбрать папку")
+                    enabled: !window.backend.busy
+                    onClicked: backupFolderPicker.open()
+                }
+            }
+            Caption {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                visible: !!window.backend.backups.saved
+                text: qsTr("Создана копия: %1").arg(window.backend.backups.saved || "")
+            }
+            Caption {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                visible: !!window.backend.backups.restored
+                text: qsTr("Профиль восстановлен из резервной копии")
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                visible: text.length > 0
+                color: "#a34425"
+                text: backupDialog.attempted && window.backend.error
+                    ? window.backend.error : (window.backend.backups.automaticError || "")
+            }
+        }
+        footer: RowLayout {
+            Item { Layout.fillWidth: true }
+            Button {
+                objectName: "closeBackups"
+                text: qsTr("Закрыть")
+                enabled: !window.backend.busy
+                onClicked: backupDialog.close()
+            }
+            Button {
+                objectName: "chooseBackupArchive"
+                text: qsTr("Восстановить…")
+                enabled: !window.backend.busy
+                onClicked: {
+                    backupFilePicker.currentFolder = window.backend.backupFolderUrl;
+                    backupFilePicker.open();
+                }
+            }
+            AccentButton {
+                objectName: "createBackupButton"
+                text: qsTr("Создать копию")
+                enabled: !window.backend.busy
+                onClicked: {
+                    backupDialog.attempted = true;
+                    window.backend.createBackup();
+                }
+            }
+        }
+    }
+
+    EditorDialog {
+        id: restoreBackupDialog
+        title: qsTr("Восстановить из копии?")
+        anchors.centerIn: parent
+        width: Math.min(460, window.width - 32)
+        modal: true
+        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
+        contentItem: ColumnLayout {
+            Label {
+                objectName: "backupDate"
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("Дата копии: %1").arg((window.backend.backups.preview || {}).dateText || "")
+                font.bold: true
+            }
+            Caption {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("Данные из копии заменят текущие задачи, расписание, историю фокуса, вложения и материалы.")
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: !!window.backend.error
+                text: window.backend.error
+                wrapMode: Text.Wrap
+                color: "#a34425"
+            }
+        }
+        footer: RowLayout {
+            Item { Layout.fillWidth: true }
+            Button {
+                objectName: "cancelBackupRestore"
+                text: qsTr("Отмена")
+                enabled: !window.backend.busy
+                onClicked: restoreBackupDialog.close()
+            }
+            AccentButton {
+                objectName: "confirmBackupRestore"
+                text: qsTr("Заменить данные")
+                enabled: !window.backend.busy && !!(window.backend.backups.preview || {}).token
+                onClicked: window.backend.restoreBackup()
+            }
         }
     }
 
