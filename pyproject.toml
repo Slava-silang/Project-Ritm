@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "project-ritm"
+dynamic = ["version"]
+description = "Личный планировщик задач и времени на PySide6 и QML"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = ["PySide6>=6.8,<7"]
+
+[project.gui-scripts]
+ritm = "ritm.app:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "ruff>=0.14,<1"]
+packaging = [
+    "Nuitka>=4.2,<4.3",
+    "ordered-set>=4.1,<5",
+    "zstandard>=0.23,<1",
+    "patchelf>=0.17,<1; sys_platform == 'linux'",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ritm"]
+
+[tool.hatch.version]
+path = "src/ritm/__init__.py"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

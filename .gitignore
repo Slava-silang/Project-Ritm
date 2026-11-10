@@ -1,0 +1,41 @@
+# Python and tools
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Build output and local diagnostics
+/dist/
+/build/
+/src/deployment/
+/artifacts/
+*.build/
+*.dist/
+*.onefile-build/
+*.log
+
+# Local secrets and user profiles
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+/data/
+/backups/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
