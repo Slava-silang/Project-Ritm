@@ -7,6 +7,13 @@ import QtQuick.Layouts
 ApplicationWindow {
     id: window
     required property var backend
+    property alias appearance: uiAppearance
+    Appearance {
+        id: uiAppearance
+        objectName: "uiAppearance"
+        themeKey: window.backend.appearance.theme
+        scale: window.backend.appearance.scale / 100
+    }
     objectName: "mainWindow"
     width: 1120
     height: 780
@@ -14,21 +21,28 @@ ApplicationWindow {
     minimumHeight: 480
     visible: true
     title: qsTr("Ритм — задачи")
-    color: "#f4f3ed"
+    color: window.appearance.colors.background
     font.family: "Sans Serif"
-    palette.highlight: "#2b5949"
-    palette.button: "#e9eee7"
-    palette.buttonText: "#234237"
-    palette.text: "#243d33"
-    palette.windowText: "#243d33"
-    palette.accent: "#2b5949"
-    palette.base: "#ffffff"
-    palette.window: "#ffffff"
-    palette.placeholderText: "#718073"
+    font.pixelSize: window.appearance.dp(14)
+    palette.highlight: window.appearance.colors.accentFill
+    palette.button: window.appearance.colors.raised
+    palette.buttonText: window.appearance.colors.text
+    palette.brightText: window.appearance.colors.text
+    palette.text: window.appearance.colors.text
+    palette.windowText: window.appearance.colors.text
+    palette.accent: window.appearance.colors.accent
+    palette.highlightedText: window.appearance.colors.onAccent
+    palette.light: window.appearance.colors.raised
+    palette.mid: window.appearance.colors.border
+    palette.dark: window.appearance.colors.border
+    palette.shadow: window.appearance.colors.background
+    palette.base: window.appearance.colors.surface
+    palette.window: window.appearance.colors.surface
+    palette.placeholderText: window.appearance.colors.muted
     property var current: window.backend.detail
     property var activeFocus: window.backend.focus
     property bool hasTask: !!current.id
-    property bool narrow: width < 850
+    property bool narrow: width < window.appearance.dp(850)
     property bool detailOpen: true
     property string page: "tasks"
     property bool closeWhenIdle: false
@@ -46,13 +60,82 @@ ApplicationWindow {
     property var categoryOptions: [
         {
             id: "",
-            title: "Все категории"
+            title: qsTr("Все категории")
         },
         {
             id: "none",
-            title: "Без категории"
+            title: qsTr("Без категории")
         }
     ].concat(window.backend.categories)
+
+    property bool modalOpen: [
+        appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
+        exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
+        weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
+        backupFolderPicker, backupFilePicker
+    ].some(dialog => dialog.visible)
+    property bool shortcutsEnabled: !window.backend.busy && !window.modalOpen
+
+    function openAppearance() {
+        appearanceTheme.currentIndex = appearanceDialog.themeKeys.indexOf(window.backend.appearance.theme);
+        appearanceScale.currentIndex = appearanceDialog.scales.indexOf(window.backend.appearance.scale);
+        appearanceDialog.attempted = false;
+        appearanceDialog.open();
+    }
+    function scaleStep(direction) {
+        const steps = [100, 125, 150];
+        const index = Math.max(0, steps.indexOf(window.backend.appearance.scale));
+        const next = Math.max(0, Math.min(steps.length - 1, index + direction));
+        window.backend.saveAppearance(window.backend.appearance.theme, steps[next]);
+    }
+
+    component PageShortcut: Shortcut {
+        required property string destination
+        enabled: window.shortcutsEnabled
+        onActivated: {
+            window.page = destination;
+            window.detailOpen = true;
+        }
+    }
+    PageShortcut { sequence: "Ctrl+1"; destination: "tasks" }
+    PageShortcut { sequence: "Ctrl+2"; destination: "calendar" }
+    PageShortcut { sequence: "Ctrl+3"; destination: "statistics" }
+    PageShortcut { sequence: "Ctrl+4"; destination: "materials" }
+    Shortcut {
+        sequences: [StandardKey.New]
+        enabled: window.shortcutsEnabled
+        onActivated: window.editTask({})
+    }
+    Shortcut {
+        sequences: [StandardKey.Find]
+        enabled: window.shortcutsEnabled
+        onActivated: {
+            window.page = "tasks";
+            window.detailOpen = false;
+            searchInput.forceActiveFocus();
+            searchInput.selectAll();
+        }
+    }
+    Shortcut {
+        sequence: "Ctrl+,"
+        enabled: window.shortcutsEnabled
+        onActivated: window.openAppearance()
+    }
+    Shortcut {
+        sequences: ["Ctrl++", "Ctrl+="]
+        enabled: window.shortcutsEnabled
+        onActivated: window.scaleStep(1)
+    }
+    Shortcut {
+        sequence: "Ctrl+-"
+        enabled: window.shortcutsEnabled
+        onActivated: window.scaleStep(-1)
+    }
+    Shortcut {
+        sequence: "Ctrl+0"
+        enabled: window.shortcutsEnabled
+        onActivated: window.backend.saveAppearance(window.backend.appearance.theme, 100)
+    }
 
     function toggleTaskTree(identifier) {
         const position = taskList.contentY;
@@ -83,19 +166,19 @@ ApplicationWindow {
 
     component AccentButton: Button {
         id: actionButton
-        horizontalPadding: 18
-        verticalPadding: 11
+        horizontalPadding: window.appearance.dp(18)
+        verticalPadding: window.appearance.dp(11)
         contentItem: Label {
             text: actionButton.text
-            color: "white"
+            color: window.appearance.colors.onAccent
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }
         background: Rectangle {
-            radius: 9
-            color: !actionButton.enabled ? "#9eafa2" : actionButton.down ? "#1d4235" : actionButton.hovered ? "#386b57" : "#2b5949"
+            radius: window.appearance.dp(9)
+            color: !actionButton.enabled ? window.appearance.colors.disabled : actionButton.down ? window.appearance.colors.accentDown : actionButton.hovered ? window.appearance.colors.accentHover : window.appearance.colors.accentFill
             border.width: actionButton.visualFocus ? 2 : 0
-            border.color: "#82aa8e"
+            border.color: window.appearance.colors.border
         }
     }
     component TaskProgress: ProgressBar {
@@ -104,31 +187,31 @@ ApplicationWindow {
         to: 100
         background: null
         contentItem: Item {
-            implicitHeight: 6
+            implicitHeight: window.appearance.dp(6)
             Rectangle {
                 anchors.fill: parent
-                radius: 3
-                color: "#e0e7dc"
+                radius: window.appearance.dp(3)
+                color: window.appearance.colors.track
             }
             Rectangle {
                 width: parent.width * taskProgress.position
                 height: parent.height
-                radius: 3
-                color: "#2b5949"
+                radius: window.appearance.dp(3)
+                color: window.appearance.colors.accent
             }
         }
     }
     component EditorDialog: Dialog {
-        padding: 16
+        padding: window.appearance.dp(16)
         background: Rectangle {
-            color: "#ffffff"
-            radius: 14
-            border.color: "#d0d9cb"
+            color: window.appearance.colors.surface
+            radius: window.appearance.dp(14)
+            border.color: window.appearance.colors.border
         }
     }
     component Caption: Label {
-        color: "#69766d"
-        font.pixelSize: 13
+        color: window.appearance.colors.muted
+        font.pixelSize: window.appearance.dp(13)
     }
 
     component WeightEntry: RowLayout {
@@ -146,7 +229,7 @@ ApplicationWindow {
         TextField {
             id: weightInput
             objectName: "weightInput_" + weightRow.index
-            Layout.preferredWidth: 85
+            Layout.preferredWidth: window.appearance.dp(85)
             text: weightRow.modelData.weight
             inputMethodHints: Qt.ImhFormattedNumbersOnly
         }
@@ -211,6 +294,8 @@ ApplicationWindow {
                     view.contentY = Math.max(0, Math.min(window.savedScrollY, view.contentHeight - view.height));
                 });
             }
+            if (action === "appearance")
+                appearanceDialog.close();
             if (action === "inspect_backup")
                 restoreBackupDialog.open();
             if (action === "restore_backup") {
@@ -252,33 +337,37 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: window.narrow ? 16 : 24
-        spacing: 16
+        anchors.margins: window.appearance.dp(window.narrow ? 16 : 24)
+        spacing: window.appearance.dp(16)
         RowLayout {
             Layout.fillWidth: true
             Rectangle {
-                implicitWidth: 44
-                implicitHeight: 44
-                radius: 14
-                color: "#2b5949"
+                implicitWidth: window.appearance.dp(44)
+                implicitHeight: window.appearance.dp(44)
+                radius: window.appearance.dp(14)
+                color: window.appearance.colors.accentFill
                 Label {
                     anchors.centerIn: parent
                     text: "Р"
-                    color: "white"
-                    font.pixelSize: 26
+                    color: window.appearance.colors.onAccent
+                    font.pixelSize: window.appearance.dp(26)
                 }
             }
             ColumnLayout {
-                spacing: 2
+                Layout.fillWidth: true
+                spacing: window.appearance.dp(2)
                 Label {
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
                     text: window.page === "tasks" ? qsTr("Мои задачи")
                         : window.page === "calendar" ? qsTr("Календарь")
                         : window.page === "statistics" ? qsTr("Статистика") : qsTr("Материалы")
-                    font.pixelSize: 25
+                    font.pixelSize: window.appearance.dp(25)
                     font.weight: Font.DemiBold
-                    color: "#243d33"
+                    color: window.appearance.colors.text
                 }
                 Caption {
+                    visible: !window.narrow
                     text: qsTr("Большая работа начинается с маленького шага")
                 }
             }
@@ -288,8 +377,8 @@ ApplicationWindow {
             BusyIndicator {
                 running: window.backend.busy
                 visible: running
-                implicitWidth: 30
-                implicitHeight: 30
+                implicitWidth: window.appearance.dp(30)
+                implicitHeight: window.appearance.dp(30)
             }
             AccentButton {
                 objectName: "newTaskButton"
@@ -298,7 +387,9 @@ ApplicationWindow {
                 onClicked: window.editTask({})
             }
         }
-        RowLayout {
+        Flow {
+            Layout.fillWidth: true
+            spacing: window.appearance.dp(4)
             Button {
                 objectName: "tasksPageButton"
                 text: qsTr("Задачи")
@@ -332,25 +423,28 @@ ApplicationWindow {
                     backupDialog.open();
                 }
             }
-            Item {
-                Layout.fillWidth: true
+            Button {
+                objectName: "appearanceButton"
+                text: qsTr("Вид")
+                enabled: !window.backend.busy
+                onClicked: window.openAppearance()
             }
         }
         Rectangle {
             Layout.fillWidth: true
-            implicitHeight: errorRow.implicitHeight + 20
-            radius: 10
-            color: "#fbe8dd"
+            implicitHeight: errorRow.implicitHeight + window.appearance.dp(20)
+            radius: window.appearance.dp(10)
+            color: window.appearance.colors.warningSurface
             visible: window.backend.error.length > 0
             RowLayout {
                 id: errorRow
                 anchors.fill: parent
-                anchors.margins: 10
+                anchors.margins: window.appearance.dp(10)
                 Label {
                     Layout.fillWidth: true
                     text: window.backend.error
                     wrapMode: Text.Wrap
-                    color: "#853b22"
+                    color: window.appearance.colors.warning
                 }
                 Button {
                     text: qsTr("Обновить")
@@ -362,7 +456,7 @@ ApplicationWindow {
         ColumnLayout {
             Layout.fillWidth: true
             visible: !!window.activeFocus.elapsed
-            spacing: 4
+            spacing: window.appearance.dp(4)
             RowLayout {
                 Layout.fillWidth: true
                 Label {
@@ -420,7 +514,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             visible: window.page === "tasks" && (!window.narrow || !window.hasTask || !window.detailOpen)
             enabled: !window.backend.busy
-            spacing: 8
+            spacing: window.appearance.dp(8)
             TextField {
                 id: searchInput
                 objectName: "searchInput"
@@ -433,7 +527,7 @@ ApplicationWindow {
                 ComboBox {
                     id: statusFilter
                     objectName: "statusFilter"
-                    Layout.preferredWidth: 155
+                    Layout.preferredWidth: window.appearance.dp(155)
                     model: [qsTr("Активные"), qsTr("Выполненные"), qsTr("Все задачи")]
                     onActivated: window.filterList()
                 }
@@ -483,13 +577,13 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
-                spacing: 6
+                spacing: window.appearance.dp(6)
                 model: window.backend.materials
                 ScrollBar.vertical: ScrollBar {}
                 delegate: RowLayout {
                     id: materialRow
                     required property var modelData
-                    width: ListView.view.width - 12
+                    width: ListView.view.width - window.appearance.dp(12)
                     Label {
                         Layout.fillWidth: true
                         textFormat: Text.PlainText
@@ -506,6 +600,7 @@ ApplicationWindow {
             }
         }
         StatisticsPane {
+            appearance: window.appearance
             backend: window.backend
             visible: window.page === "statistics"
             Layout.fillWidth: true
@@ -517,6 +612,7 @@ ApplicationWindow {
             }
         }
         CalendarPane {
+            appearance: window.appearance
             id: calendarPane
             backend: window.backend
             visible: window.page === "calendar"
@@ -532,20 +628,20 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: window.page === "tasks"
-            spacing: 18
+            spacing: window.appearance.dp(18)
             enabled: !window.backend.busy
             Rectangle {
                 objectName: "listPanel"
-                Layout.preferredWidth: 310
+                Layout.preferredWidth: window.appearance.dp(310)
                 Layout.fillWidth: window.narrow
                 Layout.fillHeight: true
                 visible: !window.narrow || !window.hasTask || !window.detailOpen
-                color: "#eaece3"
-                radius: 16
+                color: window.appearance.colors.panel
+                radius: window.appearance.dp(16)
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 12
+                    anchors.margins: window.appearance.dp(12)
+                    spacing: window.appearance.dp(12)
                     RowLayout {
                         Layout.fillWidth: true
                         Caption {
@@ -564,8 +660,8 @@ ApplicationWindow {
                         visible: window.backend.tasks.length === 0
                         text: qsTr("Задач не найдено.\nДобавьте задачу или измените фильтры.")
                         wrapMode: Text.Wrap
-                        color: "#69766d"
-                        padding: 10
+                        color: window.appearance.colors.muted
+                        padding: window.appearance.dp(10)
                     }
                     ListView {
                         id: taskList
@@ -573,7 +669,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         clip: true
-                        spacing: 8
+                        spacing: window.appearance.dp(8)
                         model: window.backend.tasks
                         ScrollBar.vertical: ScrollBar {}
                         delegate: ItemDelegate {
@@ -582,33 +678,33 @@ ApplicationWindow {
                             required property int index
                             objectName: "taskRow_" + index
                             width: ListView.view.width
-                            height: taskRowContent.implicitHeight + 24
+                            height: taskRowContent.implicitHeight + window.appearance.dp(24)
                             onClicked: {
                                 window.backend.selectTask(modelData.id);
                                 window.detailOpen = true;
                             }
                             background: Rectangle {
-                                radius: 12
-                                color: taskRow.modelData.overdue ? "#fff0e7" : taskRow.modelData.id === window.current.id ? "#ffffff" : taskRow.hovered ? "#f2f3ec" : "transparent"
-                                border.color: taskRow.modelData.id === window.current.id ? "#bdcabb" : "transparent"
+                                radius: window.appearance.dp(12)
+                                color: taskRow.modelData.overdue ? window.appearance.colors.warningSurface : taskRow.modelData.id === window.current.id ? window.appearance.colors.surface : taskRow.hovered ? window.appearance.colors.raised : "transparent"
+                                border.color: taskRow.modelData.id === window.current.id ? window.appearance.colors.border : "transparent"
                             }
                             contentItem: ColumnLayout {
                                 id: taskRowContent
-                                spacing: 7
+                                spacing: window.appearance.dp(7)
                                 Caption {
                                     visible: taskRow.modelData.firstInGroup
                                     text: taskRow.modelData.group
-                                    color: taskRow.modelData.overdue ? "#a34425" : "#69766d"
+                                    color: taskRow.modelData.overdue ? window.appearance.colors.warning : window.appearance.colors.muted
                                     font.weight: Font.DemiBold
                                 }
                                 Label {
                                     Layout.fillWidth: true
                                     textFormat: Text.PlainText
                                     text: taskRow.modelData.title
-                                    font.pixelSize: 16
+                                    font.pixelSize: window.appearance.dp(16)
                                     font.weight: Font.Medium
                                     wrapMode: Text.Wrap
-                                    color: "#243d33"
+                                    color: window.appearance.colors.text
                                 }
                                 Caption {
                                     Layout.fillWidth: true
@@ -644,18 +740,18 @@ ApplicationWindow {
                                             textFormat: Text.PlainText
                                             text: (listBranch.modelData.completed ? "✓ " : "○ ") + listBranch.modelData.title
                                             wrapMode: Text.Wrap
-                                            color: "#48594e"
+                                            color: window.appearance.colors.secondary
                                         }
                                         Repeater {
                                             model: listBranch.modelData.items
                                             delegate: Label {
                                                 required property var modelData
                                                 Layout.fillWidth: true
-                                                Layout.leftMargin: 12
+                                                Layout.leftMargin: window.appearance.dp(12)
                                                 textFormat: Text.PlainText
                                                 text: (modelData.completed ? "✓ " : "○ ") + modelData.title
                                                 wrapMode: Text.Wrap
-                                                color: "#69766d"
+                                                color: window.appearance.colors.muted
                                             }
                                         }
                                     }
@@ -670,29 +766,29 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 objectName: "detailPanel"
                 visible: !window.narrow || (window.hasTask && window.detailOpen)
-                color: "#ffffff"
-                radius: 18
+                color: window.appearance.colors.surface
+                radius: window.appearance.dp(18)
                 Label {
                     anchors.centerIn: parent
-                    width: parent.width - 40
+                    width: parent.width - window.appearance.dp(40)
                     visible: !window.hasTask
                     text: qsTr("Что хочется сделать?\nСоздайте задачу, а затем разбейте её на шаги.")
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.Wrap
-                    color: "#69766d"
-                    font.pixelSize: 18
+                    color: window.appearance.colors.muted
+                    font.pixelSize: window.appearance.dp(18)
                 }
                 ScrollView {
                     id: detailScroll
                     objectName: "detailScroll"
                     anchors.fill: parent
-                    anchors.margins: 22
+                    anchors.margins: window.appearance.dp(22)
                     visible: window.hasTask
                     clip: true
                     contentWidth: availableWidth
                     ColumnLayout {
                         width: detailScroll.availableWidth
-                        spacing: 16
+                        spacing: window.appearance.dp(16)
                         RowLayout {
                             Layout.fillWidth: true
                             Button {
@@ -702,7 +798,7 @@ ApplicationWindow {
                                 onClicked: window.detailOpen = false
                             }
                             Caption {
-                                color: window.backend.selectedOverdue ? "#a34425" : "#69766d"
+                                color: window.backend.selectedOverdue ? window.appearance.colors.warning : window.appearance.colors.muted
                                 text: window.backend.selectedOverdue ? qsTr("ПРОСРОЧЕНО") : window.current.completed ? qsTr("ВЫПОЛНЕНО") : qsTr("В РАБОТЕ")
                                 font.letterSpacing: 1
                             }
@@ -730,10 +826,10 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             textFormat: Text.PlainText
                             text: window.current.title || ""
-                            font.pixelSize: 27
+                            font.pixelSize: window.appearance.dp(27)
                             font.weight: Font.DemiBold
                             wrapMode: Text.Wrap
-                            color: "#243d33"
+                            color: window.appearance.colors.text
                         }
                         Button {
                             objectName: "taskAttachments"
@@ -745,12 +841,12 @@ ApplicationWindow {
                             textFormat: Text.PlainText
                             text: window.current.description || qsTr("Добавьте описание в карточку задачи")
                             wrapMode: Text.Wrap
-                            color: window.current.description ? "#48594e" : "#849085"
-                            font.pixelSize: 15
+                            color: window.current.description ? window.appearance.colors.secondary : window.appearance.colors.muted
+                            font.pixelSize: window.appearance.dp(15)
                         }
                         Flow {
                             Layout.fillWidth: true
-                            spacing: 12
+                            spacing: window.appearance.dp(12)
                             Caption {
                                 textFormat: Text.PlainText
                                 visible: !!window.current.category
@@ -851,7 +947,7 @@ ApplicationWindow {
                             Label {
                                 text: (window.current.progressText || "0") + "%"
                                 font.weight: Font.DemiBold
-                                color: "#2b5949"
+                                color: window.appearance.colors.accent
                             }
                         }
                         CheckBox {
@@ -863,16 +959,16 @@ ApplicationWindow {
                         }
                         Rectangle {
                             Layout.fillWidth: true
-                            implicitHeight: 1
-                            color: "#e5e9e0"
+                            implicitHeight: window.appearance.dp(1)
+                            color: window.appearance.colors.track
                         }
                         RowLayout {
                             Layout.fillWidth: true
                             Label {
                                 text: qsTr("Подзадачи")
-                                font.pixelSize: 19
+                                font.pixelSize: window.appearance.dp(19)
                                 font.weight: Font.DemiBold
-                                color: "#243d33"
+                                color: window.appearance.colors.text
                             }
                             Item {
                                 Layout.fillWidth: true
@@ -899,14 +995,14 @@ ApplicationWindow {
                                 required property var modelData
                                 required property int index
                                 Layout.fillWidth: true
-                                implicitHeight: branchContent.implicitHeight + 20
-                                radius: 12
-                                color: "#f5f6f0"
+                                implicitHeight: branchContent.implicitHeight + window.appearance.dp(20)
+                                radius: window.appearance.dp(12)
+                                color: window.appearance.colors.raised
                                 ColumnLayout {
                                     id: branchContent
                                     anchors.fill: parent
-                                    anchors.margins: 10
-                                    spacing: 6
+                                    anchors.margins: window.appearance.dp(10)
+                                    spacing: window.appearance.dp(6)
                                     RowLayout {
                                         Layout.fillWidth: true
                                         CheckBox {
@@ -920,7 +1016,7 @@ ApplicationWindow {
                                             textFormat: Text.PlainText
                                             text: branch.modelData.title
                                             wrapMode: Text.Wrap
-                                            color: "#243d33"
+                                            color: window.appearance.colors.text
                                             font.weight: Font.Medium
                                         }
                                         Caption {
@@ -952,7 +1048,7 @@ ApplicationWindow {
                                             required property var modelData
                                             required property int index
                                             Layout.fillWidth: true
-                                            Layout.leftMargin: 23
+                                            Layout.leftMargin: window.appearance.dp(23)
                                             CheckBox {
                                                 objectName: "itemCheck_" + branch.index + "_" + leaf.index
                                                 checked: leaf.modelData.completed
@@ -964,7 +1060,7 @@ ApplicationWindow {
                                                 textFormat: Text.PlainText
                                                 text: leaf.modelData.title
                                                 wrapMode: Text.Wrap
-                                                color: "#48594e"
+                                                color: window.appearance.colors.secondary
                                             }
                                             ToolButton {
                                                 text: "⋯"
@@ -988,7 +1084,7 @@ ApplicationWindow {
                                     }
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        Layout.leftMargin: 23
+                                        Layout.leftMargin: window.appearance.dp(23)
                                         TextField {
                                             id: newItem
                                             objectName: "newItem_" + branch.index
@@ -1026,7 +1122,7 @@ ApplicationWindow {
                             }
                         }
                         Item {
-                            implicitHeight: 10
+                            implicitHeight: window.appearance.dp(10)
                         }
                     }
                 }
@@ -1036,6 +1132,79 @@ ApplicationWindow {
             Layout.fillWidth: true
             text: qsTr("В своём темпе. Шаг за шагом.")
             horizontalAlignment: Text.AlignHCenter
+        }
+    }
+
+    EditorDialog {
+        id: appearanceDialog
+        property var themeKeys: ["space", "jungle", "light", "dark", "system"]
+        property var scales: [100, 125, 150]
+        property bool attempted: false
+        title: qsTr("Оформление")
+        anchors.centerIn: parent
+        width: Math.min(window.appearance.dp(480), window.width - 32)
+        height: Math.min(window.appearance.dp(480), window.height - 32)
+        modal: true
+        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
+        contentItem: ScrollView {
+            id: appearanceScroll
+            contentWidth: availableWidth
+            clip: true
+            ColumnLayout {
+                width: appearanceScroll.availableWidth
+                spacing: window.appearance.dp(12)
+                Caption { text: qsTr("Тема") }
+                ComboBox {
+                    id: appearanceTheme
+                    objectName: "appearanceTheme"
+                    Layout.fillWidth: true
+                    model: [qsTr("Космос"), qsTr("Джунгли"), qsTr("Светлая"), qsTr("Тёмная"), qsTr("Как в системе")]
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Пока все темы используют временное оформление. Финальный вид появится после общего дизайна.")
+                }
+                Caption { text: qsTr("Масштаб интерфейса") }
+                ComboBox {
+                    id: appearanceScale
+                    objectName: "appearanceScale"
+                    Layout.fillWidth: true
+                    model: ["100%", "125%", "150%"]
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Ctrl+N — новая задача, Ctrl+F — поиск, Ctrl+1…4 — разделы. Ctrl++/− — масштаб, Ctrl+0 — 100%. Tab — переход между элементами.")
+                }
+                Label {
+                    Layout.fillWidth: true
+                    visible: !!window.backend.appearanceError || (appearanceDialog.attempted && !!window.backend.error)
+                    text: window.backend.appearanceError || window.backend.error
+                    color: window.appearance.colors.warning
+                    wrapMode: Text.Wrap
+                }
+            }
+        }
+        footer: RowLayout {
+            Item { Layout.fillWidth: true }
+            Button {
+                objectName: "cancelAppearance"
+                text: qsTr("Отмена")
+                enabled: !window.backend.busy
+                onClicked: appearanceDialog.close()
+            }
+            AccentButton {
+                objectName: "saveAppearance"
+                text: qsTr("Применить")
+                enabled: !window.backend.busy
+                onClicked: {
+                    appearanceDialog.attempted = true;
+                    window.backend.saveAppearance(
+                        appearanceDialog.themeKeys[appearanceTheme.currentIndex],
+                        appearanceDialog.scales[appearanceScale.currentIndex]);
+                }
+            }
         }
     }
 
@@ -1064,7 +1233,7 @@ ApplicationWindow {
         property bool attempted: false
         title: qsTr("Резервные копии")
         anchors.centerIn: parent
-        width: Math.min(550, window.width - 32)
+        width: Math.min(window.appearance.dp(550), window.width - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ColumnLayout {
@@ -1103,7 +1272,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
                 visible: text.length > 0
-                color: "#a34425"
+                color: window.appearance.colors.warning
                 text: backupDialog.attempted && window.backend.error
                     ? window.backend.error : (window.backend.backups.automaticError || "")
             }
@@ -1141,7 +1310,7 @@ ApplicationWindow {
         id: restoreBackupDialog
         title: qsTr("Восстановить из копии?")
         anchors.centerIn: parent
-        width: Math.min(460, window.width - 32)
+        width: Math.min(window.appearance.dp(460), window.width - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ColumnLayout {
@@ -1162,7 +1331,7 @@ ApplicationWindow {
                 visible: !!window.backend.error
                 text: window.backend.error
                 wrapMode: Text.Wrap
-                color: "#a34425"
+                color: window.appearance.colors.warning
             }
         }
         footer: RowLayout {
@@ -1211,8 +1380,8 @@ ApplicationWindow {
         )
         title: qsTr("Вложения")
         anchors.centerIn: parent
-        width: Math.min(540, window.width - 32)
-        height: Math.min(400, window.height - 32)
+        width: Math.min(window.appearance.dp(540), window.width - 32)
+        height: Math.min(window.appearance.dp(400), window.height - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ColumnLayout {
@@ -1231,13 +1400,13 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
-                spacing: 6
+                spacing: window.appearance.dp(6)
                 model: attachmentDialog.files
                 ScrollBar.vertical: ScrollBar {}
                 delegate: RowLayout {
                     id: attachmentRow
                     required property var modelData
-                    width: ListView.view.width - 12
+                    width: ListView.view.width - window.appearance.dp(12)
                     Label {
                         Layout.fillWidth: true
                         text: attachmentRow.modelData.name
@@ -1294,7 +1463,7 @@ ApplicationWindow {
                 visible: attachmentDialog.attempted && window.backend.error.length > 0
                 text: window.backend.error
                 wrapMode: Text.Wrap
-                color: "#853b22"
+                color: window.appearance.colors.warning
             }
         }
         footer: RowLayout {
@@ -1328,7 +1497,7 @@ ApplicationWindow {
         objectName: "exitFocusDialog"
         title: qsTr("Завершить фокус и выйти?")
         anchors.centerIn: parent
-        width: Math.min(460, window.width - 32)
+        width: Math.min(window.appearance.dp(460), window.width - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ColumnLayout {
@@ -1342,7 +1511,7 @@ ApplicationWindow {
                 visible: window.backend.error.length > 0
                 wrapMode: Text.Wrap
                 text: window.backend.error
-                color: "#853b22"
+                color: window.appearance.colors.warning
             }
         }
         footer: RowLayout {
@@ -1373,7 +1542,7 @@ ApplicationWindow {
         title: mode === "recover" ? qsTr("Проверить окончание сессии")
             : mode === "edit" ? qsTr("Исправить длительность") : qsTr("Запись времени вручную")
         anchors.centerIn: parent
-        width: Math.min(540, window.width - 32)
+        width: Math.min(window.appearance.dp(540), window.width - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
 
@@ -1393,7 +1562,7 @@ ApplicationWindow {
             prepare("recover", {});
         }
         contentItem: ColumnLayout {
-            spacing: 8
+            spacing: window.appearance.dp(8)
             Caption {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
@@ -1441,7 +1610,7 @@ ApplicationWindow {
                 visible: focusRecordEditor.attempted && window.backend.error.length > 0
                 wrapMode: Text.Wrap
                 text: window.backend.error
-                color: "#853b22"
+                color: window.appearance.colors.warning
             }
         }
         footer: RowLayout {
@@ -1475,7 +1644,7 @@ ApplicationWindow {
         property bool attempted: false
         title: qsTr("Начать фокус-сессию")
         anchors.centerIn: parent
-        width: Math.min(460, window.width - 32)
+        width: Math.min(window.appearance.dp(460), window.width - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ColumnLayout {
@@ -1502,7 +1671,7 @@ ApplicationWindow {
                 visible: focusEditor.attempted && window.backend.error.length > 0
                 wrapMode: Text.Wrap
                 text: window.backend.error
-                color: "#853b22"
+                color: window.appearance.colors.warning
             }
         }
         footer: RowLayout {
@@ -1529,8 +1698,8 @@ ApplicationWindow {
         property string taskId: ""
         title: taskId ? qsTr("Изменить задачу") : qsTr("Новая задача")
         anchors.centerIn: parent
-        width: Math.min(550, window.width - 32)
-        height: Math.min(680, window.height - 32)
+        width: Math.min(window.appearance.dp(550), window.width - 32)
+        height: Math.min(window.appearance.dp(680), window.height - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ScrollView {
@@ -1539,7 +1708,7 @@ ApplicationWindow {
             clip: true
             ColumnLayout {
                 width: formScroll.availableWidth
-                spacing: 12
+                spacing: window.appearance.dp(12)
                 enabled: !window.backend.busy
                 Caption {
                     text: qsTr("Название *")
@@ -1573,11 +1742,11 @@ ApplicationWindow {
                     id: descriptionInput
                     objectName: "descriptionInput"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 95
+                    Layout.preferredHeight: window.appearance.dp(95)
                     wrapMode: TextEdit.Wrap
                     background: Rectangle {
-                        color: "#f5f6f0"
-                        radius: 6
+                        color: window.appearance.colors.raised
+                        radius: window.appearance.dp(6)
                     }
                 }
                 RowLayout {
@@ -1627,13 +1796,13 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     visible: window.backend.error.length > 0
                     text: window.backend.error
-                    color: "#a34425"
+                    color: window.appearance.colors.warning
                     wrapMode: Text.Wrap
                 }
             }
         }
         footer: RowLayout {
-            spacing: 10
+            spacing: window.appearance.dp(10)
             Item {
                 Layout.fillWidth: true
             }
@@ -1663,7 +1832,7 @@ ApplicationWindow {
         property string nodeId: ""
         title: qsTr("Название пункта")
         anchors.centerIn: parent
-        width: Math.min(460, window.width - 40)
+        width: Math.min(window.appearance.dp(460), window.width - 40)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ColumnLayout {
@@ -1677,7 +1846,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 visible: window.backend.error.length > 0
                 text: window.backend.error
-                color: "#a34425"
+                color: window.appearance.colors.warning
                 wrapMode: Text.Wrap
             }
         }
@@ -1703,8 +1872,8 @@ ApplicationWindow {
         property var rows: []
         title: qsTr("Вес подзадач")
         anchors.centerIn: parent
-        width: Math.min(490, window.width - 40)
-        height: Math.min(520, window.height - 40)
+        width: Math.min(window.appearance.dp(490), window.width - 40)
+        height: Math.min(window.appearance.dp(520), window.height - 40)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ScrollView {
@@ -1713,7 +1882,7 @@ ApplicationWindow {
             clip: true
             ColumnLayout {
                 width: weightScroll.availableWidth
-                spacing: 12
+                spacing: window.appearance.dp(12)
                 enabled: !window.backend.busy
                 Caption {
                     Layout.fillWidth: true
@@ -1734,7 +1903,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     visible: window.backend.error.length > 0
                     text: window.backend.error
-                    color: "#a34425"
+                    color: window.appearance.colors.warning
                     wrapMode: Text.Wrap
                 }
                 Button {
@@ -1766,7 +1935,7 @@ ApplicationWindow {
         property string nodeTitle: ""
         title: qsTr("Переместить в корзину?")
         anchors.centerIn: parent
-        width: Math.min(460, window.width - 32)
+        width: Math.min(window.appearance.dp(460), window.width - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ColumnLayout {
@@ -1786,7 +1955,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 visible: !!window.backend.error
                 text: window.backend.error
-                color: "#a34425"
+                color: window.appearance.colors.warning
                 wrapMode: Text.Wrap
             }
         }
@@ -1815,8 +1984,8 @@ ApplicationWindow {
         onOpened: selection = []
         title: qsTr("Корзина")
         anchors.centerIn: parent
-        width: Math.min(600, window.width - 32)
-        height: Math.min(560, window.height - 32)
+        width: Math.min(window.appearance.dp(600), window.width - 32)
+        height: Math.min(window.appearance.dp(560), window.height - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ScrollView {
@@ -1825,7 +1994,7 @@ ApplicationWindow {
             clip: true
             ColumnLayout {
                 width: trashScroll.availableWidth
-                spacing: 12
+                spacing: window.appearance.dp(12)
                 Caption {
                     Layout.fillWidth: true
                     text: qsTr("Восстановите родительскую задачу перед её отдельно удалёнными пунктами. Если состав или веса менялись, восстановленный шаг получит новую долю.")
@@ -1893,7 +2062,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     visible: !!window.backend.error
                     text: window.backend.error
-                    color: "#a34425"
+                    color: window.appearance.colors.warning
                     wrapMode: Text.Wrap
                 }
             }
@@ -1924,8 +2093,8 @@ ApplicationWindow {
         property bool attempted: false
         title: qsTr("Удалить без восстановления?")
         anchors.centerIn: parent
-        width: Math.min(500, window.width - 32)
-        height: Math.min(370, window.height - 32)
+        width: Math.min(window.appearance.dp(500), window.width - 32)
+        height: Math.min(window.appearance.dp(370), window.height - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ColumnLayout {
@@ -1951,7 +2120,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 visible: purgeEditor.attempted && !!window.backend.error
                 text: window.backend.error
-                color: "#a34425"
+                color: window.appearance.colors.warning
                 wrapMode: Text.Wrap
             }
         }

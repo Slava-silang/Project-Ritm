@@ -21,6 +21,7 @@ from ritm.domain.statistics import week_start, weekly_statistics
 from ritm.domain.task_list import is_overdue, query_tasks
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.domain.weights import initialize_weights, progress
+from ritm.storage.appearance import DEFAULT, load_appearance, save_appearance
 from ritm.storage.attachments import (
     clean_deleted_attachments,
     copy_attachment,
@@ -225,6 +226,7 @@ class TaskController(QObject):
     calendarChanged = Signal()
     statisticsChanged = Signal()
     backupsChanged = Signal()
+    appearanceChanged = Signal()
     focusChanged = Signal()
     systemPauseDone = Signal()
     actionSucceeded = Signal(str)
@@ -239,6 +241,8 @@ class TaskController(QObject):
         automatic_backup: bool = False,
     ):
         super().__init__()
+        self._appearance = dict(DEFAULT)
+        self._appearance_error = ""
         self._profile = profile
         self._backups = {"folder": str((profile / "backups").absolute())}
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ritm-storage")
@@ -606,6 +610,18 @@ class TaskController(QObject):
     def purgeTrash(self, identifiers):
         self._submit("purge_trash", {"ids": list(identifiers)})
 
+    @Property("QVariantMap", notify=appearanceChanged)
+    def appearance(self):
+        return self._appearance
+
+    @Property(str, notify=appearanceChanged)
+    def appearanceError(self):
+        return self._appearance_error
+
+    @Slot(str, int)
+    def saveAppearance(self, theme, scale):
+        self._submit("appearance", {"theme": theme, "scale": scale})
+
     @Property("QVariantMap", notify=backupsChanged)
     def backups(self):
         return self._backups
@@ -657,7 +673,13 @@ class TaskController(QObject):
     def _run(self, action, data, selected, config, statistics_anchor):
         notice = ""
         backup_state = None
+        appearance_state = None
+        appearance_error = ""
         try:
+            if action == "appearance":
+                appearance_state = save_appearance(self._profile, data["theme"], data["scale"])
+                self._ready.emit(appearance_state, "", action)
+                return
             if action in ("backup_folder", "create_backup", "inspect_backup", "restore_backup"):
                 try:
                     backup_state = self._run_backup(action, data)
@@ -857,6 +879,10 @@ class TaskController(QObject):
                     clean_deleted_attachments(store, self._profile)
                 if data.get("startup") and action == "refresh":
                     try:
+                        appearance_state = load_appearance(self._profile)
+                    except (OSError, ValueError) as error:
+                        appearance_error = str(error)
+                    try:
                         folder = backup_folder(self._profile)
                         backup_state = {"folder": str(folder)}
                         if data["automatic"]:
@@ -966,6 +992,8 @@ class TaskController(QObject):
                     materials,
                     pending_cleanup,
                     backup_state,
+                    appearance_state,
+                    appearance_error,
                 ),
                 "",
                 action,
@@ -1015,6 +1043,11 @@ class TaskController(QObject):
     def _finish(self, result, error, action):
         if self._closing:
             return
+        if action == "appearance" and result is not None:
+            self._appearance = result
+            self._appearance_error = ""
+            self.appearanceChanged.emit()
+            result = None
         if action in ("backup_folder", "create_backup", "inspect_backup"):
             update = result or ({"preview": {}} if action == "inspect_backup" else {})
             self._backups = {**self._backups, **update}
@@ -1041,7 +1074,13 @@ class TaskController(QObject):
                 self._materials,
                 self._pending_cleanup,
                 backup_state,
+                appearance_state,
+                appearance_error,
             ) = result
+            if appearance_state is not None or appearance_error:
+                self._appearance = appearance_state or dict(DEFAULT)
+                self._appearance_error = appearance_error
+                self.appearanceChanged.emit()
             if backup_state is not None:
                 self._backups = {**self._backups, **backup_state}
                 self.backupsChanged.emit()
