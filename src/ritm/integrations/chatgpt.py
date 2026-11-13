@@ -4,10 +4,12 @@ import base64
 import hashlib
 import json
 import secrets
+import socket
+import ssl
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Event
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, build_opener
 from urllib.request import Request as HTTPRequest
@@ -26,7 +28,16 @@ DIRECT = "chatgpt.tokens.use.direct"
 class ChatGPTError(Exception):
     MESSAGES = {
         "cancelled": "Запрос отменён.",
-        "network": "Нет связи с ChatGPT. Повторите попытку позже.",
+        "network": "Нет связи с ChatGPT. Проверьте подключение к сети.",
+        "dns": "DNS: не удалось определить адрес сервера ChatGPT.",
+        "tls": (
+            "TLS: защищённое соединение с ChatGPT оборвалось до ответа сервера. "
+            "Проверьте доступ к серверу и настройки VPN/прокси для приложения."
+        ),
+        "certificate": (
+            "TLS: не удалось проверить сертификат сервера ChatGPT. "
+            "Проверьте дату компьютера и доверенные сертификаты."
+        ),
         "identity": "Не удалось проверить вход. Выполните вход снова.",
         "permission": (
             "Аккаунт подключён, но использование подписки не разрешено. "
@@ -44,9 +55,14 @@ class ChatGPTError(Exception):
         ),
     }
 
-    def __init__(self, kind, *, terminal=False):
-        super().__init__(self.MESSAGES[kind])
-        self.kind, self.terminal = kind, terminal
+    def __init__(self, kind, *, terminal=False, stage="", status=None):
+        self.kind, self.terminal, self.stage, self.status = kind, terminal, stage, status
+        message = self.MESSAGES[kind]
+        if stage:
+            message = f"{stage}: {message}"
+        if status is not None:
+            message += f" (HTTP {status})"
+        super().__init__(message)
 
 
 def api_error(status, data):
@@ -75,6 +91,35 @@ def api_error(status, data):
     }:
         return ChatGPTError("unavailable")
     return ChatGPTError("network")
+
+
+def connection_stage(url):
+    # Только наши статические подписи: URL, query, proxy и тело сервера не показываем.
+    path = urlsplit(url).path
+    if path.endswith("openid-configuration"):
+        return "Загрузка настроек входа"
+    if "jwks" in path:
+        return "Проверка подписи входа"
+    if path.endswith("/models"):
+        return "Загрузка моделей"
+    if path.endswith("/responses"):
+        return "Запрос к модели"
+    return "Подключение аккаунта"
+
+
+def connection_error(error, url):
+    reason = error.reason if isinstance(error, URLError) else error
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        kind = "certificate"
+    elif isinstance(reason, ssl.SSLError):
+        kind = "tls"
+    elif isinstance(reason, socket.gaierror):
+        kind = "dns"
+    elif isinstance(reason, TimeoutError):
+        kind = "timeout"
+    else:
+        kind = "network"
+    return ChatGPTError(kind, stage=connection_stage(url))
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -107,13 +152,22 @@ class Transport:
                 body = json.loads(error.read(65536))
             except (ValueError, OSError):
                 body = {}
-            raise api_error(error.code, body) from None
-        except OSError:
-            raise ChatGPTError("network") from None
+            failure = api_error(error.code, body)
+            raise ChatGPTError(
+                failure.kind,
+                terminal=failure.terminal,
+                stage=connection_stage(url),
+                status=error.code,
+            ) from None
+        except OSError as error:
+            raise connection_error(error, url) from None
 
     def json(self, url, **kwargs):
-        with self.open(url, **kwargs) as response:
-            data = response.read(1_000_001)
+        try:
+            with self.open(url, **kwargs) as response:
+                data = response.read(1_000_001)
+        except OSError as error:
+            raise connection_error(error, url) from None
         if len(data) > 1_000_000:
             raise ChatGPTError("response")
         try:

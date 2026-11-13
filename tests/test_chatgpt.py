@@ -1,5 +1,6 @@
 import io
 import json
+import ssl
 import time
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
@@ -416,3 +417,80 @@ def test_locked_system_collection_falls_back_without_unlock_dialog(tmp_path, mon
     assert vault.warning and vault.memory["access_token"] == "memory-only"
     assert calls == ["closed"]
     assert list(tmp_path.iterdir()) == []
+
+
+def test_connection_error_reports_safe_stage_and_network_cause():
+    import socket
+    from urllib.error import URLError
+
+    from ritm.integrations.chatgpt import Transport
+
+    transport = Transport()
+
+    class Unresolvable:
+        def open(self, *args, **kwargs):
+            raise URLError(socket.gaierror(-2, "private diagnostics must not be displayed"))
+
+    transport.opener = Unresolvable()
+    with pytest.raises(ChatGPTError) as failure:
+        transport.json(ISSUER + "/.well-known/openid-configuration")
+    message = str(failure.value)
+    assert "DNS" in message and "входа" in message
+    assert "private diagnostics" not in message
+
+
+@pytest.mark.parametrize(
+    "reason,kind,label",
+    [
+        (ssl.SSLEOFError(8, "private proxy diagnostic"), "tls", "TLS"),
+        (
+            ssl.SSLCertVerificationError(1, "private certificate"),
+            "certificate",
+            "сертификат",
+        ),
+        (TimeoutError("private address"), "timeout", "ожидания"),
+        (ConnectionRefusedError("private address"), "network", "связи"),
+    ],
+)
+def test_transport_distinguishes_safe_network_errors(reason, kind, label):
+    from urllib.error import URLError
+
+    from ritm.integrations.chatgpt import Transport
+
+    transport = Transport()
+
+    class Broken:
+        def open(self, *args, **kwargs):
+            raise URLError(reason)
+
+    transport.opener = Broken()
+    with pytest.raises(ChatGPTError) as failure:
+        transport.json(ISSUER + "/.well-known/openid-configuration")
+    assert failure.value.kind == kind
+    assert label in str(failure.value) and "входа" in str(failure.value)
+    assert "private" not in str(failure.value)
+
+
+def test_transport_http_error_retains_only_safe_status_and_stage():
+    from urllib.error import HTTPError
+
+    from ritm.integrations.chatgpt import Transport
+
+    transport = Transport()
+
+    class Rejected:
+        def open(self, *args, **kwargs):
+            raise HTTPError(
+                ISSUER + "/private?code=secret",
+                503,
+                "private",
+                {},
+                io.BytesIO(b'{"detail":"secret access token"}'),
+            )
+
+    transport.opener = Rejected()
+    with pytest.raises(ChatGPTError) as failure:
+        transport.json(ISSUER + "/.well-known/openid-configuration")
+    assert failure.value.status == 503
+    assert "HTTP 503" in str(failure.value) and "входа" in str(failure.value)
+    assert "secret" not in str(failure.value) and "private" not in str(failure.value)

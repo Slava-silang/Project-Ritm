@@ -12,7 +12,7 @@ from PySide6.QtQuickControls2 import QQuickStyle
 from test_chatgpt import Keyring, Server
 
 from ritm.app import load_window
-from ritm.integrations.chatgpt import ChatGPTSession
+from ritm.integrations.chatgpt import ChatGPTError, ChatGPTSession
 from ritm.platform.credentials import CredentialVault
 from ritm.ui.assistant import AssistantController
 from ritm.ui.connection import ConnectionController
@@ -60,6 +60,13 @@ try:
     gui.click("assistantButton")
     gui.click("connectionExpand")
     assert not gui.item("chatgptProbe").isEnabled()
+    server.failure = ChatGPTError("tls", stage="Загрузка настроек входа")
+    gui.click("chatgptLogin")
+    gui.wait_for(lambda: not connection.state["busy"])
+    assert "TLS" in connection.state["error"] and "входа" in connection.state["error"]
+    assert not connection.state["connected"]
+    gui.screenshot(profile / "chatgpt-network-error.png")
+    server.failure = None
     gui.click("chatgptLogin")
     gui.wait_for(lambda: not connection.state["busy"])
     assert connection.state["connected"] and connection.state["sharing"], connection.state
