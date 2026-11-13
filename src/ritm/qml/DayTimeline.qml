@@ -5,25 +5,26 @@ import QtQuick.Controls
 Rectangle {
     id: timeline
     required property var backend
+    required property var appearance
     required property var view
     signal editBlock(var entry)
-    property real minuteHeight: 1.2
-    implicitHeight: 64 + (view.timelineMinutes || 1440) * minuteHeight + 20
-    radius: 14
-    color: "#ffffff"
+    property real minuteHeight: timeline.appearance.dp(1.2)
+    implicitHeight: timeline.appearance.dp(84) + (view.timelineMinutes || 1440) * minuteHeight
+    radius: timeline.appearance.dp(14)
+    color: timeline.appearance.colors.surface
     Label {
-        x: 14
-        y: 12
+        x: timeline.appearance.dp(14)
+        y: timeline.appearance.dp(12)
         text: qsTr("Шкала дня · ") + (timeline.view.selectedLabel || "")
-        color: "#243d33"
-        font.pixelSize: 18
+        color: timeline.appearance.colors.text
+        font.pixelSize: timeline.appearance.dp(18)
         font.bold: true
     }
     Item {
         id: chart
-        x: 8
-        y: 58
-        width: parent.width - 16
+        x: timeline.appearance.dp(8)
+        y: timeline.appearance.dp(58)
+        width: parent.width - timeline.appearance.dp(16)
         height: (timeline.view.timelineMinutes || 1440) * timeline.minuteHeight
         Repeater {
             model: timeline.view.ticks || []
@@ -33,17 +34,17 @@ Rectangle {
                 y: modelData.minute * timeline.minuteHeight
                 width: chart.width
                 Label {
-                    width: 80
-                    y: -8
+                    width: timeline.appearance.dp(80)
+                    y: -timeline.appearance.dp(8)
                     text: tick.modelData.label
-                    color: "#69766d"
-                    font.pixelSize: 11
+                    color: timeline.appearance.colors.muted
+                    font.pixelSize: timeline.appearance.dp(11)
                 }
                 Rectangle {
-                    x: 84
-                    width: Math.max(0, parent.width - 84)
-                    height: 1
-                    color: "#e5eadd"
+                    x: timeline.appearance.dp(84)
+                    width: Math.max(0, parent.width - timeline.appearance.dp(84))
+                    height: timeline.appearance.dp(1)
+                    color: timeline.appearance.colors.track
                 }
             }
         }
@@ -55,14 +56,14 @@ Rectangle {
                 property int previewDelta: 0
                 property string gesture: "move"
                 property bool pending: false
-                x: 86 + (chart.width - 88) * modelData.lane / timeline.view.timelineLanes
+                x: timeline.appearance.dp(86) + (chart.width - timeline.appearance.dp(88)) * modelData.lane / timeline.view.timelineLanes
                 y: modelData.offsetMinutes * timeline.minuteHeight + (gesture === "move" ? previewDelta * timeline.minuteHeight : 0)
-                width: (chart.width - 88) / timeline.view.timelineLanes - 4
-                height: Math.max(44, modelData.segmentMinutes * timeline.minuteHeight + (gesture === "resize" ? previewDelta * timeline.minuteHeight : 0))
+                width: (chart.width - timeline.appearance.dp(88)) / timeline.view.timelineLanes - timeline.appearance.dp(4)
+                height: Math.max(timeline.appearance.dp(44), modelData.segmentMinutes * timeline.minuteHeight + (gesture === "resize" ? previewDelta * timeline.minuteHeight : 0))
                 z: previewDelta !== 0 ? 3 : 1
-                radius: 8
-                color: previewDelta !== 0 ? "#d2e4c8" : modelData.isEvent ? "#eee6f5" : "#e6efdf"
-                border.color: modelData.warning ? "#b96d40" : "#6e9578"
+                radius: timeline.appearance.dp(8)
+                color: previewDelta !== 0 ? timeline.appearance.colors.selection : modelData.isEvent ? timeline.appearance.colors.event : timeline.appearance.colors.work
+                border.color: modelData.warning ? timeline.appearance.colors.warning : timeline.appearance.colors.border
                 border.width: pending || previewDelta !== 0 ? 2 : 1
                 Connections {
                     target: timeline.backend
@@ -87,23 +88,23 @@ Rectangle {
                     });
                 }
                 Column {
-                    x: 7
-                    y: 4
-                    width: parent.width - 36
+                    x: timeline.appearance.dp(7)
+                    y: timeline.appearance.dp(4)
+                    width: parent.width - timeline.appearance.dp(36)
                     Label {
                         width: parent.width
                         text: blockItem.modelData.time
-                        font.pixelSize: 11
+                        font.pixelSize: timeline.appearance.dp(11)
                         font.bold: true
-                        color: "#2b5949"
+                        color: timeline.appearance.colors.accent
                         elide: Text.ElideRight
                     }
                     Label {
                         width: parent.width
                         textFormat: Text.PlainText
                         text: blockItem.modelData.title
-                        font.pixelSize: 12
-                        color: "#243d33"
+                        font.pixelSize: timeline.appearance.dp(12)
+                        color: timeline.appearance.colors.text
                         elide: Text.ElideRight
                     }
                     Label {
@@ -111,21 +112,21 @@ Rectangle {
                         visible: !!blockItem.modelData.warning && blockItem.height >= 60
                         text: blockItem.modelData.warning
                         elide: Text.ElideRight
-                        color: "#9a4b24"
-                        font.pixelSize: 11
+                        color: timeline.appearance.colors.warning
+                        font.pixelSize: timeline.appearance.dp(11)
                     }
                     Label {
                         visible: blockItem.previewDelta !== 0
                         text: (blockItem.previewDelta > 0 ? "+" : "") + blockItem.previewDelta + qsTr(" мин")
-                        color: "#2b5949"
-                        font.pixelSize: 11
+                        color: timeline.appearance.colors.accent
+                        font.pixelSize: timeline.appearance.dp(11)
                     }
                 }
                 MouseArea {
                     id: mover
                     objectName: "timelineMove_" + blockItem.modelData.id
                     anchors.fill: parent
-                    anchors.bottomMargin: 10
+                    anchors.bottomMargin: timeline.appearance.dp(10)
                     preventStealing: true
                     enabled: !timeline.backend.busy && blockItem.modelData.canMove
                     hoverEnabled: true
@@ -160,8 +161,8 @@ Rectangle {
                     objectName: "timelineEdit_" + blockItem.modelData.id
                     anchors.right: parent.right
                     anchors.top: parent.top
-                    width: 27
-                    height: 28
+                    width: timeline.appearance.dp(27)
+                    height: timeline.appearance.dp(28)
                     text: "⋯"
                     enabled: !timeline.backend.busy
                     Accessible.name: qsTr("Изменить рабочий блок")
@@ -171,9 +172,9 @@ Rectangle {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
-                    height: 9
-                    radius: 4
-                    color: blockItem.modelData.canResize ? (blockItem.modelData.isEvent ? "#9784ad" : "#7c9c79") : "#c4d3bc"
+                    height: timeline.appearance.dp(9)
+                    radius: timeline.appearance.dp(4)
+                    color: blockItem.modelData.canResize ? (blockItem.modelData.isEvent ? timeline.appearance.colors.eventAccent : timeline.appearance.colors.work) : timeline.appearance.colors.track
                     MouseArea {
                         objectName: "timelineResize_" + blockItem.modelData.id
                         anchors.fill: parent

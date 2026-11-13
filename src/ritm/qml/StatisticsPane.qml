@@ -6,6 +6,7 @@ import QtQuick.Layouts
 ScrollView {
     id: pane
     required property var backend
+    required property var appearance
     property var week: backend ? backend.statistics : ({})
     signal openTask(string identifier)
     contentWidth: availableWidth
@@ -13,7 +14,7 @@ ScrollView {
 
     ColumnLayout {
         width: pane.availableWidth
-        spacing: 16
+        spacing: pane.appearance.dp(16)
 
         RowLayout {
             Layout.fillWidth: true
@@ -43,7 +44,7 @@ ScrollView {
         Label {
             Layout.fillWidth: true
             text: pane.week.period || ""
-            font.pixelSize: 22
+            font.pixelSize: pane.appearance.dp(22)
             font.weight: Font.DemiBold
         }
         Label {
@@ -65,26 +66,26 @@ ScrollView {
             value: pane.week.percent || 0
             background: null
             contentItem: Rectangle {
-                implicitHeight: 8
-                radius: 4
-                color: "#e0e7dc"
+                implicitHeight: pane.appearance.dp(8)
+                radius: pane.appearance.dp(4)
+                color: pane.appearance.colors.track
                 Rectangle {
                     width: parent.width * weeklyProgress.position
                     height: parent.height
-                    radius: 4
-                    color: "#2b5949"
+                    radius: pane.appearance.dp(4)
+                    color: pane.appearance.colors.accent
                 }
             }
         }
         Flow {
             Layout.fillWidth: true
-            spacing: 16
+            spacing: pane.appearance.dp(16)
             Label {
                 text: qsTr("Завершено за выбранную неделю: %1").arg(pane.week.completedCount || 0)
             }
             Label {
                 text: qsTr("Просрочено сейчас: %1").arg(pane.week.overdueCount || 0)
-                color: pane.week.overdueCount ? "#a34425" : "#69766d"
+                color: pane.week.overdueCount ? pane.appearance.colors.warning : pane.appearance.colors.muted
             }
         }
         Label {
@@ -93,19 +94,19 @@ ScrollView {
             visible: !!pane.week.undatedCount
             text: qsTr("Завершённых задач без даты: %1. Они не входят в недельный счётчик.")
                 .arg(pane.week.undatedCount || 0)
-            color: "#69766d"
+            color: pane.appearance.colors.muted
         }
 
         Label {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
             text: qsTr("Время фокуса по дням · %1").arg(pane.week.totalFocus || "00:00:00")
-            font.pixelSize: 18
+            font.pixelSize: pane.appearance.dp(18)
             font.weight: Font.DemiBold
         }
         Label {
             text: qsTr("По завершённым сессиям")
-            color: "#69766d"
+            color: pane.appearance.colors.muted
         }
         Repeater {
             model: pane.week.days || []
@@ -114,19 +115,19 @@ ScrollView {
                 required property var modelData
                 Layout.fillWidth: true
                 Label {
-                    Layout.preferredWidth: 90
+                    Layout.preferredWidth: pane.appearance.dp(90)
                     text: dayRow.modelData.label
                 }
                 Rectangle {
                     Layout.fillWidth: true
-                    implicitHeight: 8
-                    radius: 4
-                    color: "#e0e7dc"
+                    implicitHeight: pane.appearance.dp(8)
+                    radius: pane.appearance.dp(4)
+                    color: pane.appearance.colors.track
                     Rectangle {
                         width: parent.width * dayRow.modelData.fraction
                         height: parent.height
-                        radius: 4
-                        color: "#2b5949"
+                        radius: pane.appearance.dp(4)
+                        color: pane.appearance.colors.accent
                     }
                 }
                 Label {
@@ -137,7 +138,7 @@ ScrollView {
         Label {
             Layout.fillWidth: true
             text: qsTr("По задачам")
-            font.pixelSize: 18
+            font.pixelSize: pane.appearance.dp(18)
             font.weight: Font.DemiBold
             visible: !!(pane.week.tasks || []).length
         }
@@ -163,7 +164,7 @@ ScrollView {
                             .arg(taskRow.modelData.expected
                                 ? qsTr("%1 мин").arg(taskRow.modelData.expected) : qsTr("нет"))
                             .arg(taskRow.modelData.time)
-                        color: "#69766d"
+                        color: pane.appearance.colors.muted
                     }
                 }
                 Button {

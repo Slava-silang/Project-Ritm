@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
+from ritm.application.drafts import Draft, parse_draft
 from ritm.domain import completion, weights
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.storage.sqlite import TaskStore
@@ -16,6 +17,14 @@ _UNCHANGED = object()
 class TaskService:
     def __init__(self, store: TaskStore):
         self._store = store
+
+    def apply_proposal(self, draft: Draft) -> UUID:
+        checked = parse_draft(draft.id, draft.payload, draft.baseline)
+        if checked.task != draft.task:
+            raise ValueError("Содержимое черновика не соответствует проверенному предложению")
+        return self._store.apply_proposal(
+            checked.id, checked.digest, checked.baseline, checked.task
+        )
 
     def set_completed(self, task_id: UUID, node_id: UUID, completed: bool) -> Task:
         return self._store.update_task(

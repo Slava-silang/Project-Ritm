@@ -14,7 +14,7 @@ from ritm.storage.attachments import Attachment
 from ritm.storage.codec import decode_task, encode_task
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 SCHEMA = (
     "CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL, "
     "title TEXT NOT NULL CHECK(length(trim(title))>0))",
@@ -155,6 +155,12 @@ CLEANUP_SCHEMA = """CREATE TABLE attachment_cleanup (
     suffix TEXT NOT NULL
 )"""
 
+PROPOSAL_SCHEMA = """CREATE TABLE applied_proposals (
+    id TEXT PRIMARY KEY NOT NULL,
+    digest TEXT NOT NULL CHECK(length(digest)=64),
+    task_id TEXT NOT NULL
+)"""
+
 ATTACHMENT_OWNER = """
     FROM nodes n
     LEFT JOIN nodes parent ON parent.id=n.parent_id
@@ -184,7 +190,7 @@ class TaskStore:
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in (1, 2, 3, 4, 5, 6, 7, 8) and app_id == APPLICATION_ID:
+            if version in (1, 2, 3, 4, 5, 6, 7, 8, 9) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -203,7 +209,9 @@ class TaskStore:
                 if version < 8:
                     for statement in MATERIAL_SCHEMA:
                         self._db.execute(statement)
-                self._db.execute(CLEANUP_SCHEMA)
+                if version < 9:
+                    self._db.execute(CLEANUP_SCHEMA)
+                self._db.execute(PROPOSAL_SCHEMA)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._db.commit()
                 return
@@ -222,6 +230,7 @@ class TaskStore:
             for statement in MATERIAL_SCHEMA:
                 self._db.execute(statement)
             self._db.execute(CLEANUP_SCHEMA)
+            self._db.execute(PROPOSAL_SCHEMA)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             self._db.commit()
@@ -271,6 +280,33 @@ class TaskStore:
             if category is not None:
                 self._write_category(category)
             self._write_task(task)
+
+    def apply_proposal(
+        self, identifier: UUID, digest: str, before: Task | None, task: Task
+    ) -> UUID:
+        """Проверка снимка, запись дерева и квитанция — одна транзакция."""
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            receipt = self._db.execute(
+                "SELECT digest,task_id FROM applied_proposals WHERE id=?", (str(identifier),)
+            ).fetchone()
+            if receipt is not None:
+                if receipt["digest"] != digest:
+                    raise ValueError("Этот черновик уже применён с другим содержимым")
+                return UUID(receipt["task_id"])
+            if before is None:
+                if self._db.execute(
+                    "SELECT 1 FROM task_identities WHERE id=?", (str(task.id),)
+                ).fetchone():
+                    raise ValueError("Задача с таким идентификатором уже существует")
+            elif task.id != before.id or self.get_task(before.id) != before:
+                raise ValueError("Задача изменилась или удалена. Сформируйте новый черновик.")
+            self._write_task(task)
+            self._db.execute(
+                "INSERT INTO applied_proposals VALUES (?,?,?)",
+                (str(identifier), digest, str(task.id)),
+            )
+            return task.id
 
     def update_task(
         self, identifier: UUID, transform: Callable[[Task], Task], category: Category | None = None

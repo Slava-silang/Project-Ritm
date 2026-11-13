@@ -8,7 +8,12 @@ dynamic = ["version"]
 description = "Личный планировщик задач и времени на PySide6 и QML"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-dependencies = ["PySide6>=6.8,<7"]
+dependencies = [
+    "keyring>=25,<26",
+    "pyjwt[crypto]>=2.10,<3",
+    "pypdf>=6,<8",
+    "PySide6>=6.8,<7",
+]
 
 [project.gui-scripts]
 ritm = "ritm.app:main"
