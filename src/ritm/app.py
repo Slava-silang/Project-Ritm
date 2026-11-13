@@ -15,10 +15,10 @@ from ritm import __version__
 from ritm.ui.tasks import TaskController
 
 
-def load_window(controller: TaskController, desktop=None) -> QQmlApplicationEngine:
+def load_window(controller: TaskController, desktop=None, assistant=None) -> QQmlApplicationEngine:
     """Загрузить ресурсы установленного пакета независимо от рабочей папки."""
     engine = QQmlApplicationEngine()
-    engine.setInitialProperties({"backend": controller, "desktop": desktop})
+    engine.setInitialProperties({"backend": controller, "desktop": desktop, "assistant": assistant})
     qml_path = Path(__file__).resolve().parent / "qml" / "Main.qml"
     engine.load(QUrl.fromLocalFile(str(qml_path)))
     if not engine.rootObjects():
@@ -73,6 +73,7 @@ def main() -> int:
     engine = None
     power = None
     desktop = None
+    assistant = None
     try:
         if not args.smoke_test:
             from ritm.platform.desktop import DesktopIntegration
@@ -94,7 +95,11 @@ def main() -> int:
                 command,
                 supported=sys.platform.startswith("linux"),
             )
-        engine = load_window(controller, desktop)
+        if not args.smoke_test:
+            from ritm.ui.assistant import AssistantController
+
+            assistant = AssistantController(profile)
+        engine = load_window(controller, desktop, assistant)
         if desktop is not None:
             desktop.attach(engine.rootObjects()[0], args.start_hidden)
         if sys.platform.startswith("linux") and not args.smoke_test:
@@ -108,6 +113,8 @@ def main() -> int:
         print(error, file=sys.stderr)
         return 1
     finally:
+        if assistant is not None:
+            assistant.close()
         if desktop is not None:
             desktop.close()
         if power is not None:

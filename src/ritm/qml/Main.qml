@@ -6,6 +6,7 @@ import QtQuick.Layouts
 
 ApplicationWindow {
     id: window
+    property var assistant: null
     property var desktop: null
     required property var backend
     property alias appearance: uiAppearance
@@ -82,7 +83,7 @@ ApplicationWindow {
     ].concat(window.backend.categories)
 
     property bool modalOpen: [
-        systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
+        assistantDialog, systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
@@ -435,6 +436,13 @@ ApplicationWindow {
                     backupDialog.attempted = false;
                     backupDialog.open();
                 }
+            }
+            Button {
+                objectName: "assistantButton"
+                text: qsTr("Помощник (тест)")
+                visible: !!window.assistant
+                enabled: !window.backend.busy
+                onClicked: assistantDialog.open()
             }
             Button {
                 objectName: "systemButton"
@@ -1519,6 +1527,17 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    AssistantDialog {
+        id: assistantDialog
+        agent: window.assistant
+        taskBackend: window.backend
+        uiAppearance: window.appearance
+        parent: window.contentItem
+        anchors.centerIn: parent
+        width: Math.min(window.appearance.dp(760), window.width - 32)
+        height: window.height - 32
     }
 
     EditorDialog {

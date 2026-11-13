@@ -221,10 +221,14 @@ def _validate_database(path: Path) -> dict[UUID, str]:
     # This archive format was introduced with schema v9. Validate against the
     # application's own schema before opening any data through TaskStore.
     with TaskStore(Path(":memory:")) as reference, closing(_sqlite(path, "ro")) as db:
+        version = db.execute("PRAGMA user_version").fetchone()[0]
+        expected = [tuple(row) for row in schema(reference._db)]
+        if version == 9:
+            expected = [row for row in expected if row[0] != "applied_proposals"]
         if (
             db.execute("PRAGMA application_id").fetchone()[0] != APPLICATION_ID
-            or db.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION
-            or schema(db) != [tuple(row) for row in schema(reference._db)]
+            or version not in (9, SCHEMA_VERSION)
+            or schema(db) != expected
             or db.execute("PRAGMA integrity_check").fetchall() != [("ok",)]
             or db.execute("PRAGMA foreign_key_check").fetchone() is not None
         ):

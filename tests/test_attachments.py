@@ -85,6 +85,7 @@ def test_v6_profile_migrates_without_rewriting_task_or_focus(tmp_path):
         store.create_task(task)
         completed = store.list_completion_dates()
     with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE applied_proposals")
         db.execute("DROP TABLE attachment_cleanup")
         db.execute("DROP TABLE material_links")
         db.execute("DROP TABLE materials")
@@ -134,6 +135,7 @@ def test_library_links_survive_restart_and_trash_without_copying(tmp_path):
         service.create_task(second)
         direct = attachments.copy_attachment(store, tmp_path, second.id, second.id, source)
     with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE applied_proposals")
         db.execute("DROP TABLE attachment_cleanup")
         db.execute("DROP TABLE material_links")
         db.execute("DROP TABLE materials")
