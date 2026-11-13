@@ -6,6 +6,7 @@ import QtQuick.Layouts
 
 ApplicationWindow {
     id: window
+    property var connection: null
     property var assistant: null
     property var desktop: null
     required property var backend
@@ -439,7 +440,7 @@ ApplicationWindow {
             }
             Button {
                 objectName: "assistantButton"
-                text: qsTr("Помощник (тест)")
+                text: window.assistant && window.assistant.state.provider !== "mock" ? qsTr("Помощник") : qsTr("Помощник (тест)")
                 visible: !!window.assistant
                 enabled: !window.backend.busy
                 onClicked: assistantDialog.open()
@@ -1531,6 +1532,7 @@ ApplicationWindow {
 
     AssistantDialog {
         id: assistantDialog
+        connection: window.connection
         agent: window.assistant
         taskBackend: window.backend
         uiAppearance: window.appearance

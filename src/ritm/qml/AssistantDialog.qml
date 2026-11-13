@@ -6,6 +6,7 @@ import QtQuick.Layouts
 Dialog {
     id: dialog
     objectName: "assistantDialog"
+    property var connection: null
     required property var agent
     required property var taskBackend
     required property var uiAppearance
@@ -13,7 +14,7 @@ Dialog {
     property var form: ({})
     property bool dirty: false
     property bool editing: false
-    title: qsTr("Тестовый помощник — без сети")
+    title: state.provider === "chatgpt" ? qsTr("Помощник — подписка ChatGPT") : qsTr("Тестовый помощник — без сети")
     modal: false
     closePolicy: state.saving ? Popup.NoAutoClose : Popup.CloseOnEscape
     onClosed: if (agent) agent.cancel()
@@ -71,7 +72,16 @@ Dialog {
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
-                text: qsTr("Сейчас используется локальный шаблон для проверки черновиков. Запросы никуда не отправляются. Вход в аккаунт и настоящий чат появятся на следующих этапах.")
+                text: dialog.state.provider === "chatgpt"
+                    ? qsTr("Запрос и выбранная задача отправятся в OpenAI по вашему действию. Используется подписка ChatGPT. Изменения сохраняются после подтверждения.")
+                    : qsTr("Сейчас используется локальный шаблон. Текст запроса и задач не передаётся модели. Подключение аккаунта — ниже.")
+            }
+            ConnectionPane {
+                Layout.fillWidth: true
+                visible: !!dialog.connection
+                connection: dialog.connection
+                agent: dialog.agent
+                uiAppearance: dialog.uiAppearance
             }
             ComboBox {
                 id: operation
@@ -97,8 +107,9 @@ Dialog {
             }
             Button {
                 objectName: "assistantGenerate"
-                text: dialog.state.busy ? qsTr("Подготовка…") : qsTr("Сформировать тестовый черновик")
+                text: dialog.state.busy ? qsTr("Подготовка…") : (dialog.state.provider === "chatgpt" ? qsTr("Отправить запрос и получить черновик") : qsTr("Сформировать тестовый черновик"))
                 enabled: !dialog.state.busy && !dialog.state.hasDraft && !dialog.taskBackend.busy
+                    && (!dialog.connection || !dialog.connection.state.busy)
                     && (operation.currentIndex === 0 || !!dialog.taskBackend.detail.id)
                 onClicked: dialog.agent.generate(prompt.text, operation.currentIndex === 1 ? dialog.taskBackend.detail.id : "")
             }

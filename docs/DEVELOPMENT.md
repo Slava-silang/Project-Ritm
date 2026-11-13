@@ -28,7 +28,7 @@ uv run ritm
 uv run pytest
 uv run ruff check .
 uv run ruff format --check .
-uv run pyside6-qmllint src/ritm/qml/Main.qml src/ritm/qml/CalendarPane.qml src/ritm/qml/DayTimeline.qml src/ritm/qml/StatisticsPane.qml src/ritm/qml/Appearance.qml src/ritm/qml/AssistantDialog.qml
+uv run pyside6-qmllint src/ritm/qml/Main.qml src/ritm/qml/CalendarPane.qml src/ritm/qml/DayTimeline.qml src/ritm/qml/StatisticsPane.qml src/ritm/qml/Appearance.qml src/ritm/qml/AssistantDialog.qml src/ritm/qml/ConnectionPane.qml
 ```
 
 Диагностика: `uv run ritm --smoke-test` открывает и закрывает окно автоматически; `uv run ritm --version` выводит версию. Альтернативный запуск: `uv run python -m ritm`.
@@ -252,3 +252,12 @@ Linux-адаптер создаёт только после включения �
 SQLite v10 добавляет applied_proposals: ID черновика, хеш результата и ID задачи без текста запроса/ответа. Запись дерева и квитанции выполняется одной транзакцией. Повтор не создаёт задачу снова, включая повтор после её удаления. Квитанции входят в новые резервные копии; архивы v9 проверяются по точной старой схеме и мигрируются только во временной папке восстановления. Черновики и запросы пока только в памяти; история и полноценный чат — T24. Вход через аккаунт — T23.
 
 Проверки T22: `uv run --locked pytest tests/test_assistant_drafts.py -q`; настоящий X11: `RITM_UI_PLATFORM=xcb uv run --locked pytest tests/test_assistant_drafts.py::test_assistant_gui_and_cancelled_late_response -q`. Тесты используют временные профили и подменные адаптеры. Самостоятельная поставка пока T02, AssistantDialog.qml добавлен в конфигурацию будущей пересборки.
+
+
+## T23 — подключение по аккаунту (ожидает реальной проверки)
+
+Добавлены зафиксированные keyring 25.7.0, PyJWT 2.15.1, cryptography 50.0.2 и их зависимости. Окружение обновлено через `uv add`; воспроизведение — `uv sync --locked`. Системный Python не изменён.
+
+Порядок входа, отдельное согласие на тест и ограничения описаны в [CHATGPT_CONNECTION.md](CHATGPT_CONNECTION.md). На старте приложение не читает токены и не выполняет сетевые запросы. Секреты — Secret Service либо память; в профиле появляется только несекретная регистрация после начала входа. SQLite v10 не менялась. Новая панель включена в pysidedeploy.spec, но самостоятельная сборка пока T02.
+
+`uv run --locked pytest tests/test_chatgpt.py -q` проверяет подменный OAuth и реальный loopback 127.0.0.1; среда должна разрешать локальные сокеты. Для X11: `RITM_UI_PLATFORM=xcb uv run --locked pytest tests/test_chatgpt.py::test_connection_gui_with_fake_account -q`. Системный браузер и реальные аккаунты в этих проверках не используются. В T23 финальная живая проверка ещё не выполнена.

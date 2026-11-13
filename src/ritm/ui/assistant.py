@@ -13,6 +13,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from ritm.application.drafts import parse_draft
 from ritm.application.tasks import TaskService
 from ritm.integrations.assistant import Adapter, MockAdapter, Request
+from ritm.integrations.chatgpt import ChatGPTError
 from ritm.storage.sqlite import TaskStore
 
 
@@ -93,6 +94,7 @@ class AssistantController(QObject):
         self._draft = None
         self._busy, self._error = True, ""
         self.changed.emit()
+        adapter = self.adapter
 
         def work():
             try:
@@ -101,11 +103,13 @@ class AssistantController(QObject):
                 if target_id and selected is None:
                     raise ValueError("Выбранная задача удалена. Обновите список.")
                 request = Request(identifier, prompt, operation, selected)
-                response = self.adapter.generate(request, cancelled)
+                response = adapter.generate(request, cancelled)
                 if cancelled.is_set():
                     return
                 draft = parse_draft(identifier, response, selected)
                 self._ready.emit(identifier, "generate", draft, "")
+            except ChatGPTError as error:
+                self._ready.emit(identifier, "generate", None, str(error))
             except Exception:
                 self._ready.emit(
                     identifier,

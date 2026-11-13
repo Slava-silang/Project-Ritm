@@ -10,7 +10,7 @@ icon =
 packages = Nuitka,ordered-set,zstandard
 
 [qt]
-qml_files = src/ritm/qml/Main.qml,src/ritm/qml/CalendarPane.qml,src/ritm/qml/DayTimeline.qml,src/ritm/qml/StatisticsPane.qml,src/ritm/qml/Appearance.qml,src/ritm/qml/AssistantDialog.qml
+qml_files = src/ritm/qml/Main.qml,src/ritm/qml/CalendarPane.qml,src/ritm/qml/DayTimeline.qml,src/ritm/qml/StatisticsPane.qml,src/ritm/qml/Appearance.qml,src/ritm/qml/AssistantDialog.qml,src/ritm/qml/ConnectionPane.qml
 excluded_qml_plugins =
 modules = Core,Gui,Widgets,DBus,Qml,Quick,QuickControls2
 plugins =
