@@ -73,6 +73,7 @@ class ConnectionController(QObject):
         if self._busy or self.assistant.state["busy"]:
             return
         if slug in {item["slug"] for item in self.session.models}:
+            self.assistant.newChat()
             self.session.model = slug
             self.session.verified = False
             self.changed.emit()
@@ -92,6 +93,7 @@ class ConnectionController(QObject):
         if self._busy or self.assistant.state["busy"]:
             return
         self.assistant.cancel()
+        self.assistant.newChat()
         self.assistant.adapter = MockAdapter()
         self.assistant.changed.emit()
 

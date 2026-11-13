@@ -16,7 +16,11 @@ Dialog {
     property string fileContext: taskBackend.detail.id || ""
     onFileContextChanged: {
         selectedFiles = [];
-        if (visible && agent) agent.loadFiles(fileContext);
+        if (agent && !state.saving) {
+            agent.cancel();
+            agent.newChat();
+            if (visible) agent.loadFiles(fileContext);
+        }
     }
     onOpened: {
         selectedFiles = [];
@@ -32,6 +36,31 @@ Dialog {
         color: dialog.uiAppearance.colors.surface
         border.color: dialog.uiAppearance.colors.border
         radius: dialog.uiAppearance.dp(14)
+    }
+    Dialog {
+        id: clearHistoryDialog
+        objectName: "clearChatHistoryDialog"
+        title: qsTr("Удалить всю историю помощника?")
+        anchors.centerIn: parent
+        width: Math.min(dialog.uiAppearance.dp(460), dialog.width - 24)
+        height: Math.min(dialog.uiAppearance.dp(300), dialog.height - 24)
+        modal: true
+        contentItem: Label {
+            text: qsTr("Сообщения удалятся с устройства, текущий диалог сбросится. Задачи и вложения сохранятся.")
+            wrapMode: Text.Wrap
+        }
+        footer: Flow {
+            Button {
+                objectName: "confirmChatHistoryClear"
+                text: qsTr("Удалить историю")
+                onClicked: { dialog.agent.clearHistory(); clearHistoryDialog.close(); }
+            }
+            Button {
+                objectName: "cancelChatHistoryClear"
+                text: qsTr("Отмена")
+                onClicked: clearHistoryDialog.close()
+            }
+        }
     }
     function loadDraft() {
         form = JSON.parse(JSON.stringify(state.draft || {}));
@@ -93,12 +122,114 @@ Dialog {
                 agent: dialog.agent
                 uiAppearance: dialog.uiAppearance
             }
+            CheckBox {
+                id: saveHistoryCheck
+                objectName: "chatSaveHistory"
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                text: qsTr("Сохранять новые сообщения на этом устройстве")
+                checked: !!dialog.state.historyEnabled
+                enabled: !dialog.state.historyBusy && !dialog.state.saving
+                onToggled: dialog.agent.saveHistory(checked)
+                contentItem: Label {
+                    text: saveHistoryCheck.text
+                    leftPadding: saveHistoryCheck.indicator.width + saveHistoryCheck.spacing
+                    wrapMode: Text.Wrap
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("История хранится отдельно и не входит в копии задач. Сами вложения и токены в неё не включаются. В следующий запрос входят только последние сообщения текущего обсуждения; прошлые диалоги — после явного выбора «Продолжить». Смена задачи или подключения начинает новый диалог.")
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: !!dialog.state.historyError
+                text: dialog.state.historyError || ""
+                color: dialog.uiAppearance.colors.warning
+                textFormat: Text.PlainText
+                wrapMode: Text.Wrap
+            }
+            Flow {
+                Layout.fillWidth: true
+                spacing: dialog.uiAppearance.dp(8)
+                Button {
+                    objectName: "chatNew"
+                    text: qsTr("Новый диалог")
+                    enabled: !dialog.state.busy
+                    onClicked: { dialog.agent.newChat(); prompt.text = ""; }
+                }
+                Button {
+                    objectName: "chatClearHistory"
+                    text: qsTr("Удалить историю…")
+                    enabled: !dialog.state.saving && !dialog.state.historyBusy
+                    onClicked: clearHistoryDialog.open()
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Сообщений в контексте текущего обсуждения: ") + (dialog.state.contextCount || 0)
+                wrapMode: Text.Wrap
+            }
+            CheckBox {
+                id: showHistory
+                objectName: "chatShowHistory"
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                contentItem: Label {
+                    text: showHistory.text
+                    leftPadding: showHistory.indicator.width + showHistory.spacing
+                    wrapMode: Text.Wrap
+                }
+                text: qsTr("Показать также прошлые диалоги (последние 100 сообщений)")
+            }
+            Repeater {
+                model: (dialog.state.messages || []).filter(x => showHistory.checked || x.chat === dialog.state.chatId)
+                delegate: ColumnLayout {
+                    id: chatEntry
+                    property bool expanded: false
+                    required property int index
+                    required property var modelData
+                    Layout.fillWidth: true
+                    Label {
+                        Layout.fillWidth: true
+                        textFormat: Text.PlainText
+                        text: (chatEntry.modelData.role === "user" ? qsTr("Вы") : chatEntry.modelData.role === "assistant" ? chatEntry.modelData.label : qsTr("Состояние")) + " · " + Qt.formatDateTime(new Date(chatEntry.modelData.time), "dd.MM.yyyy HH:mm")
+                        wrapMode: Text.Wrap
+                    }
+                    TextArea {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        readOnly: true
+                        textFormat: TextEdit.PlainText
+                        wrapMode: TextEdit.Wrap
+                        text: chatEntry.expanded || chatEntry.modelData.text.length <= 300
+                            ? chatEntry.modelData.text : chatEntry.modelData.text.slice(0, 300) + "…"
+                        selectByMouse: true
+                    }
+                    Button {
+                        objectName: "chatResume_" + chatEntry.index
+                        visible: chatEntry.modelData.role === "assistant" && !!chatEntry.modelData.scope && chatEntry.modelData.chat !== dialog.state.chatId
+                        enabled: !dialog.state.busy && !dialog.state.hasDraft
+                        text: qsTr("Продолжить этот диалог")
+                        onClicked: dialog.agent.resumeChat(chatEntry.modelData.chat,
+                            operation.currentIndex === 1 ? (dialog.taskBackend.detail.id || "") : "",
+                            operation.currentIndex === 1 ? "split" : "create")
+                    }
+                    Button {
+                        visible: chatEntry.modelData.text.length > 300
+                        text: chatEntry.expanded ? qsTr("Свернуть сообщение") : qsTr("Показать полностью")
+                        onClicked: chatEntry.expanded = !chatEntry.expanded
+                    }
+                }
+            }
             ComboBox {
                 id: operation
                 objectName: "assistantOperation"
                 Layout.fillWidth: true
                 enabled: !dialog.state.busy && !dialog.state.hasDraft
                 model: [qsTr("Создать новую задачу"), qsTr("Добавить подзадачи к выбранной задаче")]
+                onActivated: dialog.agent.newChat()
             }
             Label {
                 Layout.fillWidth: true
@@ -161,13 +292,13 @@ Dialog {
                 id: prompt
                 objectName: "assistantPrompt"
                 Layout.fillWidth: true
-                placeholderText: qsTr("Опишите работу")
+                placeholderText: dialog.state.contextCount > 0 ? qsTr("Уточните пожелания к предложению") : qsTr("Опишите работу")
                 wrapMode: TextEdit.Wrap
                 enabled: !dialog.state.busy
             }
             Button {
                 objectName: "assistantGenerate"
-                text: dialog.state.busy ? qsTr("Подготовка…") : (dialog.state.provider === "chatgpt" ? qsTr("Отправить запрос и получить черновик") : qsTr("Сформировать тестовый черновик"))
+                text: dialog.state.busy ? qsTr("Подготовка…") : (dialog.state.provider === "chatgpt" ? qsTr("Отправить сообщение") : qsTr("Отправить в тестовый чат"))
                 enabled: !dialog.state.busy && !dialog.state.hasDraft && !dialog.taskBackend.busy
                     && !dialog.state.filesLoading
                     && (!dialog.connection || !dialog.connection.state.busy)
@@ -294,6 +425,13 @@ Dialog {
         }
     }
     footer: Flow {
+        Button {
+            objectName: "chatRefine"
+            text: qsTr("Уточнить предложение")
+            visible: dialog.state.hasDraft && !dialog.editing
+            enabled: !dialog.state.busy
+            onClicked: { dialog.agent.refine(); prompt.text = ""; prompt.forceActiveFocus(); }
+        }
         spacing: dialog.uiAppearance.dp(8)
         Button {
             objectName: "assistantEdit"
