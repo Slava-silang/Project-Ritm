@@ -6,6 +6,7 @@ import QtQuick.Layouts
 
 ApplicationWindow {
     id: window
+    property var desktop: null
     required property var backend
     property alias appearance: uiAppearance
     Appearance {
@@ -47,13 +48,25 @@ ApplicationWindow {
     property string page: "tasks"
     property bool closeWhenIdle: false
 
+    property bool exiting: false
+    function requestExit() {
+        exiting = true;
+        window.close();
+    }
     onClosing: event => {
+        if (window.desktop && !window.exiting && window.desktop.trayAvailable) {
+            event.accepted = false;
+            window.hide();
+            return;
+        }
         if (window.backend.busy) {
             event.accepted = false;
             window.closeWhenIdle = true;
         } else if (window.activeFocus.elapsed && !window.activeFocus.recovery) {
             event.accepted = false;
             exitFocusDialog.open();
+        } else if (window.desktop) {
+            window.desktop.exitNow();
         }
     }
 
@@ -69,7 +82,7 @@ ApplicationWindow {
     ].concat(window.backend.categories)
 
     property bool modalOpen: [
-        appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
+        systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
@@ -307,7 +320,7 @@ ApplicationWindow {
                 attachmentDialog.choosingMaterial = false;
             if (action === "focus_exit") {
                 exitFocusDialog.close();
-                window.close();
+                window.requestExit();
             }
             if (action === "focus" && focusEditor.visible)
                 focusEditor.close();
@@ -424,11 +437,27 @@ ApplicationWindow {
                 }
             }
             Button {
+                objectName: "systemButton"
+                text: qsTr("Приложение")
+                visible: !!window.desktop
+                onClicked: {
+                    autoStart.checked = window.desktop.settings.enabled;
+                    hiddenStart.checked = window.desktop.settings.hidden;
+                    systemDialog.open();
+                }
+            }
+            Button {
                 objectName: "appearanceButton"
                 text: qsTr("Вид")
                 enabled: !window.backend.busy
                 onClicked: window.openAppearance()
             }
+        }
+        Caption {
+            Layout.fillWidth: true
+            visible: !!window.desktop && !window.desktop.trayAvailable
+            wrapMode: Text.Wrap
+            text: qsTr("Трей недоступен: крестик завершает приложение. Настройки запуска — в меню «Приложение».")
         }
         Rectangle {
             Layout.fillWidth: true
@@ -1493,8 +1522,78 @@ ApplicationWindow {
     }
 
     EditorDialog {
+        id: systemDialog
+        objectName: "systemDialog"
+        title: qsTr("Запуск и завершение")
+        anchors.centerIn: parent
+        width: Math.min(window.appearance.dp(480), window.width - 32)
+        height: Math.min(window.appearance.dp(480), window.height - 32)
+        modal: true
+        contentItem: ScrollView {
+            id: systemScroll
+            contentWidth: availableWidth
+            clip: true
+            ColumnLayout {
+                width: systemScroll.availableWidth
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: window.desktop && window.desktop.trayAvailable
+                        ? qsTr("Крестик скрывает окно в трей. Фокусировка продолжает работать. Открыть окно и выйти можно через значок Ритма.")
+                        : qsTr("Системный трей недоступен. Крестик завершает приложение; активную сессию потребуется подтвердить.")
+                }
+                CheckBox {
+                    id: autoStart
+                    objectName: "autoStart"
+                    text: qsTr("Запускать при входе в систему")
+                    enabled: !!window.desktop && window.desktop.settings.supported && !window.desktop.settings.busy
+                }
+                CheckBox {
+                    id: hiddenStart
+                    objectName: "hiddenStart"
+                    text: qsTr("Запускать скрытым в трей")
+                    enabled: autoStart.enabled && autoStart.checked
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Без доступного трея окно всегда показывается. Настройка компаньона появится при его подключении.")
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: window.desktop ? window.desktop.settings.error : ""
+                    color: window.appearance.colors.warning
+                }
+            }
+        }
+        footer: ColumnLayout {
+            Button {
+                objectName: "saveAutostart"
+                text: qsTr("Применить автозапуск")
+                enabled: autoStart.enabled
+                onClicked: window.desktop.save(autoStart.checked, hiddenStart.checked)
+            }
+            Button {
+                objectName: "exitApplication"
+                text: qsTr("Выйти из приложения")
+                onClicked: {
+                    systemDialog.close();
+                    window.requestExit();
+                }
+            }
+            Button {
+                objectName: "closeSystemDialog"
+                text: qsTr("Закрыть настройки")
+                onClicked: systemDialog.close()
+            }
+        }
+    }
+
+    EditorDialog {
         id: exitFocusDialog
         objectName: "exitFocusDialog"
+        onClosed: if (!window.backend.busy) window.exiting = false
         title: qsTr("Завершить фокус и выйти?")
         anchors.centerIn: parent
         width: Math.min(window.appearance.dp(460), window.width - 32)
@@ -1520,7 +1619,7 @@ ApplicationWindow {
                 objectName: "cancelFocusExit"
                 text: qsTr("Остаться")
                 enabled: !window.backend.busy
-                onClicked: exitFocusDialog.close()
+                onClicked: { window.exiting = false; exitFocusDialog.close(); }
             }
             AccentButton {
                 objectName: "confirmFocusExit"

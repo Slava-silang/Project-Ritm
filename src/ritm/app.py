@@ -7,18 +7,18 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from PySide6.QtCore import QLockFile, QStandardPaths, QTimer, QUrl
-from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
+from PySide6.QtWidgets import QApplication
 
 from ritm import __version__
 from ritm.ui.tasks import TaskController
 
 
-def load_window(controller: TaskController) -> QQmlApplicationEngine:
+def load_window(controller: TaskController, desktop=None) -> QQmlApplicationEngine:
     """Загрузить ресурсы установленного пакета независимо от рабочей папки."""
     engine = QQmlApplicationEngine()
-    engine.setInitialProperties({"backend": controller})
+    engine.setInitialProperties({"backend": controller, "desktop": desktop})
     qml_path = Path(__file__).resolve().parent / "qml" / "Main.qml"
     engine.load(QUrl.fromLocalFile(str(qml_path)))
     if not engine.rootObjects():
@@ -35,10 +35,11 @@ def main() -> int:
         help="Открыть окно и автоматически закрыть его для проверки запуска.",
     )
     parser.add_argument("--profile", type=Path, help="Отдельная папка данных для проверки.")
+    parser.add_argument("--start-hidden", action="store_true", help="Скрыть окно при наличии трея.")
     args = parser.parse_args()
 
     QQuickStyle.setStyle("Basic")
-    app = QGuiApplication(sys.argv[:1])
+    app = QApplication(sys.argv[:1])
     app.setOrganizationName("ProjectRitm")
     app.setApplicationName("Ritm")
     app.setApplicationDisplayName("Ритм")
@@ -71,8 +72,31 @@ def main() -> int:
     heartbeat.start(100)
     engine = None
     power = None
+    desktop = None
     try:
-        engine = load_window(controller)
+        if not args.smoke_test:
+            from ritm.platform.desktop import DesktopIntegration
+
+            command = (
+                [str(Path(sys.argv[0]).resolve())]
+                if "__compiled__" in globals()
+                else [str(Path(sys.executable).absolute()), "-m", "ritm"]
+            )
+            command += ["--profile", str(profile.resolve())]
+            desktop = DesktopIntegration(
+                app,
+                profile,
+                Path(
+                    QStandardPaths.writableLocation(
+                        QStandardPaths.StandardLocation.GenericConfigLocation
+                    )
+                ),
+                command,
+                supported=sys.platform.startswith("linux"),
+            )
+        engine = load_window(controller, desktop)
+        if desktop is not None:
+            desktop.attach(engine.rootObjects()[0], args.start_hidden)
         if sys.platform.startswith("linux") and not args.smoke_test:
             from ritm.platform.power import LinuxPowerMonitor
 
@@ -84,6 +108,8 @@ def main() -> int:
         print(error, file=sys.stderr)
         return 1
     finally:
+        if desktop is not None:
+            desktop.close()
         if power is not None:
             power.close()
         controller.close()
