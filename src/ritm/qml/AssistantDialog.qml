@@ -12,6 +12,16 @@ Dialog {
     required property var uiAppearance
     property var state: agent ? agent.state : ({busy: false, hasDraft: false, saving: false})
     property var form: ({})
+    property var selectedFiles: []
+    property string fileContext: taskBackend.detail.id || ""
+    onFileContextChanged: {
+        selectedFiles = [];
+        if (visible && agent) agent.loadFiles(fileContext);
+    }
+    onOpened: {
+        selectedFiles = [];
+        if (agent) agent.loadFiles(fileContext);
+    }
     property bool dirty: false
     property bool editing: false
     title: state.provider === "chatgpt" ? qsTr("Помощник — подписка ChatGPT") : qsTr("Тестовый помощник — без сети")
@@ -97,6 +107,56 @@ Dialog {
                 textFormat: Text.PlainText
                 text: qsTr("Выбрано: ") + (dialog.taskBackend.detail.title || qsTr("сначала выберите задачу в списке"))
             }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("Материалы для помощника: отметьте нужные файлы. Передаётся только их текст, после нажатия кнопки отправки. TXT, Markdown и PDF с текстовым слоем; до 5 файлов и 60 000 символов суммарно.")
+            }
+            Button {
+                objectName: "assistantRefreshFiles"
+                text: dialog.state.filesLoading ? qsTr("Загрузка файлов…") : qsTr("Обновить список файлов")
+                enabled: !dialog.state.busy && !dialog.state.filesLoading
+                onClicked: { dialog.selectedFiles = []; dialog.agent.loadFiles(dialog.fileContext); }
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: !!dialog.state.filesError || (!(dialog.state.files || []).length && !dialog.state.filesLoading)
+                text: dialog.state.filesError || qsTr("Доступных файлов нет. Добавьте вложение к задаче или файл в «Материалы».")
+                wrapMode: Text.Wrap
+                textFormat: Text.PlainText
+            }
+            Repeater {
+                model: dialog.state.files || []
+                delegate: CheckBox {
+                    id: fileChoice
+                    required property var modelData
+                    required property int index
+                    objectName: "assistantFile_" + index
+                    Layout.fillWidth: true
+                    enabled: !dialog.state.busy && !dialog.state.hasDraft && modelData.supported
+                    text: modelData.name + " — " + modelData.source
+                        + (modelData.supported ? "" : qsTr(" (формат пока не поддерживается)"))
+                    checked: dialog.selectedFiles.indexOf(modelData.id) >= 0
+                    contentItem: Label {
+                        text: fileChoice.text
+                        textFormat: Text.PlainText
+                        leftPadding: fileChoice.indicator.width + fileChoice.spacing
+                        wrapMode: Text.Wrap
+                    }
+                    onToggled: {
+                        dialog.selectedFiles = checked
+                            ? dialog.selectedFiles.concat([modelData.id])
+                            : dialog.selectedFiles.filter(x => x !== modelData.id);
+                    }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: dialog.selectedFiles.length > 0
+                textFormat: Text.PlainText
+                wrapMode: Text.Wrap
+                text: qsTr("К отправке: ") + (dialog.state.files || []).filter(x => dialog.selectedFiles.indexOf(x.id) >= 0).map(x => x.name).join(", ")
+            }
             TextArea {
                 id: prompt
                 objectName: "assistantPrompt"
@@ -109,9 +169,10 @@ Dialog {
                 objectName: "assistantGenerate"
                 text: dialog.state.busy ? qsTr("Подготовка…") : (dialog.state.provider === "chatgpt" ? qsTr("Отправить запрос и получить черновик") : qsTr("Сформировать тестовый черновик"))
                 enabled: !dialog.state.busy && !dialog.state.hasDraft && !dialog.taskBackend.busy
+                    && !dialog.state.filesLoading
                     && (!dialog.connection || !dialog.connection.state.busy)
                     && (operation.currentIndex === 0 || !!dialog.taskBackend.detail.id)
-                onClicked: dialog.agent.generate(prompt.text, operation.currentIndex === 1 ? dialog.taskBackend.detail.id : "")
+                onClicked: dialog.agent.generate(prompt.text, operation.currentIndex === 1 ? dialog.taskBackend.detail.id : "", dialog.selectedFiles)
             }
             Label {
                 Layout.fillWidth: true

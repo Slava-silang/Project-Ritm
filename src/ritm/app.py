@@ -45,7 +45,12 @@ def main() -> int:
     )
     parser.add_argument("--profile", type=Path, help="Отдельная папка данных для проверки.")
     parser.add_argument("--start-hidden", action="store_true", help="Скрыть окно при наличии трея.")
+    parser.add_argument("--extract-text", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.extract_text is not None:
+        from ritm.integrations.file_text import worker_main
+
+        return worker_main(args.extract_text)
 
     QQuickStyle.setStyle("Basic")
     app = QApplication(sys.argv[:1])

@@ -32,6 +32,7 @@ try:
     gui.idle()
     gui.click("assistantButton")
     gui.fill("assistantPrompt", "Лабораторная по физике")
+    gui.wait_for(lambda: gui.item("assistantGenerate").isEnabled(), "file catalog ready")
     gui.click("assistantGenerate")
     gui.wait_for(lambda: agent.state["hasDraft"])
     with TaskStore(profile / "tasks.sqlite3") as store:
@@ -78,6 +79,7 @@ try:
         assert len(created.subtasks[0].items) == 2
     # Отмена просмотра ничего не записывает.
     gui.click("assistantButton")
+    gui.wait_for(lambda: gui.item("assistantGenerate").isEnabled(), "file catalog ready")
     gui.click("assistantGenerate")
     gui.wait_for(lambda: agent.state["hasDraft"])
     gui.click("assistantCancel")
@@ -156,6 +158,7 @@ try:
     gui.wait_for(lambda: window.width() == 640)
     gui.click("assistantButton")
     gui.choose("assistantOperation", 1)
+    gui.wait_for(lambda: gui.item("assistantGenerate").isEnabled(), "file catalog ready")
     gui.click("assistantGenerate")
     gui.wait_for(lambda: agent.state["hasDraft"])
     gui.screenshot(profile / "assistant-narrow.png")

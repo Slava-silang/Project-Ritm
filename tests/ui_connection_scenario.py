@@ -85,6 +85,7 @@ try:
     assert agent.state["provider"] == "chatgpt"
     gui.click("connectionExpand")
     gui.fill("assistantPrompt", "Пример выбранного запроса")
+    gui.wait_for(lambda: gui.item("assistantGenerate").isEnabled(), "file catalog ready")
     gui.click("assistantGenerate")
     gui.wait_for(lambda: agent.state["hasDraft"])
     assert not controller.tasks

@@ -18,11 +18,18 @@ class Connection:
 
 
 @dataclass(frozen=True)
+class SourceText:
+    name: str
+    text: str
+
+
+@dataclass(frozen=True)
 class Request:
     id: UUID
     prompt: str
     operation: Literal["create", "split"]
     selected: Task | None = None
+    materials: tuple[SourceText, ...] = ()
 
 
 class Adapter(Protocol):
