@@ -465,6 +465,11 @@ ApplicationWindow {
                     petEnabled.checked = window.companion.state.enabled;
                     petChoice.currentIndex = companionDialog.keys.indexOf(window.companion.state.pet);
                     petSize.currentIndex = companionDialog.sizes.indexOf(window.companion.state.size);
+                    petMuted.checked = window.companion.state.muted;
+                    petFrequency.currentIndex = companionDialog.frequencies.indexOf(window.companion.state.frequency);
+                    petBreak.value = window.companion.state.break_minutes;
+                    petReducedMotion.checked = window.companion.state.reduce_motion;
+                    petFullscreen.checked = window.companion.state.hide_fullscreen;
                     companionDialog.open();
                 }
             }
@@ -1553,6 +1558,7 @@ ApplicationWindow {
         objectName: "companionDialog"
         property var keys: ["dragon", "cat", "dog"]
         property var sizes: [160, 224, 288, 352]
+        property var frequencies: ["rare", "normal", "often"]
         title: qsTr("Компаньон")
         anchors.centerIn: parent
         width: Math.min(window.appearance.dp(520), window.width - 32)
@@ -1580,7 +1586,55 @@ ApplicationWindow {
                 Caption {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    text: qsTr("Пока используются статичные JPG с белым фоном. Прозрачные поля вокруг картинки пропускают клики. Перетащите картинку левой кнопкой, правой откройте меню. Анимации и реплики будут добавлены позже.")
+                    text: qsTr("Пока используются статичные JPG. Состояние и реплики показаны под картинкой. Перетаскивание — левой кнопкой, меню — правой. Анимации подключим после готовности материалов.")
+                }
+                CheckBox {
+                    id: petMuted
+                    objectName: "petMuted"
+                    text: qsTr("Отключить реплики")
+                    Layout.fillWidth: true
+                }
+                Label { text: qsTr("Частота реплик") }
+                ComboBox {
+                    id: petFrequency
+                    objectName: "petFrequency"
+                    Layout.fillWidth: true
+                    model: [qsTr("Редко — не чаще раза в 5 минут"), qsTr("Обычно — раз в 2 минуты"), qsTr("Чаще — раз в 30 секунд")]
+                }
+                Label { text: qsTr("Предложить перерыв после, минут") }
+                SpinBox {
+                    id: petBreak
+                    objectName: "petBreak"
+                    from: 5
+                    to: 240
+                    stepSize: 5
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Считается активная работа после начала или продолжения фокуса. Пауза начинает отсчёт заново. Реплика не ставит задачу на паузу автоматически.")
+                }
+                CheckBox {
+                    id: petReducedMotion
+                    objectName: "petReducedMotion"
+                    Layout.fillWidth: true
+                    text: qsTr("Уменьшить анимации")
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Настройка сохранится для будущих анимаций. Сейчас все персонажи статичны.")
+                }
+                CheckBox {
+                    id: petFullscreen
+                    objectName: "petFullscreen"
+                    Layout.fillWidth: true
+                    text: qsTr("Скрывать при полноэкранной работе")
+                    contentItem: Label {
+                        text: petFullscreen.text
+                        leftPadding: petFullscreen.indicator.width + petFullscreen.spacing
+                        wrapMode: Text.Wrap
+                    }
                 }
                 Caption {
                     Layout.fillWidth: true
@@ -1597,7 +1651,7 @@ ApplicationWindow {
                 objectName: "applyCompanion"
                 text: qsTr("Применить")
                 enabled: !!window.companion && !window.companion.state.busy
-                onClicked: window.companion.configure(petEnabled.checked, companionDialog.keys[petChoice.currentIndex], companionDialog.sizes[petSize.currentIndex])
+                onClicked: window.companion.configure(petEnabled.checked, companionDialog.keys[petChoice.currentIndex], companionDialog.sizes[petSize.currentIndex], petMuted.checked, companionDialog.frequencies[petFrequency.currentIndex], petBreak.value, petReducedMotion.checked, petFullscreen.checked)
             }
             Button {
                 objectName: "showCompanionAgain"

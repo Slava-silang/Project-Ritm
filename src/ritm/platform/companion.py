@@ -2,27 +2,31 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from time import monotonic
 
-from PySide6.QtCore import Property, QEvent, QObject, QPoint, Qt, QTimer, QUrl, Signal, Slot
+from PySide6.QtCore import Property, QEvent, QObject, QPoint, QRect, Qt, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QBitmap, QGuiApplication, QImage, QRegion
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QMenu
 
+from ritm.domain.companion import LABELS, Reactions
+from ritm.platform.fullscreen import FullscreenMonitor
 from ritm.storage.companion import DEFAULT, PETS, SIZES, load_companion, pet_asset, save_companion
 
 
-def fit_position(x, y, size, screens):
+def fit_position(x, y, size, screens, height=None):
+    height = height or size
     if not screens:
         return (0, 0)
     if x is None or y is None:
         rect = screens[0]
-        x, y = rect.right() - size - 16, rect.bottom() - size - 16
-    rect = next((r for r in screens if r.contains(QPoint(x + size // 2, y + size // 2))), None)
+        x, y = rect.right() - size - 16, rect.bottom() - height - 16
+    rect = next((r for r in screens if r.contains(QPoint(x + size // 2, y + height // 2))), None)
     if rect is None:
         rect = min(screens, key=lambda r: abs(r.center().x() - x) + abs(r.center().y() - y))
     return (
         max(rect.left(), min(x, rect.right() - size + 1)),
-        max(rect.top(), min(y, rect.bottom() - size + 1)),
+        max(rect.top(), min(y, rect.bottom() - height + 1)),
     )
 
 
@@ -30,7 +34,7 @@ class CompanionController(QObject):
     changed = Signal()
     _ready = Signal(str, object, str)
 
-    def __init__(self, profile, backend, *, open_main=lambda: None):
+    def __init__(self, profile, backend, *, open_main=lambda: None, clock=monotonic):
         super().__init__()
         self.profile, self.backend, self.open_main = profile, backend, open_main
         self._settings = dict(DEFAULT)
@@ -42,6 +46,9 @@ class CompanionController(QObject):
         self._hidden = False
         self._drag = None
         self._image = QImage()
+        self._clock = clock
+        self._reactions = Reactions()
+        self._fullscreen = False
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ritm-companion")
         self._ready.connect(self._finish)
         self._engine = QQmlApplicationEngine()
@@ -55,6 +62,7 @@ class CompanionController(QObject):
             self._pool.shutdown(wait=True)
             raise RuntimeError("Не удалось открыть окно компаньона")
         self.window = self._engine.rootObjects()[0]
+        self.window.imageReadyChanged.connect(self._render_ready)
         self.window.installEventFilter(self)
         self.menu = QMenu()
         self._hide_timer = QTimer(self)
@@ -63,7 +71,15 @@ class CompanionController(QObject):
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
         self._save_timer.timeout.connect(self._persist)
+        self._reaction_timer = QTimer(self)
+        self._reaction_timer.setInterval(1000)
+        self._reaction_timer.timeout.connect(self._react)
+        self._reaction_timer.start()
+        backend.focusChanged.connect(self._react)
+        backend.taskCompleted.connect(self._completed)
         app = QGuiApplication.instance()
+        self._monitor = FullscreenMonitor(app.platformName(), self)
+        self._monitor.changed.connect(self._fullscreen_changed)
         app.screenAdded.connect(self._screen_changed)
         app.screenRemoved.connect(self._screen_changed)
         self._screens = set(app.screens())
@@ -78,6 +94,10 @@ class CompanionController(QObject):
             error=self._error,
             busy=self._pending > 0,
             hidden=self._hidden,
+            fullscreen=self._fullscreen,
+            mode=self._reactions.mode,
+            status=LABELS[self._reactions.mode],
+            phrase=self._reactions.text,
             name=PETS[self._settings["pet"]],
             image=QUrl.fromLocalFile(str(pet_asset(self._settings["pet"]))).toString(),
         )
@@ -113,10 +133,59 @@ class CompanionController(QObject):
             self._loaded = True
             if result is not None:
                 self._settings = result
+            self._monitor.setEnabled(
+                self._settings["enabled"] and self._settings["hide_fullscreen"]
+            )
             self._load_image()
         elif action == "image":
             self._image = result if result is not None else QImage()
             self._layout()
+        self.changed.emit()
+
+    def _visible_for_speech(self):
+        return (
+            self._settings["enabled"]
+            and not self._hidden
+            and not self._fullscreen
+            and not self._image.isNull()
+            and bool(self.window.property("imageReady"))
+        )
+
+    def _render_ready(self):
+        if not self._closed:
+            self._layout()
+            self._react()
+
+    def _react(self):
+        if self._closed:
+            return
+        before = (self._reactions.mode, self._reactions.text)
+        self._reactions.update(
+            self.backend.focus, self._clock(), self._settings, self._visible_for_speech()
+        )
+        if before != (self._reactions.mode, self._reactions.text):
+            self.changed.emit()
+
+    def _completed(self, _identifier):
+        if not self._closed and self._settings["enabled"]:
+            self._reactions.celebrate(self._clock(), self._settings, self._visible_for_speech())
+            self._react()
+            self.changed.emit()
+
+    def _fullscreen_changed(self, fullscreen, error):
+        if self._closed:
+            return
+        if fullscreen == self._fullscreen and error == self._errors.get("fullscreen", ""):
+            return
+        if fullscreen and self._drag is not None:
+            self._drag = None
+            self._settings.update(x=self.window.x(), y=self.window.y())
+            self._save_timer.start(200)
+        self._fullscreen = fullscreen
+        self._errors["fullscreen"] = error
+        self._error = " ".join(value for value in self._errors.values() if value)
+        self._layout()
+        self._react()
         self.changed.emit()
 
     def _load_image(self):
@@ -134,9 +203,9 @@ class CompanionController(QObject):
         if self._closed:
             return
         size = self._settings["size"]
-        self.window.resize(size, size)
+        self.window.resize(size, size + 100)
         screens = [s.availableGeometry() for s in QGuiApplication.screens()]
-        x, y = fit_position(self._settings["x"], self._settings["y"], size, screens)
+        x, y = fit_position(self._settings["x"], self._settings["y"], size, screens, size + 100)
         self._settings.update(x=x, y=y)
         self.window.setPosition(x, y)
         if not self._image.isNull():
@@ -149,9 +218,14 @@ class CompanionController(QObject):
                 else QRegion(image.rect())
             )
             region.translate((size - image.width()) // 2, (size - image.height()) // 2)
+            region |= QRegion(QRect(8, size, size - 16, 88))
             self.window.setMask(region)
         self.window.setVisible(
-            self._settings["enabled"] and not self._hidden and not self._image.isNull()
+            self._settings["enabled"]
+            and not self._hidden
+            and not self._fullscreen
+            and not self._image.isNull()
+            and bool(self.window.property("imageReady"))
         )
 
     def _screen_changed(self, *_):
@@ -170,15 +244,33 @@ class CompanionController(QObject):
         self._run("save", lambda: save_companion(self.profile, data))
 
     @Slot(bool, str, int)
-    def configure(self, enabled, pet, size):
+    @Slot(bool, str, int, bool, str, int, bool, bool)
+    def configure(
+        self,
+        enabled,
+        pet,
+        size,
+        muted=None,
+        frequency=None,
+        break_minutes=None,
+        reduce_motion=None,
+        hide_fullscreen=None,
+    ):
         if self._pending or self._closed:
             return
         from ritm.storage.companion import validate_companion
 
         try:
-            self._settings = validate_companion(
-                dict(self._settings, enabled=enabled, pet=pet, size=size)
-            )
+            settings = dict(self._settings, enabled=enabled, pet=pet, size=size)
+            if muted is not None:
+                settings.update(
+                    muted=muted,
+                    frequency=frequency,
+                    break_minutes=break_minutes,
+                    reduce_motion=reduce_motion,
+                    hide_fullscreen=hide_fullscreen,
+                )
+            self._settings = validate_companion(settings)
         except ValueError as error:
             self._error = str(error)
             self.changed.emit()
@@ -186,10 +278,12 @@ class CompanionController(QObject):
         self._hidden = False
         self._errors["load"] = ""
         self._hide_timer.stop()
+        self._monitor.setEnabled(enabled and self._settings["hide_fullscreen"])
         self._layout()
         self.window.hide()
         self._load_image()
         self._persist()
+        self._react()
 
     @Slot()
     def showAgain(self):
@@ -204,11 +298,14 @@ class CompanionController(QObject):
         self._hidden = True
         self.window.hide()
         self._hide_timer.start(300000)
+        self._react()
         self.changed.emit()
 
     @Slot()
     def disable(self):
         self._settings["enabled"] = False
+        self._monitor.setEnabled(False)
+        self._react()
         self._hide_timer.stop()
         self.window.hide()
         self._persist()
@@ -266,6 +363,7 @@ class CompanionController(QObject):
 
     def _mute(self, checked):
         self._settings["muted"] = checked
+        self._react()
         self._persist()
 
     def eventFilter(self, watched, event):
@@ -296,6 +394,8 @@ class CompanionController(QObject):
 
     def close(self):
         self._closed = True
+        self._reaction_timer.stop()
+        self._monitor.close()
         self._hide_timer.stop()
         if self._save_timer.isActive():
             self._save_timer.stop()

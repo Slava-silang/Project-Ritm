@@ -8,9 +8,13 @@ from tempfile import NamedTemporaryFile
 PETS = {"dragon": "Китайский дракончик", "cat": "Котёнок", "dog": "Щенок"}
 SIZES = (160, 224, 288, 352)
 DEFAULT = {"enabled": False, "pet": "dragon", "size": 224, "x": None, "y": None, "muted": False}
+LEGACY_KEYS = set(DEFAULT)
+DEFAULT.update(frequency="normal", break_minutes=60, reduce_motion=False, hide_fullscreen=True)
 
 
 def validate_companion(data):
+    if isinstance(data, dict) and set(data) == LEGACY_KEYS:
+        data = {**DEFAULT, **data}
     if (
         not isinstance(data, dict)
         or set(data) != set(DEFAULT)
@@ -20,6 +24,11 @@ def validate_companion(data):
         or data["pet"] not in PETS
         or type(data["size"]) is not int
         or data["size"] not in SIZES
+        or type(data["reduce_motion"]) is not bool
+        or type(data["hide_fullscreen"]) is not bool
+        or data["frequency"] not in ("rare", "normal", "often")
+        or type(data["break_minutes"]) is not int
+        or not 5 <= data["break_minutes"] <= 240
     ):
         raise ValueError("Выберите доступного персонажа и размер")
     if not (

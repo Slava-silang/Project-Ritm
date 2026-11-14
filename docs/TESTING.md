@@ -349,3 +349,13 @@ X11: `RITM_UI_PLATFORM=xcb uv run --locked pytest tests/test_chat_history.py::te
 - Осмотрены /tmp/ritm-t28-native-final/test_companion_window_controls0/cat-window.png, dog-window.png, dragon-window.png, companion-settings.png и /tmp/ritm-t28-layout-final/test_companion_window_controls0/companion-settings-narrow.png. Белый фон JPG остаётся частью исходной картинки, поля окна прозрачны.
 - `uv build --wheel --offline --out-dir /tmp/ritm-t28-wheel`: passed; в ZIP найдены CompanionWindow.qml и три JPG, побайтно совпадающие с оригиналами. Это проверка Python-пакета, не новая standalone-поставка.
 - Ruff check/format, qmllint десяти QML, diff --check — passed. Windows/Wayland, настоящая смена мониторов, fullscreen/реплики/анимации не проверены в T28. Личные данные и реальные запросы ИИ не использовались.
+
+
+## T29 — результат 15 ноября 2026
+
+- Финальный полный набор: 328 passed, 159,48 с (предварительный — 327 passed). Финальный T29 на Cinnamon/X11: 16 passed, 11,15 с. Показатели относятся к разным запускам, не складываются.
+- Чистые реакции: четыре состояния, expiry/общая частота, пауза исключена, отсчёт после продолжения, повторный перерыв, изменение порога/сессии/обратный elapsed, mute/скрытие без очереди, восстановление сессии. Старый companion.json не перезаписывается при чтении, расширенные поля/диапазоны валидируются и переживают перезапуск.
+- GUI обычными командами: фокус/пауза при скрытом основном окне, перерыв по управляемому активному времени, последнее дочернее выполнение вызывает joy, refresh не вызывает; завершение фокуса возвращает idle. На X11 создано настоящее временное fullscreen-окно, проверены скрытие, возврат, ручной hidden и enabled=false. Настройки осмотрены при 640×480/150%.
+- Отдельный подменный xprop: ошибочный exit не выдаёт stderr/маркер и держит последнее состояние; следующий успех восстанавливает его; зависание обрывается через 700 мс, Qt loop продолжает принимать события, close завершает процесс. Настоящих системных настроек/мониторов не меняли.
+- Captures pet-break.png/pet-happy.png в /tmp/ritm-t29-complete/test_reactions_gui_and_fullscr0: проверены Qt/Pillow и цвет пикселя картинки до/после обновления подписи. Артефакт встроенного просмотра не подтвердился в исходных PNG; временные reload/layer/debug скрипты не сохранены. Окно ждёт Image.Ready, тест также ждёт кадр software renderer.
+- Ruff check/format, qmllint десяти QML и проверка собственного patch прошли. Чужие правки ISSUES.md не исправлялись этой задачей. Без сети/ИИ/личных профилей. Анимационных файлов ещё нет; Windows/Wayland и новая standalone-поставка не проверены.

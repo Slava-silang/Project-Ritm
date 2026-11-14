@@ -230,6 +230,7 @@ class TaskController(QObject):
     focusChanged = Signal()
     systemPauseDone = Signal()
     actionSucceeded = Signal(str)
+    taskCompleted = Signal(str)
     _ready = Signal(object, str, str)
 
     def __init__(
@@ -1041,6 +1042,7 @@ class TaskController(QObject):
 
     @Slot(object, str, str)
     def _finish(self, result, error, action):
+        completed_before = {task.id for task in self._source if task.completed}
         if self._closing:
             return
         if action == "appearance" and result is not None:
@@ -1114,6 +1116,10 @@ class TaskController(QObject):
         self._drain_system_pause()
         if not error:
             self.actionSucceeded.emit(action)
+            if action == "complete":
+                for task in self._source:
+                    if task.completed and task.id not in completed_before:
+                        self.taskCompleted.emit(str(task.id))
 
     def close(self):
         self._closing = True
