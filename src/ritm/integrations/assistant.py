@@ -33,10 +33,11 @@ class ChatTurn:
 class Request:
     id: UUID
     prompt: str
-    operation: Literal["create", "split"]
+    operation: Literal["create", "split", "schedule"]
     selected: Task | None = None
     materials: tuple[SourceText, ...] = ()
     history: tuple[ChatTurn, ...] = ()
+    planning: dict | None = None
 
 
 class Adapter(Protocol):
@@ -50,11 +51,30 @@ class Adapter(Protocol):
 class MockAdapter:
     """Предсказуемый сценарий, явно обозначенный в интерфейсе как тестовый."""
 
-    connection = Connection("mock", "local-demo", "none")
+    connection = Connection(
+        "mock", "local-demo", "none", frozenset({"create", "split", "schedule"})
+    )
 
     def generate(self, request: Request, cancelled: Event) -> str:
         if cancelled.wait(0.15):
             raise ValueError("Запрос отменён")
+        if request.operation == "schedule":
+            from datetime import datetime, timedelta
+
+            remaining = timedelta(minutes=request.planning["remaining_minutes"])
+            blocks = []
+            for slot in request.planning["free"][:200]:
+                start, end = (
+                    datetime.fromisoformat(slot["start"]),
+                    datetime.fromisoformat(slot["end"]),
+                )
+                duration = min(end - start, remaining)
+                if duration > timedelta():
+                    blocks.append(
+                        {"start": start.isoformat(), "end": (start + duration).isoformat()}
+                    )
+                    remaining -= duration
+            return json.dumps({"blocks": blocks})
         proposal = {
             "subtasks": [
                 {

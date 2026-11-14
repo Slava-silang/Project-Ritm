@@ -11,6 +11,8 @@ ColumnLayout {
     property var view: backend.calendar
     property bool narrow: width < pane.appearance.dp(850)
     signal openTask(string identifier)
+    signal openPlanning()
+    property bool planningAvailable: false
     property bool dragging: false
     property var dragEntry: ({})
     property point dragOrigin: Qt.point(0, 0)
@@ -247,6 +249,14 @@ ColumnLayout {
             enabled: !pane.backend.busy
             onClicked: pane.beginCreate("")
         }
+    }
+    Button {
+        objectName: "planningButton"
+        text: qsTr("Рабочие часы и помощник расписания")
+        visible: pane.planningAvailable
+        enabled: !pane.backend.busy
+        Layout.fillWidth: true
+        onClicked: pane.openPlanning()
     }
     Label {
         Layout.fillWidth: true

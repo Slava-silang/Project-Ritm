@@ -8,6 +8,7 @@ ApplicationWindow {
     id: window
     property var connection: null
     property var assistant: null
+    property var planner: null
     property var desktop: null
     required property var backend
     property alias appearance: uiAppearance
@@ -84,7 +85,7 @@ ApplicationWindow {
     ].concat(window.backend.categories)
 
     property bool modalOpen: [
-        assistantDialog, systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
+        planningDialog, assistantDialog, systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
@@ -650,6 +651,11 @@ ApplicationWindow {
             }
         }
         CalendarPane {
+            planningAvailable: !!window.planner
+            onOpenPlanning: {
+                assistantDialog.close();
+                planningDialog.open();
+            }
             appearance: window.appearance
             id: calendarPane
             backend: window.backend
@@ -1528,6 +1534,17 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    PlanningDialog {
+        id: planningDialog
+        planner: window.planner
+        taskBackend: window.backend
+        appearance: window.appearance
+        parent: window.contentItem
+        anchors.centerIn: parent
+        width: Math.min(window.appearance.dp(760), window.width - 32)
+        height: window.height - 32
     }
 
     AssistantDialog {

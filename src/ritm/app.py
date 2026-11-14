@@ -16,7 +16,7 @@ from ritm.ui.tasks import TaskController
 
 
 def load_window(
-    controller: TaskController, desktop=None, assistant=None, connection=None
+    controller: TaskController, desktop=None, assistant=None, connection=None, planner=None
 ) -> QQmlApplicationEngine:
     """Загрузить ресурсы установленного пакета независимо от рабочей папки."""
     engine = QQmlApplicationEngine()
@@ -26,6 +26,7 @@ def load_window(
             "desktop": desktop,
             "assistant": assistant,
             "connection": connection,
+            "planner": planner,
         }
     )
     qml_path = Path(__file__).resolve().parent / "qml" / "Main.qml"
@@ -89,6 +90,7 @@ def main() -> int:
     desktop = None
     assistant = None
     connection = None
+    planner = None
     try:
         if not args.smoke_test:
             from ritm.platform.desktop import DesktopIntegration
@@ -117,7 +119,10 @@ def main() -> int:
             from ritm.ui.connection import ConnectionController
 
             connection = ConnectionController(profile, assistant)
-        engine = load_window(controller, desktop, assistant, connection)
+            from ritm.ui.planning import PlanningController
+
+            planner = PlanningController(profile, assistant)
+        engine = load_window(controller, desktop, assistant, connection, planner)
         if desktop is not None:
             desktop.attach(engine.rootObjects()[0], args.start_hidden)
         if sys.platform.startswith("linux") and not args.smoke_test:
@@ -131,6 +136,8 @@ def main() -> int:
         print(error, file=sys.stderr)
         return 1
     finally:
+        if planner is not None:
+            planner.close()
         if connection is not None:
             connection.close()
         if assistant is not None:
