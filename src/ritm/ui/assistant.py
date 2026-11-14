@@ -18,6 +18,7 @@ from ritm.integrations.chatgpt import ChatGPTError
 from ritm.integrations.file_text import FileTextError
 from ritm.storage.chat_history import ChatHistory, HistoryError
 from ritm.storage.sqlite import TaskStore
+from ritm.ui.skills import SkillController
 
 
 class AssistantController(QObject):
@@ -60,6 +61,27 @@ class AssistantController(QObject):
         self._history_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ritm-history")
         self._historyReady.connect(self._finish_history)
         self._history_job("load")
+        self._skills = SkillController(profile, locked=lambda: self._busy)
+        self._skills.selectionChanged.connect(self._skill_changed)
+
+    @Property(QObject, constant=True)
+    def skills(self):
+        return self._skills
+
+    def _skill_changed(self):
+        if not self._saving:
+            self.cancel()
+            self.newChat()
+
+    def _scope_key(self, operation, target_id):
+        scope = (
+            operation,
+            target_id,
+            self.adapter.connection.provider,
+            self.adapter.connection.model,
+        )
+        skill = self._skills.selected
+        return scope + (skill.fingerprint,) if skill else scope
 
     @Property("QVariantMap", notify=changed)
     def state(self):
@@ -113,6 +135,8 @@ class AssistantController(QObject):
             if self.adapter.connection.provider == "mock"
             else "ChatGPT",
         }
+        if self._skills.selected:
+            row["label"] += " · Навык: " + self._skills.selected.name
         self._messages.append(row)
         self._messages = self._messages[-100:]
         self._history_job("append", row)
@@ -198,16 +222,11 @@ class AssistantController(QObject):
         if self._busy or self._draft is not None:
             return
         rows = [row for row in self._messages if row["chat"] == identifier]
-        scope = (
-            operation,
-            target_id,
-            self.adapter.connection.provider,
-            self.adapter.connection.model,
-        )
+        scope = self._scope_key(operation, target_id)
         expected = json.dumps(scope)
         if not rows or any(row.get("scope") != expected for row in rows):
             self._error = (
-                "Выберите тот же режим, задачу, подключение и модель для продолжения. "
+                "Выберите тот же режим, задачу, подключение, модель и навык для продолжения. "
                 "Либо начните новый диалог."
             )
             self.changed.emit()
@@ -300,12 +319,8 @@ class AssistantController(QObject):
             self._error = "Это подключение не поддерживает выбранное действие."
             self.changed.emit()
             return
-        scope = (
-            operation,
-            target_id,
-            self.adapter.connection.provider,
-            self.adapter.connection.model,
-        )
+        scope = self._scope_key(operation, target_id)
+        skill = self._skills.selected
         if scope != self._scope:
             self.newChat()
             self._scope = scope
@@ -334,7 +349,9 @@ class AssistantController(QObject):
                 )
                 if cancelled.is_set():
                     return
-                request = Request(identifier, prompt, operation, selected, materials, history)
+                request = Request(
+                    identifier, prompt, operation, selected, materials, history, skill=skill
+                )
                 response = adapter.generate(request, cancelled)
                 if cancelled.is_set():
                     return
@@ -463,3 +480,4 @@ class AssistantController(QObject):
         self._cancelled.set()
         self._pool.shutdown(wait=True, cancel_futures=True)
         self._history_pool.shutdown(wait=True)
+        self._skills.close()

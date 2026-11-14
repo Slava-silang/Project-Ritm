@@ -65,6 +65,15 @@ class PlanningController(QObject):
         self._tasks = []
         self._draft = None
         self._valid = False
+        assistant.skills.selectionChanged.connect(self._skill_changed)
+
+    @Property(QObject, constant=True)
+    def skills(self):
+        return self.assistant.skills
+
+    def _skill_changed(self):
+        if not self._saving:
+            self.cancel()
 
     @Property("QVariantMap", notify=changed)
     def state(self):
@@ -173,6 +182,7 @@ class PlanningController(QObject):
             return
         self._draft, self._valid = None, False
         adapter = self.assistant.adapter
+        skill = self.assistant.skills.selected
 
         def work(identifier, cancelled):
             if "schedule" not in adapter.connection.operations:
@@ -202,6 +212,7 @@ class PlanningController(QObject):
                 "schedule",
                 context.task,
                 planning=context.data(),
+                skill=skill,
             )
             response = adapter.generate(request, cancelled)
             return parse_schedule(identifier, response, context)

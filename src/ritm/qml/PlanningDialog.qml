@@ -53,6 +53,13 @@ Dialog {
         ColumnLayout {
             width: scroll.availableWidth
             spacing: dialog.appearance.dp(10)
+            SkillPane {
+                Layout.fillWidth: true
+                library: dialog.planner ? dialog.planner.skills : null
+                appearance: dialog.appearance
+                prefix: "planning"
+                blocked: !!dialog.state.busy
+            }
             Label {
                 Layout.fillWidth: true
                 text: qsTr("Часы указаны по местному времени. По умолчанию — пн–пт, 09:00–18:00; измените их под свой график. Они ограничивают предложения помощника, ручные блоки остаются свободными.")
@@ -164,6 +171,7 @@ Dialog {
                 objectName: "planningGenerate"
                 text: qsTr("Предложить расписание")
                 enabled: !dialog.state.busy && !dialog.hoursDirty && task.currentIndex >= 0
+                    && (!dialog.planner || !dialog.planner.skills.state.busy)
                 onClicked: {
                     dialog.blocksDirty = false;
                     dialog.planner.generate(task.currentValue, first.text, last.text, prompt.text);

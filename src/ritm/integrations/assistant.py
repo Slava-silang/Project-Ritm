@@ -6,6 +6,7 @@ from threading import Event
 from typing import Literal, Protocol
 from uuid import UUID
 
+from ritm.domain.skills import Skill
 from ritm.domain.tasks import Task
 
 
@@ -38,6 +39,7 @@ class Request:
     materials: tuple[SourceText, ...] = ()
     history: tuple[ChatTurn, ...] = ()
     planning: dict | None = None
+    skill: Skill | None = None
 
 
 class Adapter(Protocol):
