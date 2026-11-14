@@ -9,6 +9,7 @@ ApplicationWindow {
     property var connection: null
     property var assistant: null
     property var planner: null
+    property var companion: null
     property var desktop: null
     required property var backend
     property alias appearance: uiAppearance
@@ -85,7 +86,7 @@ ApplicationWindow {
     ].concat(window.backend.categories)
 
     property bool modalOpen: [
-        planningDialog, assistantDialog, systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
+        companionDialog, planningDialog, assistantDialog, systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
@@ -454,6 +455,17 @@ ApplicationWindow {
                     autoStart.checked = window.desktop.settings.enabled;
                     hiddenStart.checked = window.desktop.settings.hidden;
                     systemDialog.open();
+                }
+            }
+            Button {
+                objectName: "companionButton"
+                text: qsTr("Компаньон")
+                visible: !!window.companion
+                onClicked: {
+                    petEnabled.checked = window.companion.state.enabled;
+                    petChoice.currentIndex = companionDialog.keys.indexOf(window.companion.state.pet);
+                    petSize.currentIndex = companionDialog.sizes.indexOf(window.companion.state.size);
+                    companionDialog.open();
                 }
             }
             Button {
@@ -1536,6 +1548,67 @@ ApplicationWindow {
         }
     }
 
+    EditorDialog {
+        id: companionDialog
+        objectName: "companionDialog"
+        property var keys: ["dragon", "cat", "dog"]
+        property var sizes: [160, 224, 288, 352]
+        title: qsTr("Компаньон")
+        anchors.centerIn: parent
+        width: Math.min(window.appearance.dp(520), window.width - 32)
+        height: Math.min(window.appearance.dp(560), window.height - 32)
+        modal: true
+        contentItem: ScrollView {
+            id: petScroll
+            contentWidth: availableWidth
+            clip: true
+            ColumnLayout {
+                width: petScroll.availableWidth
+                CheckBox { id: petEnabled; objectName: "petEnabled"; text: qsTr("Показывать компаньона") }
+                ComboBox {
+                    id: petChoice
+                    objectName: "petChoice"
+                    Layout.fillWidth: true
+                    model: [qsTr("Китайский дракончик"), qsTr("Котёнок"), qsTr("Щенок")]
+                }
+                ComboBox {
+                    id: petSize
+                    objectName: "petSize"
+                    Layout.fillWidth: true
+                    model: [qsTr("Маленький"), qsTr("Средний"), qsTr("Большой"), qsTr("Очень большой")]
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Пока используются статичные JPG с белым фоном. Прозрачные поля вокруг картинки пропускают клики. Перетащите картинку левой кнопкой, правой откройте меню. Анимации и реплики будут добавлены позже.")
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    color: window.appearance.colors.warning
+                    text: window.companion ? window.companion.state.error : ""
+                }
+            }
+        }
+        footer: Flow {
+            width: companionDialog.availableWidth
+            padding: window.appearance.dp(8)
+            Button {
+                objectName: "applyCompanion"
+                text: qsTr("Применить")
+                enabled: !!window.companion && !window.companion.state.busy
+                onClicked: window.companion.configure(petEnabled.checked, companionDialog.keys[petChoice.currentIndex], companionDialog.sizes[petSize.currentIndex])
+            }
+            Button {
+                objectName: "showCompanionAgain"
+                text: qsTr("Вернуть после скрытия")
+                enabled: !!window.companion && window.companion.state.enabled
+                onClicked: window.companion.showAgain()
+            }
+            Button { text: qsTr("Закрыть"); objectName: "closeCompanionSettings"; onClicked: companionDialog.close() }
+        }
+    }
+
     PlanningDialog {
         id: planningDialog
         planner: window.planner
@@ -1595,7 +1668,7 @@ ApplicationWindow {
                 Caption {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    text: qsTr("Без доступного трея окно всегда показывается. Настройка компаньона появится при его подключении.")
+                    text: qsTr("Без доступного трея окно всегда показывается. Для персонажа есть отдельная кнопка «Компаньон».")
                 }
                 Caption {
                     Layout.fillWidth: true
