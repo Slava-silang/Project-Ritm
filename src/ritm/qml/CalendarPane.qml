@@ -38,7 +38,7 @@ ColumnLayout {
         blockEditor.entry = entry;
         blockKind.currentIndex = entry.isEvent ? 1 : 0;
         eventTitle.text = entry.eventTitle || "";
-        blockTask.currentIndex = Math.max(0, pane.backend.calendarTasks.findIndex(task => task.id === entry.taskId));
+        blockEditor.selectedTaskId = entry.taskId || "";
         blockStart.text = entry.startText;
         blockEnd.text = entry.endText;
         blockEditor.open();
@@ -77,7 +77,7 @@ ColumnLayout {
         blockEditor.entry = null;
         blockKind.currentIndex = pane.backend.calendarTasks.length ? 0 : 1;
         eventTitle.text = "";
-        blockTask.currentIndex = Math.max(0, pane.backend.calendarTasks.findIndex(task => task.id === taskId));
+        blockEditor.selectedTaskId = taskId || (pane.backend.calendarTasks[0] || {}).id || "";
         const day = pane.view.formDate || "";
         blockStart.text = day + " 09:00";
         blockEnd.text = day + " 10:00";
@@ -450,6 +450,13 @@ ColumnLayout {
         id: blockEditor
         objectName: "blockEditor"
         property var entry: null
+        property string selectedTaskId: ""
+        property var taskChoices: {
+            const active = pane.backend.calendarTasks;
+            if (entry && !entry.isEvent && !active.some(task => task.id === entry.taskId))
+                return active.concat([{id: entry.taskId, title: entry.title}]);
+            return active;
+        }
         title: entry ? (entry.isEvent ? qsTr("Изменить событие") : qsTr("Изменить рабочий блок")) : qsTr("Добавить в расписание")
         parent: Overlay.overlay
         anchors.centerIn: parent
@@ -505,14 +512,19 @@ ColumnLayout {
                     objectName: "blockTaskInput"
                     Layout.fillWidth: true
                     textRole: "title"
-                    model: pane.backend.calendarTasks
+                    valueRole: "id"
+                    model: blockEditor.taskChoices
+                    currentIndex: blockEditor.taskChoices.findIndex(task => task.id === blockEditor.selectedTaskId)
+                    onActivated: blockEditor.selectedTaskId = currentValue
                     enabled: !blockEditor.entry
                 }
                 Label {
                     text: qsTr("Начало")
                     color: pane.appearance.colors.muted
                 }
-                TextField {
+                DateTimeField {
+                    appearance: pane.appearance
+                    allowOffset: true
                     id: blockStart
                     objectName: "blockStartInput"
                     Layout.fillWidth: true
@@ -522,7 +534,9 @@ ColumnLayout {
                     text: qsTr("Окончание")
                     color: pane.appearance.colors.muted
                 }
-                TextField {
+                DateTimeField {
+                    appearance: pane.appearance
+                    allowOffset: true
                     id: blockEnd
                     objectName: "blockEndInput"
                     Layout.fillWidth: true
@@ -556,7 +570,7 @@ ColumnLayout {
             Button {
                 objectName: "saveBlockButton"
                 text: qsTr("Сохранить")
-                enabled: !pane.backend.busy && (blockKind.currentIndex === 1 || (blockTask.currentIndex >= 0 && blockTask.currentIndex < pane.backend.calendarTasks.length))
+                enabled: !pane.backend.busy && (blockKind.currentIndex === 1 || (blockTask.currentIndex >= 0 && blockTask.currentIndex < blockEditor.taskChoices.length))
                 onClicked: {
                     if (blockEditor.entry)
                         pane.backend.changeBlock({
@@ -573,7 +587,7 @@ ColumnLayout {
                         pane.backend.createBlock({
                             kind: blockKind.currentIndex === 1 ? "event" : "task",
                             title: eventTitle.text,
-                            taskId: blockKind.currentIndex === 1 ? "" : pane.backend.calendarTasks[blockTask.currentIndex].id,
+                            taskId: blockKind.currentIndex === 1 ? "" : blockTask.currentValue,
                             start: blockStart.text,
                             end: blockEnd.text
                         });

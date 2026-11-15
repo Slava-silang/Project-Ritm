@@ -81,7 +81,9 @@ Dialog {
                         checked: dayRow.modelData.enabled
                         onToggled: { dialog.rows[dayRow.index].enabled = checked; dialog.hoursDirty = true; }
                     }
-                    TextField {
+                    DateTimeField {
+                        appearance: dialog.appearance
+                        timeOnly: true
                         objectName: "workingStart_" + dayRow.index
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
@@ -91,7 +93,10 @@ Dialog {
                         onTextEdited: { dialog.rows[dayRow.index].start = text; dialog.hoursDirty = true; }
                     }
                     Label { text: "—" }
-                    TextField {
+                    DateTimeField {
+                        appearance: dialog.appearance
+                        timeOnly: true
+                        allow24: true
                         objectName: "workingEnd_" + dayRow.index
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
@@ -137,7 +142,10 @@ Dialog {
             RowLayout {
                 Layout.fillWidth: true
                 enabled: !dialog.state.busy
-                TextField {
+                DateTimeField {
+                    appearance: dialog.appearance
+                    dateOnly: true
+                    isoDate: true
                     id: first
                     objectName: "planningFirst"
                     Layout.fillWidth: true
@@ -146,7 +154,10 @@ Dialog {
                     Accessible.name: qsTr("Первый день планирования")
                     onTextEdited: if (dialog.state.hasDraft) dialog.planner.cancel()
                 }
-                TextField {
+                DateTimeField {
+                    appearance: dialog.appearance
+                    dateOnly: true
+                    isoDate: true
                     id: last
                     objectName: "planningLast"
                     Layout.fillWidth: true
@@ -202,7 +213,9 @@ Dialog {
                     Layout.fillWidth: true
                     enabled: !dialog.state.busy
                     Label { text: qsTr("Блок ") + (blockRow.index + 1) }
-                    TextField {
+                    DateTimeField {
+                        appearance: dialog.appearance
+                        allowOffset: true
                         id: blockStart
                         objectName: "planningBlockStart_" + blockRow.index
                         Layout.fillWidth: true
@@ -211,7 +224,9 @@ Dialog {
                         Accessible.name: qsTr("Начало блока")
                         onTextEdited: { dialog.blockRows[blockRow.index].start = text; dialog.blocksDirty = true; }
                     }
-                    TextField {
+                    DateTimeField {
+                        appearance: dialog.appearance
+                        allowOffset: true
                         id: blockEnd
                         objectName: "planningBlockEnd_" + blockRow.index
                         Layout.fillWidth: true

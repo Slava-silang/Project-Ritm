@@ -933,6 +933,7 @@ ApplicationWindow {
                             Button {
                                 objectName: "planTaskButton"
                                 text: qsTr("+ Блок")
+                                enabled: !window.current.completed
                                 onClicked: {
                                     window.page = "calendar";
                                     calendarPane.beginCreate(window.current.id);
@@ -1838,14 +1839,18 @@ ApplicationWindow {
                             : qsTr("Сессия была на паузе. Уже записанное рабочее время сохранится."))
                         : qsTr("Укажи начало и окончание в местном времени.")
             }
-            TextField {
+            DateTimeField {
+                appearance: window.appearance
+                allowOffset: true
                 id: recordStart
                 objectName: "focusRecordStart"
                 visible: focusRecordEditor.mode === "manual"
                 Layout.fillWidth: true
                 placeholderText: qsTr("Начало · ДД.ММ.ГГГГ ЧЧ:ММ")
             }
-            TextField {
+            DateTimeField {
+                appearance: window.appearance
+                allowOffset: true
                 id: recordEnd
                 objectName: "focusRecordEnd"
                 visible: focusRecordEditor.mode !== "edit"
@@ -2045,7 +2050,9 @@ ApplicationWindow {
                 Caption {
                     text: qsTr("Дедлайн · местное время")
                 }
-                TextField {
+                DateTimeField {
+                    appearance: window.appearance
+                    allowEmpty: true
                     id: deadlineInput
                     objectName: "deadlineInput"
                     Layout.fillWidth: true

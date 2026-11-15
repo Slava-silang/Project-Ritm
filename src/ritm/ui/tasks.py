@@ -408,7 +408,9 @@ class TaskController(QObject):
 
     @Property("QVariantList", notify=changed)
     def calendarTasks(self):
-        return [{"id": row["id"], "title": row["title"]} for row in self._rows]
+        return [
+            {"id": row["id"], "title": row["title"]} for row in self._rows if not row["completed"]
+        ]
 
     @Property(str, notify=stateChanged)
     def notice(self):

@@ -365,7 +365,9 @@ Dialog {
                     onTextEdited: dialog.dirty = true
                 }
                 Label { text: qsTr("Дедлайн: ДД.ММ.ГГГГ ЧЧ:ММ или пусто"); visible: !dialog.state.split }
-                TextField {
+                DateTimeField {
+                    appearance: dialog.uiAppearance
+                    allowEmpty: true
                     id: deadlineInput
                     objectName: "draftDeadline"
                     Layout.fillWidth: true
