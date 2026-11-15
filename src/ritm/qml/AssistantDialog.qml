@@ -122,6 +122,13 @@ Dialog {
                 agent: dialog.agent
                 uiAppearance: dialog.uiAppearance
             }
+            SkillPane {
+                Layout.fillWidth: true
+                library: dialog.agent ? dialog.agent.skills : null
+                appearance: dialog.uiAppearance
+                prefix: "assistant"
+                blocked: !!dialog.state.busy
+            }
             CheckBox {
                 id: saveHistoryCheck
                 objectName: "chatSaveHistory"
@@ -301,6 +308,7 @@ Dialog {
                 text: dialog.state.busy ? qsTr("Подготовка…") : (dialog.state.provider === "chatgpt" ? qsTr("Отправить сообщение") : qsTr("Отправить в тестовый чат"))
                 enabled: !dialog.state.busy && !dialog.state.hasDraft && !dialog.taskBackend.busy
                     && !dialog.state.filesLoading
+                    && (!dialog.agent || !dialog.agent.skills.state.busy)
                     && (!dialog.connection || !dialog.connection.state.busy)
                     && (operation.currentIndex === 0 || !!dialog.taskBackend.detail.id)
                 onClicked: dialog.agent.generate(prompt.text, operation.currentIndex === 1 ? dialog.taskBackend.detail.id : "", dialog.selectedFiles)
@@ -357,7 +365,9 @@ Dialog {
                     onTextEdited: dialog.dirty = true
                 }
                 Label { text: qsTr("Дедлайн: ДД.ММ.ГГГГ ЧЧ:ММ или пусто"); visible: !dialog.state.split }
-                TextField {
+                DateTimeField {
+                    appearance: dialog.uiAppearance
+                    allowEmpty: true
                     id: deadlineInput
                     objectName: "draftDeadline"
                     Layout.fillWidth: true
@@ -425,6 +435,8 @@ Dialog {
         }
     }
     footer: Flow {
+        width: dialog.availableWidth
+        padding: dialog.uiAppearance.dp(10)
         Button {
             objectName: "chatRefine"
             text: qsTr("Уточнить предложение")

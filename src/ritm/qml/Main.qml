@@ -8,6 +8,8 @@ ApplicationWindow {
     id: window
     property var connection: null
     property var assistant: null
+    property var planner: null
+    property var companion: null
     property var desktop: null
     required property var backend
     property alias appearance: uiAppearance
@@ -84,7 +86,7 @@ ApplicationWindow {
     ].concat(window.backend.categories)
 
     property bool modalOpen: [
-        assistantDialog, systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
+        companionDialog, planningDialog, assistantDialog, systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
@@ -456,6 +458,22 @@ ApplicationWindow {
                 }
             }
             Button {
+                objectName: "companionButton"
+                text: qsTr("Компаньон")
+                visible: !!window.companion
+                onClicked: {
+                    petEnabled.checked = window.companion.state.enabled;
+                    petChoice.currentIndex = companionDialog.keys.indexOf(window.companion.state.pet);
+                    petSize.currentIndex = companionDialog.sizes.indexOf(window.companion.state.size);
+                    petMuted.checked = window.companion.state.muted;
+                    petFrequency.currentIndex = companionDialog.frequencies.indexOf(window.companion.state.frequency);
+                    petBreak.value = window.companion.state.break_minutes;
+                    petReducedMotion.checked = window.companion.state.reduce_motion;
+                    petFullscreen.checked = window.companion.state.hide_fullscreen;
+                    companionDialog.open();
+                }
+            }
+            Button {
                 objectName: "appearanceButton"
                 text: qsTr("Вид")
                 enabled: !window.backend.busy
@@ -650,6 +668,11 @@ ApplicationWindow {
             }
         }
         CalendarPane {
+            planningAvailable: !!window.planner
+            onOpenPlanning: {
+                assistantDialog.close();
+                planningDialog.open();
+            }
             appearance: window.appearance
             id: calendarPane
             backend: window.backend
@@ -910,6 +933,7 @@ ApplicationWindow {
                             Button {
                                 objectName: "planTaskButton"
                                 text: qsTr("+ Блок")
+                                enabled: !window.current.completed
                                 onClicked: {
                                     window.page = "calendar";
                                     calendarPane.beginCreate(window.current.id);
@@ -1530,6 +1554,127 @@ ApplicationWindow {
         }
     }
 
+    EditorDialog {
+        id: companionDialog
+        objectName: "companionDialog"
+        property var keys: ["dragon", "cat", "dog"]
+        property var sizes: [160, 224, 288, 352]
+        property var frequencies: ["rare", "normal", "often"]
+        title: qsTr("Компаньон")
+        anchors.centerIn: parent
+        width: Math.min(window.appearance.dp(520), window.width - 32)
+        height: Math.min(window.appearance.dp(560), window.height - 32)
+        modal: true
+        contentItem: ScrollView {
+            id: petScroll
+            contentWidth: availableWidth
+            clip: true
+            ColumnLayout {
+                width: petScroll.availableWidth
+                CheckBox { id: petEnabled; objectName: "petEnabled"; text: qsTr("Показывать компаньона") }
+                ComboBox {
+                    id: petChoice
+                    objectName: "petChoice"
+                    Layout.fillWidth: true
+                    model: [qsTr("Китайский дракончик"), qsTr("Котёнок"), qsTr("Щенок")]
+                }
+                ComboBox {
+                    id: petSize
+                    objectName: "petSize"
+                    Layout.fillWidth: true
+                    model: [qsTr("Маленький"), qsTr("Средний"), qsTr("Большой"), qsTr("Очень большой")]
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Пока используются статичные JPG. Состояние и реплики показаны под картинкой. Перетаскивание — левой кнопкой, меню — правой. Анимации подключим после готовности материалов.")
+                }
+                CheckBox {
+                    id: petMuted
+                    objectName: "petMuted"
+                    text: qsTr("Отключить реплики")
+                    Layout.fillWidth: true
+                }
+                Label { text: qsTr("Частота реплик") }
+                ComboBox {
+                    id: petFrequency
+                    objectName: "petFrequency"
+                    Layout.fillWidth: true
+                    model: [qsTr("Редко — не чаще раза в 5 минут"), qsTr("Обычно — раз в 2 минуты"), qsTr("Чаще — раз в 30 секунд")]
+                }
+                Label { text: qsTr("Предложить перерыв после, минут") }
+                SpinBox {
+                    id: petBreak
+                    objectName: "petBreak"
+                    from: 5
+                    to: 240
+                    stepSize: 5
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Считается активная работа после начала или продолжения фокуса. Пауза начинает отсчёт заново. Реплика не ставит задачу на паузу автоматически.")
+                }
+                CheckBox {
+                    id: petReducedMotion
+                    objectName: "petReducedMotion"
+                    Layout.fillWidth: true
+                    text: qsTr("Уменьшить анимации")
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Настройка сохранится для будущих анимаций. Сейчас все персонажи статичны.")
+                }
+                CheckBox {
+                    id: petFullscreen
+                    objectName: "petFullscreen"
+                    Layout.fillWidth: true
+                    text: qsTr("Скрывать при полноэкранной работе")
+                    contentItem: Label {
+                        text: petFullscreen.text
+                        leftPadding: petFullscreen.indicator.width + petFullscreen.spacing
+                        wrapMode: Text.Wrap
+                    }
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    color: window.appearance.colors.warning
+                    text: window.companion ? window.companion.state.error : ""
+                }
+            }
+        }
+        footer: Flow {
+            width: companionDialog.availableWidth
+            padding: window.appearance.dp(8)
+            Button {
+                objectName: "applyCompanion"
+                text: qsTr("Применить")
+                enabled: !!window.companion && !window.companion.state.busy
+                onClicked: window.companion.configure(petEnabled.checked, companionDialog.keys[petChoice.currentIndex], companionDialog.sizes[petSize.currentIndex], petMuted.checked, companionDialog.frequencies[petFrequency.currentIndex], petBreak.value, petReducedMotion.checked, petFullscreen.checked)
+            }
+            Button {
+                objectName: "showCompanionAgain"
+                text: qsTr("Вернуть после скрытия")
+                enabled: !!window.companion && window.companion.state.enabled
+                onClicked: window.companion.showAgain()
+            }
+            Button { text: qsTr("Закрыть"); objectName: "closeCompanionSettings"; onClicked: companionDialog.close() }
+        }
+    }
+
+    PlanningDialog {
+        id: planningDialog
+        planner: window.planner
+        taskBackend: window.backend
+        appearance: window.appearance
+        parent: window.contentItem
+        anchors.centerIn: parent
+        width: Math.min(window.appearance.dp(760), window.width - 32)
+        height: window.height - 32
+    }
+
     AssistantDialog {
         id: assistantDialog
         connection: window.connection
@@ -1578,7 +1723,7 @@ ApplicationWindow {
                 Caption {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    text: qsTr("Без доступного трея окно всегда показывается. Настройка компаньона появится при его подключении.")
+                    text: qsTr("Без доступного трея окно всегда показывается. Для персонажа есть отдельная кнопка «Компаньон».")
                 }
                 Caption {
                     Layout.fillWidth: true
@@ -1694,14 +1839,18 @@ ApplicationWindow {
                             : qsTr("Сессия была на паузе. Уже записанное рабочее время сохранится."))
                         : qsTr("Укажи начало и окончание в местном времени.")
             }
-            TextField {
+            DateTimeField {
+                appearance: window.appearance
+                allowOffset: true
                 id: recordStart
                 objectName: "focusRecordStart"
                 visible: focusRecordEditor.mode === "manual"
                 Layout.fillWidth: true
                 placeholderText: qsTr("Начало · ДД.ММ.ГГГГ ЧЧ:ММ")
             }
-            TextField {
+            DateTimeField {
+                appearance: window.appearance
+                allowOffset: true
                 id: recordEnd
                 objectName: "focusRecordEnd"
                 visible: focusRecordEditor.mode !== "edit"
@@ -1901,7 +2050,9 @@ ApplicationWindow {
                 Caption {
                     text: qsTr("Дедлайн · местное время")
                 }
-                TextField {
+                DateTimeField {
+                    appearance: window.appearance
+                    allowEmpty: true
                     id: deadlineInput
                     objectName: "deadlineInput"
                     Layout.fillWidth: true

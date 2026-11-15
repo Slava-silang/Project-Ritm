@@ -329,6 +329,48 @@ class TaskStore:
             self._write_task(updated)
             return updated
 
+    def apply_schedule(self, draft) -> UUID:
+        """Записать весь подтверждённый набор и квитанцию без частичного результата."""
+        context = draft.context
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            receipt = self._db.execute(
+                "SELECT digest,task_id FROM applied_proposals WHERE id=?", (str(draft.id),)
+            ).fetchone()
+            if receipt:
+                if receipt["digest"] != draft.digest or receipt["task_id"] != str(context.task.id):
+                    raise ValueError("Этот черновик уже применён с другим содержимым")
+                return context.task.id
+            planned = sum(
+                (b.duration for b in self.list_work_blocks(task_id=context.task.id)), timedelta()
+            )
+            if (
+                self.get_task(context.task.id) != context.task
+                or self.list_work_blocks(window_start=context.starts_at, window_end=context.ends_at)
+                != context.busy
+                or max(timedelta(), context.task.expected_duration - planned) != context.remaining
+            ):
+                raise ValueError("Задача или занятость изменились. Сформируйте расписание заново.")
+            if any(b.starts_at < self._clock() for b in draft.blocks):
+                raise ValueError("Начало блока уже прошло. Сформируйте расписание заново.")
+            for block in draft.blocks:
+                self._db.execute(
+                    "INSERT INTO work_blocks(id,task_id,starts_us,ends_us,title) "
+                    "VALUES (?,?,?,?,?)",
+                    (
+                        str(block.id),
+                        str(block.task_id),
+                        instant_us(block.starts_at),
+                        instant_us(block.ends_at),
+                        "",
+                    ),
+                )
+            self._db.execute(
+                "INSERT INTO applied_proposals VALUES (?,?,?)",
+                (str(draft.id), draft.digest, str(context.task.id)),
+            )
+            return context.task.id
+
     def list_completion_dates(self) -> dict[UUID, datetime]:
         return {
             UUID(row["task_id"]): from_instant_us(row["completed_us"])

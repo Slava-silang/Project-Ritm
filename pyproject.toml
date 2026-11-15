@@ -30,6 +30,9 @@ packaging = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/ritm"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"assets/pets" = "ritm/assets/pets"
+
 [tool.hatch.version]
 path = "src/ritm/__init__.py"
 
