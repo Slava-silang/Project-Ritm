@@ -1,5 +1,47 @@
 # Окружение, запуск и выпуск
 
+## Windows — T32 (15–16 ноября 2026)
+
+Проверочный стенд: Windows 11 x64, build 26200, Python 3.12.16 (uv),
+PySide6 6.12.0, Nuitka 4.2.2. Используется отдельное проектное окружение:
+
+```powershell
+$env:UV_PROJECT_ENVIRONMENT = 'build/windows-venv'
+uv sync --locked --group packaging
+build/windows-venv/Scripts/python.exe -m ritm
+build/windows-venv/Scripts/python.exe scripts/build_windows.py
+```
+
+Скрипт собирает `build/windows/main.dist/ritm.exe`, ZIP в `dist/` и SHA256.
+Передавать нужно всю распакованную папку `main.dist`, а не один EXE.
+Для C-компиляции Nuitka загружает свой MinGW64 (проверен GCC 15.2.0); установленный MSYS2 GCC
+не используется. Полный Qt SDK не требуется. Анализ DLL выполняет стандартный
+Dependency Walker из кеша Nuitka. Первый анализ Qt DLL и загрузка компилятора
+могут занимать несколько минут; кеш остаётся в `build/windows/nuitka-cache`.
+Источник требований к компилятору: [Nuitka User Manual](https://nuitka.net/user-documentation/user-manual.html).
+
+Проверка извлечённого архива из пути с кириллицей и пробелами:
+
+```powershell
+build/windows-venv/Scripts/python.exe scripts/check_windows_build.py dist/ritm-0.1.0-windows-amd64.zip
+```
+
+Она ограничивает PATH системной папкой Windows, проверяет загрузку QML,
+повторное открытие тестового профиля и workers чтения TXT/PDF. Это проверка
+на машине разработки, а не доказательство работы на чистой Windows VM.
+Результат записывается в `build/windows-verification.json`.
+
+Windows-зависимость `tzdata` нужна для IANA-часовых поясов и DST.
+Настройки и история записываются через закрытый перед `os.replace` временный
+файл. В Windows права файлов определяются ACL, не POSIX-режимом 0600.
+
+Ограничения адаптеров: трей использует Qt; XDG-автозапуск доступен только
+на Linux, Windows-флажки отключены. Монитор сна/блокировки реализован только
+для logind/Cinnamon; автоматическая пауза на Windows пока отсутствует.
+Secret Service недоступен на Windows, поэтому вход хранится только в памяти
+с предупреждением; Windows Credential Manager пока не подключён.
+Это ограничения текущей реализации, не подтверждение полной поддержки Windows.
+
 На 13 ноября 2026 года T01–T22, T12a и T17a завершены: из исходников доступны задачи, фильтры, корзина и календарь недели/месяца с созданием, переносом и изменением блоков и самостоятельных событий. Самостоятельная Linux-поставка пока остаётся на T02 со стартовым окном; она не содержит текущих функций.
 
 ## Уже установлено на текущем компьютере

@@ -1,5 +1,66 @@
 # Проверка «Ритма»
 
+## T32 — Windows, 15–16 ноября 2026
+
+Стенд: Windows 11 x64 build 26200, Python 3.12.16, PySide6 6.12.0,
+SQLite из Python, окружение `build/windows-venv`, зависимости из `uv.lock`.
+
+Фактически выполнено из PowerShell:
+
+```powershell
+$env:NO_PROXY = '127.0.0.1,localhost'
+build/windows-venv/Scripts/python.exe -m pytest -q --tb=short --basetemp=build/t32-final
+```
+
+**251 passed, 7 skipped, 146,51 с.** Пропущены Linux Secret Service (1),
+POSIX-сигналы прототипа (2), Linux GLib Desktop Entry (1), Linux D-Bus (1),
+Unix-сигналы основного процесса (2). Подменная авторизация использует
+локальный callback; настоящих входов, запросов OpenAI и платных API нет.
+Предыдущие попытки в sandbox/длинной временной папке не считать итоговыми:
+проверены отдельно короткий путь, закрытие файлов перед заменой,
+нормализация путей QUrl и платформенная проверка POSIX-прав.
+
+Настоящий Qt backend Windows, Qt Quick software renderer:
+
+```powershell
+$env:RITM_UI_PLATFORM = 'windows'
+build/windows-venv/Scripts/python.exe -m pytest tests/test_task_ui.py::test_qml_task_scenario_and_restart tests/test_appearance.py::test_theme_scale_shortcuts_and_restart tests/test_desktop.py::test_tray_close_restore_exit_and_autostart -q --basetemp=build/t32-native
+```
+
+**4 passed, 36,64 с.** Включены создание/редактирование/веса/перезапуск,
+темы/масштаб/клавиатура и моделируемые состояния доступности трея.
+XDG-автозапуск в этом тесте пишет только временный `.desktop`, не запускается
+при входе в Windows и не является Windows-адаптером автозапуска.
+Кадры — `build/t32-native/`; узкая карточка осмотрена.
+
+Отдельный осмотр через computer-use: реально показанные главный экран,
+форма задачи и настройки; Qt обнаружил настоящий трей, настройки автозапуска
+отключены; команда «Выйти из приложения» закрыла окно. Программные сценарии
+и осмотр агента не заменяют пользовательскую приёмку.
+
+Ruff check, Ruff format --check (94 файла на момент проверки) и qmllint
+семи QML прошли. Использованы тестовые профили; ранее запущенный
+пользовательский процесс и личные данные не изменялись.
+
+Standalone: `scripts/build_windows.py` успешно создал `build/windows/main.dist/ritm.exe`,
+Nuitka 4.2.2 / MinGW64 GCC 15.2.0, встроенный smoke-test прошёл. ZIP:
+`dist/ritm-0.1.0-windows-amd64.zip`, 88 902 263 байта; папка — 240 608 192 байта.
+SHA256: `bb578cf241c601b7c612b51fc20c7d9c35d294a261e648bd56e47fe253a981f6`.
+
+`scripts/check_windows_build.py dist/ritm-0.1.0-windows-amd64.zip`: exit 0.
+Архив извлечён в отдельную папку с кириллицей и пробелами, PATH ограничен
+System32, переменные Python/Qt удалены. Проверены версия, загрузка QML,
+два запуска с тем же тестовым профилем, отдельные workers TXT и текстового PDF.
+Отчёт — `build/windows-verification.json`. Обычное окно готового EXE без
+принудительного software renderer также реально показано; через computer-use
+создана задача «Проверка Windows T32», выполнен штатный выход; после повторного
+запуска она отображается в списке и карточке. Журналы обоих запусков пусты.
+
+Чистая Windows VM, физический сон и
+блокировка, несколько мониторов и готовый компаньон не проверены. На Windows
+нет монитора сна/блокировки, автозапуска и Credential Manager; токены только
+в памяти с предупреждением. Полная поддержка Windows не заявляется.
+
 Это план проверок приложения. T01 добавляет тесты первоначального запуска, T02 — проверку самостоятельной Linux-поставки. Бизнес-сценарии ниже относятся к последующим задачам.
 
 ## Порядок работы

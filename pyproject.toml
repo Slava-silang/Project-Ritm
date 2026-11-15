@@ -26,7 +26,6 @@ packaging = [
     "ordered-set>=4.1,<5",
     "zstandard>=0.23,<1",
     "patchelf>=0.17,<1; sys_platform == 'linux'",
-    "pefile>=2024.8.26; sys_platform == 'win32'",
 ]
 
 [tool.hatch.build.targets.wheel]
