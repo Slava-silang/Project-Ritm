@@ -62,6 +62,7 @@ try:
         picker.setProperty("currentFolder", QUrl.fromLocalFile(str(profile)))
         gui.click(button)
         gui.wait_for(lambda: picker.property("visible"), "file picker opens")
+        picker.setProperty("currentFolder", QUrl.fromLocalFile(str(profile)))
         gui.wait_for(source_item, "source file listed")
         item = source_item()
         point = item.mapToScene(QPointF(item.width() / 2, item.height() / 2)).toPoint()
@@ -69,7 +70,7 @@ try:
             item.window(), Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, point
         )
         gui.wait_for(
-            lambda: picker.property("selectedFile").toLocalFile() == str(source), "selection"
+            lambda: Path(picker.property("selectedFile").toLocalFile()) == source, "selection"
         )
         picker.accept()
         gui.idle()

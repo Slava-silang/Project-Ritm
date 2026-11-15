@@ -393,7 +393,7 @@ def test_reconsent_uses_saved_client_and_host(tmp_path):
 
 
 def test_locked_system_collection_falls_back_without_unlock_dialog(tmp_path, monkeypatch):
-    import secretstorage
+    secretstorage = pytest.importorskip("secretstorage", reason="Linux Secret Service backend")
 
     from ritm.platform.credentials import protected_backend
 

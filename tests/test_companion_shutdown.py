@@ -39,6 +39,7 @@ raise SystemExit(app.exec())
 
 
 @pytest.mark.parametrize("termination", [signal.SIGINT, signal.SIGTERM])
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX signal delivery")
 def test_terminal_signal_terminates_process(tmp_path, termination):
     process = subprocess.Popen(
         [sys.executable, str(ROOT / "scripts/companion_probe.py")],

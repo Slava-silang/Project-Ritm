@@ -50,7 +50,9 @@ def write_autostart(path: Path, command: list[str], enabled: bool, hidden: bool)
             stream.write(text.encode())
             stream.flush()
             os.fsync(stream.fileno())
+            stream.close()  # Windows cannot replace an open temporary file.
             os.replace(temporary, path)
         finally:
+            stream.close()
             temporary.unlink(missing_ok=True)
     return {"enabled": True, "hidden": hidden}

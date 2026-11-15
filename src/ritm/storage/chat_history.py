@@ -71,8 +71,10 @@ class ChatHistory:
                 stream.write(raw)
                 stream.flush()
                 os.fsync(stream.fileno())
+                stream.close()  # Windows cannot replace an open temporary file.
                 os.replace(temporary, self.path)
             finally:
+                stream.close()
                 temporary.unlink(missing_ok=True)
         self.enabled, self.messages, self.valid = enabled, messages, True
 

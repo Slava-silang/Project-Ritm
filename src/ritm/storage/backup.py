@@ -52,8 +52,10 @@ def _write_profile_text(path: Path, content: str):
             stream.write(content.encode())
             stream.flush()
             os.fsync(stream.fileno())
+            stream.close()  # Windows cannot replace an open temporary file.
             os.replace(temporary, path)
         finally:
+            stream.close()
             temporary.unlink(missing_ok=True)
 
 

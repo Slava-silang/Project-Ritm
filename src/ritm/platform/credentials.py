@@ -74,8 +74,10 @@ class CredentialVault:
                 stream.write(json.dumps(data).encode())
                 stream.flush()
                 os.fsync(stream.fileno())
+                stream.close()  # Windows cannot replace an open temporary file.
                 os.replace(path, self.profile / "chatgpt-registration.json")
             finally:
+                stream.close()
                 path.unlink(missing_ok=True)
 
     def save(self, data):

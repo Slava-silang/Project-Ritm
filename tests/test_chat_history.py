@@ -30,7 +30,8 @@ def test_local_history_restart_disable_resume_and_clear(tmp_path):
     history.append(row)
     history.append(row)
     assert history.messages == [row]
-    assert stat.S_IMODE(history.path.stat().st_mode) == 0o600
+    if os.name != "nt":  # Windows uses inherited ACLs rather than POSIX permission bits.
+        assert stat.S_IMODE(history.path.stat().st_mode) == 0o600
     history.set_enabled(False)
     saved = history.path.read_bytes()
     history.append(message("Не сохранять"))

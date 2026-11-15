@@ -43,6 +43,7 @@ try:
         picker.setProperty("currentFolder", QUrl.fromLocalFile(str(folder)))
         gui.click("chooseBackupArchive")
         gui.wait_for(lambda: picker.property("visible"), "file picker opens")
+        picker.setProperty("currentFolder", QUrl.fromLocalFile(str(folder)))
 
         def archive_item():
             listing = gui.item("fileDialogListView")
@@ -62,7 +63,7 @@ try:
             item.window(), Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, point
         )
         gui.wait_for(
-            lambda: picker.property("selectedFile").toLocalFile() == str(archive),
+            lambda: Path(picker.property("selectedFile").toLocalFile()) == archive,
             "archive selected",
         )
         picker.accept()

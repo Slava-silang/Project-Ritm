@@ -37,7 +37,9 @@ def save_appearance(profile: Path, theme: str, scale: int) -> dict:
             stream.write(json.dumps(data).encode())
             stream.flush()
             os.fsync(stream.fileno())
+            stream.close()  # Windows cannot replace an open temporary file.
             os.replace(temporary, profile / "appearance.json")
         finally:
+            stream.close()
             temporary.unlink(missing_ok=True)
     return data
