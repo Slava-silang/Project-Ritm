@@ -76,6 +76,8 @@ class CompanionController(QObject):
         self._reaction_timer.timeout.connect(self._react)
         self._reaction_timer.start()
         backend.focusChanged.connect(self._react)
+        backend.pomodoroChanged.connect(self._react)
+        backend.pomodoroEnded.connect(self._pomodoro_end)
         backend.taskCompleted.connect(self._completed)
         app = QGuiApplication.instance()
         self._monitor = FullscreenMonitor(app.platformName(), self)
@@ -161,9 +163,20 @@ class CompanionController(QObject):
             return
         before = (self._reactions.mode, self._reactions.text)
         self._reactions.update(
-            self.backend.focus, self._clock(), self._settings, self._visible_for_speech()
+            self.backend.focus,
+            self._clock(),
+            self._settings,
+            self._visible_for_speech(),
+            pomodoro=self.backend.pomodoro.get("active", False),
         )
         if before != (self._reactions.mode, self._reactions.text):
+            self.changed.emit()
+
+    def _pomodoro_end(self, phase):
+        if not self._closed and self._settings["enabled"]:
+            self._reactions.pomodoro_end(
+                phase, self._clock(), self._settings, self._visible_for_speech()
+            )
             self.changed.emit()
 
     def _completed(self, _identifier):
@@ -315,7 +328,7 @@ class CompanionController(QObject):
         if self.backend.busy:
             return
         focus = self.backend.focus
-        if focus.get("recovery"):
+        if focus.get("recovery") or self.backend.pomodoro.get("phase") in ("short", "long"):
             self.open_main()
         elif focus:
             self.backend.changeFocus("resume" if focus["paused"] else "pause")
@@ -329,7 +342,9 @@ class CompanionController(QObject):
         self.menu.addAction("Открыть Ритм", self.open_main)
         focus = self.backend.focus
         action = self.menu.addAction(
-            "Открыть восстановление сессии"
+            "Открыть Pomodoro"
+            if self.backend.pomodoro.get("phase") in ("short", "long")
+            else "Открыть восстановление сессии"
             if focus.get("recovery")
             else "Продолжить фокус"
             if focus.get("paused")

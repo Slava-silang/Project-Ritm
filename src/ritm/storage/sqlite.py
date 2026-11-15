@@ -1,7 +1,9 @@
 """SQLite с версионированной схемой. Каждый экземпляр используется только в создавшем его потоке."""
 
+import json
 import sqlite3
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -9,12 +11,16 @@ from uuid import UUID, uuid4
 
 from ritm.domain.calendar import WorkBlock, from_instant_us, instant_us
 from ritm.domain.focus import FocusSession
+from ritm.domain.pomodoro import Pomodoro
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.storage.attachments import Attachment
 from ritm.storage.codec import decode_task, encode_task
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
+POMODORO_SCHEMA = (
+    "CREATE TABLE pomodoro (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)"
+)
 SCHEMA = (
     "CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL, "
     "title TEXT NOT NULL CHECK(length(trim(title))>0))",
@@ -190,7 +196,7 @@ class TaskStore:
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in (1, 2, 3, 4, 5, 6, 7, 8, 9) and app_id == APPLICATION_ID:
+            if version in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -211,7 +217,9 @@ class TaskStore:
                         self._db.execute(statement)
                 if version < 9:
                     self._db.execute(CLEANUP_SCHEMA)
-                self._db.execute(PROPOSAL_SCHEMA)
+                if version < 10:
+                    self._db.execute(PROPOSAL_SCHEMA)
+                self._db.execute(POMODORO_SCHEMA)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._db.commit()
                 return
@@ -231,6 +239,7 @@ class TaskStore:
                 self._db.execute(statement)
             self._db.execute(CLEANUP_SCHEMA)
             self._db.execute(PROPOSAL_SCHEMA)
+            self._db.execute(POMODORO_SCHEMA)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             self._db.commit()
@@ -775,6 +784,110 @@ class TaskStore:
             task, nearby = self._block_context(block)
             return task, block, nearby
 
+    def active_focus(self):
+        return next((s for s in self.list_focus_sessions() if s.finished_us is None), None)
+
+    def get_pomodoro(self):
+        row = self._db.execute("SELECT payload FROM pomodoro WHERE id=1").fetchone()
+        if row is None:
+            return Pomodoro()
+        try:
+            payload = json.loads(row[0])
+            if not isinstance(payload, dict) or payload.keys() != Pomodoro().to_dict().keys():
+                raise ValueError("Неполный снимок Pomodoro")
+            return Pomodoro(**payload)
+        except (ValueError, TypeError) as error:
+            raise ValueError("Настройки Pomodoro повреждены; данные не перезаписаны") from error
+
+    def _save_pomodoro(self, state):
+        state = replace(state, revision=state.revision + 1)
+        self._db.execute(
+            "INSERT INTO pomodoro VALUES (1,?) ON CONFLICT(id) "
+            "DO UPDATE SET payload=excluded.payload",
+            (json.dumps(state.to_dict()),),
+        )
+
+    def checkpoint_pomodoro(self, now, *, pause=False, startup=False):
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            state = self.get_pomodoro()
+            if state.phase in ("short", "long") and state.running_since_us is not None:
+                self._save_pomodoro(
+                    state.checkpoint_break(instant_us(now), pause=pause, startup=startup)
+                )
+
+    def change_pomodoro(
+        self,
+        action,
+        now,
+        revision,
+        expected,
+        *,
+        task_id=None,
+        work=25,
+        short=5,
+        long=15,
+        replace_current=False,
+    ):
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            state = self.get_pomodoro()
+            active = self.active_focus()
+            actual = (str(active.id), active.revision) if active else None
+            if revision != state.revision or expected != actual:
+                raise ValueError("Pomodoro или сессия уже изменились. Обновите список")
+            now_us = instant_us(now)
+            elapsed = state.elapsed(now_us, active)
+            if action in ("start", "work"):
+                if action == "start":
+                    if state.phase != "idle":
+                        raise ValueError("Pomodoro уже запущен")
+                    state = Pomodoro(work=work, short=short, long=long, revision=state.revision)
+                elif state.phase not in ("work", "short", "long") or (
+                    state.phase in ("short", "long") and elapsed < state.target_us
+                ):
+                    raise ValueError("Перерыв ещё не завершён")
+                if active and not replace_current:
+                    raise ValueError("Подтвердите завершение текущей сессии")
+                self._change_focus("start", now, expected, task_id=task_id)
+                after = self.active_focus()
+                state = replace(
+                    state,
+                    phase="work",
+                    session_id=str(after.id),
+                    base_us=0,
+                    elapsed_us=elapsed if state.phase == "work" else 0,
+                    running_since_us=None,
+                )
+            elif action == "break":
+                if state.phase != "work" or elapsed < state.target_us:
+                    raise ValueError("Рабочий интервал ещё не завершён")
+                if active:
+                    self._change_focus("finish", now, expected)
+                cycle = (state.cycle + 1) % 4
+                state = replace(
+                    state,
+                    phase="long" if cycle == 0 else "short",
+                    cycle=cycle,
+                    elapsed_us=0,
+                    base_us=0,
+                    session_id="",
+                    running_since_us=now_us,
+                )
+            elif action in ("pause", "resume") and state.phase in ("short", "long"):
+                if (action == "pause") != (state.running_since_us is not None):
+                    raise ValueError("Состояние перерыва уже изменилось")
+                state = state.checkpoint_break(now_us, pause=action == "pause")
+            elif action == "stop":
+                if state.phase == "work" and active:
+                    self._change_focus("finish", now, expected)
+                state = Pomodoro(
+                    work=state.work, short=state.short, long=state.long, revision=state.revision
+                )
+            else:
+                raise ValueError("Это действие Pomodoro сейчас недоступно")
+            self._save_pomodoro(state)
+
     def list_focus_sessions(self) -> tuple[FocusSession, ...]:
         rows = self._db.execute(
             """SELECT s.*, MAX(CASE WHEN i.ends_us IS NULL THEN i.starts_us END) AS running,
@@ -807,64 +920,97 @@ class TaskStore:
         target_us: int | None = None,
         recovered_end: datetime | None = None,
     ):
-        now_us = instant_us(now)
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
-            active = next((x for x in self.list_focus_sessions() if x.finished_us is None), None)
-            actual = (str(active.id), active.revision) if active else None
-            if expected != actual:
-                raise ValueError("Сессия уже изменилась. Обновите список и повторите действие")
-            if action == "start":
-                if task_id is None or self.get_task(task_id) is None:
-                    raise KeyError(task_id)
-                if target_us is not None and not 0 < target_us <= 2**63 - 1:
-                    raise ValueError("Укажите положительную длительность")
-                if active:
-                    self._finish_focus(active, now_us)
-                identifier = str(uuid4())
-                self._db.execute(
-                    "INSERT INTO focus_sessions(id,task_id,started_us,target_us) VALUES (?,?,?,?)",
-                    (identifier, str(task_id), now_us, target_us),
+            state = self.get_pomodoro()
+            if state.phase in ("short", "long") and action in ("start", "resume"):
+                raise ValueError(
+                    "Сначала завершите перерыв кнопкой «Начать работу» или выключите Pomodoro"
                 )
-                self._db.execute(
-                    "INSERT INTO focus_intervals VALUES (?,0,?,NULL)", (identifier, now_us)
-                )
-                return
-            if active is None:
-                raise ValueError("Нет активной фокус-сессии")
-            identifier = str(active.id)
-            if action == "recover":
-                last_known = self._db.execute(
-                    "SELECT MAX(COALESCE(ends_us,starts_us)) "
-                    "FROM focus_intervals WHERE session_id=?",
-                    (identifier,),
-                ).fetchone()[0]
-                end = last_known if recovered_end is None else instant_us(recovered_end)
-                if recovered_end is not None and not last_known <= end <= now_us:
-                    raise ValueError(
-                        "Окончание должно быть между последней отметкой и текущим временем"
-                    )
-                self._finish_focus(active, end)
-                return
-            if action == "finish":
-                self._finish_focus(active, now_us)
-                return
-            if action == "pause" and active.running_since_us is not None:
-                self._close_focus_interval(identifier, now_us)
-            elif action == "resume" and active.running_since_us is None:
-                self._db.execute(
-                    """INSERT INTO focus_intervals
-                       SELECT ?,MAX(position)+1,MAX(?,MAX(ends_us)),NULL
-                       FROM focus_intervals WHERE session_id=?""",
-                    (identifier, now_us, identifier),
-                )
-            elif action == "overtime" and active.target_reached(now_us):
-                self._db.execute("UPDATE focus_sessions SET overtime=1 WHERE id=?", (identifier,))
-            else:
-                raise ValueError("Это действие недоступно в текущем состоянии сессии")
-            self._db.execute(
-                "UPDATE focus_sessions SET revision=revision+1 WHERE id=?", (identifier,)
+            before = self.active_focus()
+            self._change_focus(
+                action,
+                now,
+                expected,
+                task_id=task_id,
+                target_us=target_us,
+                recovered_end=recovered_end,
             )
+            if state.phase == "work":
+                old = next(
+                    (s for s in self.list_focus_sessions() if before and s.id == before.id), None
+                )
+                # A recovery uses the explicitly confirmed end, never the current wall clock.
+                worked = old.elapsed(instant_us(now)) if old else 0
+                elapsed = state.elapsed_us
+                if old and str(old.id) == state.session_id:
+                    elapsed += max(0, worked - state.base_us)
+                after = self.active_focus()
+                self._save_pomodoro(
+                    replace(
+                        state,
+                        elapsed_us=elapsed,
+                        session_id=str(after.id) if after else "",
+                        base_us=after.elapsed(instant_us(now)) if after else 0,
+                    )
+                )
+
+    def _change_focus(
+        self, action, now, expected, *, task_id=None, target_us=None, recovered_end=None
+    ):
+        now_us = instant_us(now)
+        active = next((x for x in self.list_focus_sessions() if x.finished_us is None), None)
+        actual = (str(active.id), active.revision) if active else None
+        if expected != actual:
+            raise ValueError("Сессия уже изменилась. Обновите список и повторите действие")
+        if action == "start":
+            if task_id is None or self.get_task(task_id) is None:
+                raise KeyError(task_id)
+            if target_us is not None and not 0 < target_us <= 2**63 - 1:
+                raise ValueError("Укажите положительную длительность")
+            if active:
+                self._finish_focus(active, now_us)
+            identifier = str(uuid4())
+            self._db.execute(
+                "INSERT INTO focus_sessions(id,task_id,started_us,target_us) VALUES (?,?,?,?)",
+                (identifier, str(task_id), now_us, target_us),
+            )
+            self._db.execute(
+                "INSERT INTO focus_intervals VALUES (?,0,?,NULL)", (identifier, now_us)
+            )
+            return
+        if active is None:
+            raise ValueError("Нет активной фокус-сессии")
+        identifier = str(active.id)
+        if action == "recover":
+            last_known = self._db.execute(
+                "SELECT MAX(COALESCE(ends_us,starts_us)) FROM focus_intervals WHERE session_id=?",
+                (identifier,),
+            ).fetchone()[0]
+            end = last_known if recovered_end is None else instant_us(recovered_end)
+            if recovered_end is not None and not last_known <= end <= now_us:
+                raise ValueError(
+                    "Окончание должно быть между последней отметкой и текущим временем"
+                )
+            self._finish_focus(active, end)
+            return
+        if action == "finish":
+            self._finish_focus(active, now_us)
+            return
+        if action == "pause" and active.running_since_us is not None:
+            self._close_focus_interval(identifier, now_us)
+        elif action == "resume" and active.running_since_us is None:
+            self._db.execute(
+                """INSERT INTO focus_intervals
+                   SELECT ?,MAX(position)+1,MAX(?,MAX(ends_us)),NULL
+                   FROM focus_intervals WHERE session_id=?""",
+                (identifier, now_us, identifier),
+            )
+        elif action == "overtime" and active.target_reached(now_us):
+            self._db.execute("UPDATE focus_sessions SET overtime=1 WHERE id=?", (identifier,))
+        else:
+            raise ValueError("Это действие недоступно в текущем состоянии сессии")
+        self._db.execute("UPDATE focus_sessions SET revision=revision+1 WHERE id=?", (identifier,))
 
     def _close_focus_interval(self, identifier: str, now_us: int):
         self._db.execute(

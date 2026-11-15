@@ -90,7 +90,7 @@ ApplicationWindow {
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
-    ].some(dialog => dialog.visible)
+    ].some(dialog => dialog.visible) || pomodoroPane.dialogsOpen
     property bool shortcutsEnabled: !window.backend.busy && !window.modalOpen
 
     function openAppearance() {
@@ -508,6 +508,13 @@ ApplicationWindow {
                     onClicked: window.backend.reload()
                 }
             }
+        }
+        PomodoroPane {
+            id: pomodoroPane
+            Layout.fillWidth: true
+            Layout.maximumWidth: Infinity
+            backend: window.backend
+            appearance: window.appearance
         }
         ColumnLayout {
             Layout.fillWidth: true
@@ -950,6 +957,7 @@ ApplicationWindow {
                             Button {
                                 objectName: "startFocusButton"
                                 enabled: !window.activeFocus.recovery
+                                    && ["idle", "work"].includes(window.backend.pomodoro.phase)
                                 text: qsTr("Начать фокус")
                                 onClicked: {
                                     focusEditor.taskId = window.current.id;
@@ -1920,11 +1928,14 @@ ApplicationWindow {
             Caption {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
-                text: qsTr("Оставь поле пустым для секундомера или укажи плановую длительность.")
+                text: window.backend.pomodoro.active
+                    ? qsTr("Цикл Pomodoro продолжится на выбранной задаче.")
+                    : qsTr("Оставь поле пустым для секундомера или укажи плановую длительность.")
             }
             TextField {
                 id: focusMinutes
                 objectName: "focusMinutesInput"
+                enabled: !window.backend.pomodoro.active
                 Layout.fillWidth: true
                 placeholderText: qsTr("Плановая длительность, мин")
                 inputMethodHints: Qt.ImhDigitsOnly

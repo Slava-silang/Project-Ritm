@@ -17,6 +17,7 @@ from ritm.application.calendar import CalendarService
 from ritm.application.tasks import TaskService
 from ritm.domain.calendar import from_instant_us, instant_us, planned_duration
 from ritm.domain.focus import focus_by_day
+from ritm.domain.pomodoro import Pomodoro
 from ritm.domain.statistics import week_start, weekly_statistics
 from ritm.domain.task_list import is_overdue, query_tasks
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
@@ -227,6 +228,8 @@ class TaskController(QObject):
     statisticsChanged = Signal()
     backupsChanged = Signal()
     appearanceChanged = Signal()
+    pomodoroChanged = Signal()
+    pomodoroEnded = Signal(str)
     focusChanged = Signal()
     systemPauseDone = Signal()
     actionSucceeded = Signal(str)
@@ -266,6 +269,9 @@ class TaskController(QObject):
         self._statistics = {}
         self._statistics_anchor = None
         self._notice = ""
+        self._pomodoro = Pomodoro()
+        self._pomodoro_view = {}
+        self._pomodoro_reached = False
         self._active_focus = None
         self._focus_loaded = False
         self._recovering = None
@@ -284,6 +290,13 @@ class TaskController(QObject):
     def _on_tick(self):
         self._update_listing()
         self._update_focus()
+        self._update_pomodoro()
+        if (
+            not self._busy
+            and self._pomodoro.running_since_us is not None
+            and instant_us(self._clock()) - self._pomodoro.running_since_us >= 5_000_000
+        ):
+            self._submit("pomodoro_tick", {"moment": self._clock()})
         if self._statistics:
             now = self._clock()
             overdue = sum(is_overdue(task, now) for task in self._source)
@@ -330,6 +343,81 @@ class TaskController(QObject):
     def focus(self):
         return self._focus_view
 
+    def _update_pomodoro(self):
+        state = self._pomodoro
+        elapsed = state.elapsed(
+            instant_us(self._clock()), self._active_focus, recovering=self._recovering is not None
+        )
+        active = state.phase != "idle"
+        reached = active and elapsed >= state.target_us
+        running = (
+            (
+                self._active_focus is not None
+                and self._active_focus.running_since_us is not None
+                and self._recovering is None
+            )
+            if state.phase == "work"
+            else state.running_since_us is not None
+        )
+        view = {
+            "active": active,
+            "phase": state.phase,
+            "cycle": state.cycle,
+            "work": state.work,
+            "short": state.short,
+            "long": state.long,
+            "elapsed": focus_time(elapsed),
+            "remaining": focus_time(max(0, state.target_us - elapsed)),
+            "overtime": focus_time(max(0, elapsed - state.target_us)),
+            "reached": reached,
+            "running": running,
+            "label": {
+                "idle": "Pomodoro",
+                "work": "Работа",
+                "short": "Короткий перерыв",
+                "long": "Длинный перерыв",
+            }[state.phase],
+        }
+        if view != self._pomodoro_view:
+            self._pomodoro_view = view
+            self.pomodoroChanged.emit()
+        if reached and not self._pomodoro_reached and self._recovering is None:
+            self.pomodoroEnded.emit(state.phase)
+        self._pomodoro_reached = reached
+
+    @Property("QVariantMap", notify=pomodoroChanged)
+    def pomodoro(self):
+        return self._pomodoro_view
+
+    @Slot(str, int, int, int, bool)
+    def startPomodoro(self, task_id, work, short, long, replace_current):
+        self._pomodoro_command(
+            "start" if self._pomodoro.phase == "idle" else "work",
+            task_id=task_id,
+            work=work,
+            short=short,
+            long=long,
+            replace_current=replace_current,
+        )
+
+    @Slot(str)
+    def changePomodoro(self, action):
+        self._pomodoro_command(action)
+
+    def _pomodoro_command(self, action, **data):
+        if self._recovering is not None:
+            return
+        active = self._active_focus
+        self._submit(
+            "pomodoro",
+            {
+                "command": action,
+                "revision": self._pomodoro.revision,
+                "expected": (str(active.id), active.revision) if active else None,
+                **data,
+            },
+        )
+
     def _focus_command(self, action, **data):
         active = self._active_focus
         if self._recovering is not None and action != "recover":
@@ -355,6 +443,9 @@ class TaskController(QObject):
         self._pending_system_pause = None
         active = self._active_focus
         if active is None or active.running_since_us is None or self._recovering is not None:
+            if self._pomodoro.running_since_us is not None:
+                self._submit("pomodoro_system_pause", {"moment": moment})
+                return
             self.systemPauseDone.emit()
             return
         self._submit(
@@ -369,7 +460,10 @@ class TaskController(QObject):
     @Slot(str, str, bool)
     def startFocus(self, task_id, minutes, replace_current):
         self._focus_command(
-            "start", task_id=task_id, minutes=minutes, replace_current=replace_current
+            "start",
+            task_id=task_id,
+            minutes="" if self._pomodoro.phase == "work" else minutes,
+            replace_current=replace_current,
         )
 
     @Slot(str)
@@ -662,7 +756,9 @@ class TaskController(QObject):
     def _submit(self, action, data):
         if self._busy or self._closing:
             return
-        self._busy, self._error, self._notice = True, "", ""
+        self._busy = True
+        if action != "pomodoro_tick":
+            self._error, self._notice = "", ""
         self.stateChanged.emit()
         self._pool.submit(
             self._run,
@@ -696,6 +792,26 @@ class TaskController(QObject):
                 selected = ""
             with TaskStore(self._profile / "tasks.sqlite3", clock=self._clock) as store:
                 service = TaskService(store)
+                if data.get("startup") or action == "restore_backup":
+                    store.checkpoint_pomodoro(self._clock(), startup=True)
+                if action == "pomodoro":
+                    store.change_pomodoro(
+                        data["command"],
+                        self._clock(),
+                        data["revision"],
+                        data["expected"],
+                        **{
+                            k: v
+                            for k, v in data.items()
+                            if k not in ("command", "revision", "expected")
+                        },
+                    )
+                elif action in ("pomodoro_tick", "pomodoro_system_pause"):
+                    store.checkpoint_pomodoro(
+                        data.get("moment", self._clock()), pause=action == "pomodoro_system_pause"
+                    )
+                    self._ready.emit(store.get_pomodoro(), "", action)
+                    return
                 if action == "calendar":
                     config = data
                 elif action == "attach":
@@ -957,6 +1073,7 @@ class TaskController(QObject):
                     self._clock(),
                     self._zone,
                 )
+                pomodoro_state = store.get_pomodoro()
                 materials = [
                     {"id": str(entry.id), "name": entry.name} for entry in store.list_materials()
                 ]
@@ -997,6 +1114,7 @@ class TaskController(QObject):
                     backup_state,
                     appearance_state,
                     appearance_error,
+                    pomodoro_state,
                 ),
                 "",
                 action,
@@ -1061,7 +1179,14 @@ class TaskController(QObject):
             if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(result.absolute()))):
                 error = "Не удалось открыть вложение. Проверьте программу для этого типа файла."
             result = None
-        self._busy, self._error = False, error
+        if action in ("pomodoro_tick", "pomodoro_system_pause"):
+            if result is not None:
+                self._pomodoro = result
+                self._update_pomodoro()
+            result = None
+        self._busy = False
+        if error or action != "pomodoro_tick":
+            self._error = error
         if result is not None:
             (
                 self._rows,
@@ -1080,6 +1205,7 @@ class TaskController(QObject):
                 backup_state,
                 appearance_state,
                 appearance_error,
+                self._pomodoro,
             ) = result
             if appearance_state is not None or appearance_error:
                 self._appearance = appearance_state or dict(DEFAULT)
@@ -1098,6 +1224,7 @@ class TaskController(QObject):
             if self._active_focus is None or self._active_focus.id != self._recovering:
                 self._recovering = None
             self._update_focus()
+            self._update_pomodoro()
             self._calendar_config = {
                 "mode": self._calendar["mode"],
                 "anchor": self._calendar["anchor"],
@@ -1113,7 +1240,7 @@ class TaskController(QObject):
                 self._update_listing()
             self.changed.emit()
         self.stateChanged.emit()
-        if action == "system_pause":
+        if action in ("system_pause", "pomodoro_system_pause"):
             self.systemPauseDone.emit()
         self._drain_system_pause()
         if not error:
@@ -1126,4 +1253,14 @@ class TaskController(QObject):
     def close(self):
         self._closing = True
         self._ticker.stop()
+        # The final break checkpoint is queued behind any outstanding DB command.
+        self._pool.submit(self._close_pomodoro).result()
         self._pool.shutdown(wait=True)
+
+    def _close_pomodoro(self):
+        try:
+            with TaskStore(self._profile / "tasks.sqlite3") as store:
+                store.checkpoint_pomodoro(self._clock(), pause=True)
+        except (OSError, sqlite3.Error, ValueError):
+            # The last successful checkpoint remains recoverable; never reset damaged data.
+            pass
