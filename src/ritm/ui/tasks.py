@@ -36,6 +36,7 @@ from ritm.storage.backup import (
     restore_backup,
     set_backup_folder,
 )
+from ritm.storage.focus_settings import load_focus_settings, save_focus_settings
 from ritm.storage.sqlite import TaskStore
 from ritm.ui.calendar import (
     WEEKDAYS,
@@ -228,6 +229,7 @@ class TaskController(QObject):
     statisticsChanged = Signal()
     backupsChanged = Signal()
     appearanceChanged = Signal()
+    focusSettingsChanged = Signal()
     pomodoroChanged = Signal()
     pomodoroEnded = Signal(str)
     focusChanged = Signal()
@@ -275,6 +277,8 @@ class TaskController(QObject):
         self._active_focus = None
         self._focus_loaded = False
         self._recovering = None
+        self._pause_on_system = False
+        self._focus_settings_error = ""
         self._pending_system_pause = None
         self._focus_view = {}
         self._ticker = QTimer(self)
@@ -431,7 +435,22 @@ class TaskController(QObject):
         if active is not None and self._recovering is None:
             self._submit("focus_exit", {"expected": (str(active.id), active.revision)})
 
+    @Property(bool, notify=focusSettingsChanged)
+    def pauseOnSystem(self):
+        return self._pause_on_system
+
+    @Property(str, notify=focusSettingsChanged)
+    def focusSettingsError(self):
+        return self._focus_settings_error
+
+    @Slot(bool)
+    def saveFocusSettings(self, pause_on_system):
+        self._submit("focus_settings", {"pause_on_system": pause_on_system})
+
     def pauseForSystem(self, reason: str):
+        if not self._pause_on_system:
+            self.systemPauseDone.emit()
+            return
         if self._pending_system_pause is None:
             self._pending_system_pause = (self._clock(), reason)
         self._drain_system_pause()
@@ -441,6 +460,9 @@ class TaskController(QObject):
             return
         moment, reason = self._pending_system_pause
         self._pending_system_pause = None
+        if not self._pause_on_system:
+            self.systemPauseDone.emit()
+            return
         active = self._active_focus
         if active is None or active.running_since_us is None or self._recovering is not None:
             if self._pomodoro.running_since_us is not None:
@@ -774,7 +796,29 @@ class TaskController(QObject):
         backup_state = None
         appearance_state = None
         appearance_error = ""
+        focus_settings = None
+        focus_settings_error = ""
         try:
+            if action == "focus_settings":
+                try:
+                    saved = save_focus_settings(self._profile, data["pause_on_system"])
+                except OSError as error:
+                    raise ValueError(
+                        "Не удалось сохранить настройку таймера. "
+                        "Проверьте доступ и место в папке профиля."
+                    ) from error
+                self._ready.emit(saved, "", action)
+                return
+            if data.get("startup"):
+                try:
+                    focus_settings = load_focus_settings(self._profile)
+                except (ValueError, OSError) as error:
+                    focus_settings = False
+                    focus_settings_error = (
+                        str(error)
+                        if isinstance(error, ValueError)
+                        else ("Не удалось прочитать настройку паузы; автопауза выключена.")
+                    )
             if action == "appearance":
                 appearance_state = save_appearance(self._profile, data["theme"], data["scale"])
                 self._ready.emit(appearance_state, "", action)
@@ -1115,6 +1159,8 @@ class TaskController(QObject):
                     appearance_state,
                     appearance_error,
                     pomodoro_state,
+                    focus_settings,
+                    focus_settings_error,
                 ),
                 "",
                 action,
@@ -1165,6 +1211,11 @@ class TaskController(QObject):
         completed_before = {task.id for task in self._source if task.completed}
         if self._closing:
             return
+        if action == "focus_settings" and result is not None:
+            self._pause_on_system = result
+            self._focus_settings_error = ""
+            self.focusSettingsChanged.emit()
+            result = None
         if action == "appearance" and result is not None:
             self._appearance = result
             self._appearance_error = ""
@@ -1206,7 +1257,13 @@ class TaskController(QObject):
                 appearance_state,
                 appearance_error,
                 self._pomodoro,
+                focus_settings,
+                focus_settings_error,
             ) = result
+            if focus_settings is not None:
+                self._pause_on_system = focus_settings
+                self._focus_settings_error = focus_settings_error
+                self.focusSettingsChanged.emit()
             if appearance_state is not None or appearance_error:
                 self._appearance = appearance_state or dict(DEFAULT)
                 self._appearance_error = appearance_error

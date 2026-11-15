@@ -452,6 +452,7 @@ ApplicationWindow {
                 text: qsTr("Приложение")
                 visible: !!window.desktop
                 onClicked: {
+                    pauseOnSystem.checked = window.backend.pauseOnSystem;
                     autoStart.checked = window.desktop.settings.enabled;
                     hiddenStart.checked = window.desktop.settings.hidden;
                     systemDialog.open();
@@ -1698,7 +1699,7 @@ ApplicationWindow {
     EditorDialog {
         id: systemDialog
         objectName: "systemDialog"
-        title: qsTr("Запуск и завершение")
+        title: qsTr("Настройки приложения")
         anchors.centerIn: parent
         width: Math.min(window.appearance.dp(480), window.width - 32)
         height: Math.min(window.appearance.dp(480), window.height - 32)
@@ -1715,6 +1716,37 @@ ApplicationWindow {
                     text: window.desktop && window.desktop.trayAvailable
                         ? qsTr("Крестик скрывает окно в трей. Фокусировка продолжает работать. Открыть окно и выйти можно через значок Ритма.")
                         : qsTr("Системный трей недоступен. Крестик завершает приложение; активную сессию потребуется подтвердить.")
+                }
+                CheckBox {
+                    id: pauseOnSystem
+                    objectName: "pauseOnSystem"
+                    Layout.fillWidth: true
+                    contentItem: Label {
+                        text: pauseOnSystem.text
+                        leftPadding: pauseOnSystem.indicator.width + pauseOnSystem.spacing
+                        verticalAlignment: Text.AlignVCenter
+                        wrapMode: Text.Wrap
+                    }
+                    text: qsTr("Приостанавливать таймер при сне и блокировке")
+                    enabled: !window.backend.busy
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("По умолчанию выключено: работа вне компьютера учитывается. Фокусировка и Pomodoro продолжат отсчёт; переходы Pomodoro остаются ручными. Выключение приложения всё равно останавливает таймер.")
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    visible: !!window.backend.focusSettingsError
+                    text: window.backend.focusSettingsError
+                    wrapMode: Text.Wrap
+                    color: window.appearance.colors.warning
+                }
+                Button {
+                    objectName: "saveFocusSettings"
+                    text: qsTr("Применить настройку таймера")
+                    enabled: !window.backend.busy
+                    onClicked: window.backend.saveFocusSettings(pauseOnSystem.checked)
                 }
                 CheckBox {
                     id: autoStart

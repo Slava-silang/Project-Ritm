@@ -42,6 +42,8 @@ def advance(seconds):
 
 try:
     gui.idle()
+    controller.saveFocusSettings(True)
+    gui.idle()
     if mode == "reopen":
         assert controller.pomodoro["phase"] == "short"
         assert controller.pomodoro["cycle"] == 1

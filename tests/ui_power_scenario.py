@@ -60,6 +60,8 @@ def flush():
 
 try:
     gui.idle()
+    controller.saveFocusSettings(True)
+    gui.idle()
     gui.click("startFocusButton")
     gui.click("confirmFocusButton")
     now += timedelta(seconds=20)
