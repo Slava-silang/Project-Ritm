@@ -412,3 +412,12 @@ X11: `RITM_UI_PLATFORM=xcb uv run --locked pytest tests/test_chat_history.py::te
 - GUI: поиск задачи, отличной от выбранной в главном окне; ответ без записи, preview, ручное изменение названия/пункта, конфликт и уточнение, запись после подтверждения, поздняя отменённая реакция, история в новом процессе без автоматического запроса. Первый дефект scope кнопки «Продолжить» для нового режима исправлен и покрыт сценарием.
 - Осмотрены task-update-preview.png/task-update-narrow.png в /tmp/ritm-t36-visual/test_find_edit_and_stale_updat0 и task-update-editor-narrow.png в /tmp/ritm-t36-native/test_find_edit_and_stale_updat0. Светлый/тёмный вид и 640×480/150%, diff и редактор доступны прокруткой, footer с подтверждением внутри окна.
 - Ruff check/format (134 файла), qmllint 13 QML и diff --check passed. Только временные профили/подменные адаптеры, без настоящих ИИ-запросов/личных данных. Windows/Wayland и новая standalone-поставка не проверены. Контракт/границы — TASK_UPDATES.md.
+
+
+## T37a — read-only Gmail, 16 ноября
+
+Новые tests/test_gmail.py: 43 проверки на подмене сервиса/HTTP. Проверять пагинацию/повторные ID, UNREAD независимо от OR в q, явный охват спама/корзины, исчезнувшие/ставшие прочитанными/исключёнными сообщения. MIME plain/HTML/alternative, кодировки, отсутствие загрузки вложений/внешних ресурсов, отсутствие подстановки snippet. Ключи разных аккаунтов/неизменность fingerprint при смене меток, безопасный repr. Проверять лимиты списка/страниц/текста/HTTP/времени, рекурсивный MIME, повреждённые ответы, отмену до сети и после ответа без частичного результата.
+
+Транспорт: только GET/фиксированный Gmail host/разрешённые пути; запрет modify/attachments/чужих URL/raw, Bearer только в заголовке, запрет redirect, 401/403/429/500/404 без утечки тела ошибок. Никакого настоящего аккаунта или письма. Тесты проверяют предпосылки будущей идемпотентности, не применение почтовых предложений, пока отсутствующее.
+
+Фактически: отдельный набор 43 passed (0,73 с), совместный `pytest tests/test_gmail.py tests/test_assistant_drafts.py tests/test_task_updates.py tests/test_startup.py -q --basetemp=/tmp/ritm-t37a-check` — 93 passed (23,06 с), журнал /tmp/ritm-t37a-check.log. Ruff check/format — passed (137 файлов), diff --check passed. Полный pytest и native GUI в T37a не выполнялись, QML не изменён. Реальные OAuth/API/открытие source_url, Windows/Wayland, упаковка не проверены. Продолжение T37b/T37c и официальные источники — GMAIL.md.
