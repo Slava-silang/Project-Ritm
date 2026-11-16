@@ -25,6 +25,9 @@ htmlcov/
 !.env.example
 *.pem
 *.key
+client_secret*.json
+gmail-client*.json
+gmail-tokens*.json
 /data/
 /backups/
 *.db

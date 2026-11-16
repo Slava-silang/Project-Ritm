@@ -37,7 +37,7 @@ Dialog {
     title: state.provider === "chatgpt" ? qsTr("Помощник — подписка ChatGPT") : qsTr("Тестовый помощник — без сети")
     modal: false
     closePolicy: state.saving ? Popup.NoAutoClose : Popup.CloseOnEscape
-    onClosed: if (agent) { agent.cancel(); agent.media.reset(); mediaEditor.close(); }
+    onClosed: if (agent) { agent.cancel(); agent.media.reset(); mediaEditor.close(); gmailPane.closeSource(); }
     background: Rectangle {
         color: dialog.uiAppearance.colors.surface
         border.color: dialog.uiAppearance.colors.border
@@ -199,6 +199,12 @@ Dialog {
                 appearance: dialog.uiAppearance
                 prefix: "assistant"
                 blocked: !!dialog.state.busy
+            }
+            GmailPane {
+                id: gmailPane
+                Layout.fillWidth: true
+                source: dialog.agent ? dialog.agent.gmail : null
+                appearance: dialog.uiAppearance
             }
             CheckBox {
                 id: saveHistoryCheck

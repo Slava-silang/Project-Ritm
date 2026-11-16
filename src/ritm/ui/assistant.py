@@ -19,6 +19,7 @@ from ritm.integrations.assistant import Adapter, ChatTurn, MockAdapter, Request
 from ritm.integrations.chatgpt import ChatGPTError
 from ritm.storage.chat_history import ChatHistory, HistoryError
 from ritm.storage.sqlite import TaskStore
+from ritm.ui.gmail import GmailController
 from ritm.ui.media import MediaController
 from ritm.ui.skills import SkillController
 
@@ -68,6 +69,11 @@ class AssistantController(QObject):
         self._draft_material_ids = ()
         self._skills = SkillController(profile, locked=lambda: self._busy)
         self._skills.selectionChanged.connect(self._skill_changed)
+        self._gmail = GmailController(profile)
+
+    @Property(QObject, constant=True)
+    def gmail(self):
+        return self._gmail
 
     @Property(QObject, constant=True)
     def media(self):
@@ -568,6 +574,7 @@ class AssistantController(QObject):
 
     def close(self):
         self._closed = True
+        self._gmail.close()
         self._cancelled.set()
         self._media.close()
         self._pool.shutdown(wait=True, cancel_futures=True)
