@@ -19,7 +19,14 @@ class TaskService:
         self._store = store
 
     def apply_proposal(self, draft: Draft, *, material_ids: tuple[UUID, ...] = ()) -> UUID:
-        checked = parse_draft(draft.id, draft.payload, draft.baseline)
+        if draft.operation == "update":
+            from ritm.application.task_updates import parse_update
+
+            checked = parse_update(draft.id, draft.payload, (draft.baseline,))
+            if not isinstance(checked, Draft):
+                raise ValueError("Ответ без изменений нельзя применять")
+        else:
+            checked = parse_draft(draft.id, draft.payload, draft.baseline)
         if checked.task != draft.task:
             raise ValueError("Содержимое черновика не соответствует проверенному предложению")
         return self._store.apply_proposal(
@@ -86,32 +93,9 @@ class TaskService:
         )
 
     def rename_node(self, task_id: UUID, node_id: UUID, title: str) -> Task:
-        def rename(task):
-            if task.id == node_id:
-                return replace(task, title=title)
-            found = any(
-                child.id == node_id or any(item.id == node_id for item in child.items)
-                for child in task.subtasks
-            )
-            if not found:
-                raise KeyError(node_id)
-            return replace(
-                task,
-                subtasks=tuple(
-                    replace(child, title=title)
-                    if child.id == node_id
-                    else replace(
-                        child,
-                        items=tuple(
-                            replace(item, title=title) if item.id == node_id else item
-                            for item in child.items
-                        ),
-                    )
-                    for child in task.subtasks
-                ),
-            )
-
-        return self._store.update_task(task_id, rename)
+        return self._store.update_task(
+            task_id, lambda task: completion.rename_node(task, node_id, title)
+        )
 
     def delete_node(self, task_id: UUID, node_id: UUID, now: datetime | None = None) -> str:
         return self._store.archive_node(

@@ -13,10 +13,10 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from ritm.application.drafts import parse_draft
 from ritm.application.file_context import file_catalog
 from ritm.application.media import IMAGES, capability, prepare_sources
+from ritm.application.task_updates import TaskAnswer, active_context, parse_update, update_preview
 from ritm.application.tasks import TaskService
 from ritm.integrations.assistant import Adapter, ChatTurn, MockAdapter, Request
 from ritm.integrations.chatgpt import ChatGPTError
-from ritm.integrations.file_text import FileTextError
 from ritm.storage.chat_history import ChatHistory, HistoryError
 from ritm.storage.sqlite import TaskStore
 from ritm.ui.media import MediaController
@@ -30,9 +30,10 @@ class AssistantController(QObject):
     _filesReady = Signal(object, object, str)
     _historyReady = Signal(int, str, object, str)
 
-    def __init__(self, profile: Path, adapter: Adapter | None = None):
+    def __init__(self, profile: Path, adapter: Adapter | None = None, *, clock=None):
         super().__init__()
         self.profile = profile
+        self._clock = clock or (lambda: datetime.now().astimezone())
         self.adapter = adapter or MockAdapter()
         self._pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="ritm-assistant")
         self._ready.connect(self._finish)
@@ -118,7 +119,18 @@ class AssistantController(QObject):
             "deadlineText": draft.task.deadline.astimezone().strftime("%d.%m.%Y %H:%M")
             if draft and draft.task.deadline
             else "",
-            "split": bool(draft and draft.baseline),
+            "split": bool(draft and draft.baseline and draft.operation != "update"),
+            "updateMode": bool(draft and draft.operation == "update"),
+            "editFields": {
+                "title": draft.task.title,
+                "description": draft.task.description,
+                "difficulty": draft.task.difficulty,
+                "expected_minutes": int(draft.task.expected_duration.total_seconds() / 60)
+                if draft.task.expected_duration
+                else None,
+            }
+            if draft
+            else {},
             "preview": self._preview() if draft else "",
         }
 
@@ -267,6 +279,8 @@ class AssistantController(QObject):
         self.changed.emit()
 
     def _preview(self):
+        if self._draft.operation == "update":
+            return update_preview(self._draft)
         task = self._draft.task
         lines = [task.title]
         if self._draft.baseline is not None:
@@ -319,7 +333,8 @@ class AssistantController(QObject):
     @Slot(str, str)
     @Slot(str, str, "QVariantList")
     @Slot(str, str, "QVariantList", bool)
-    def generate(self, prompt, target_id="", file_ids=None, confirm_files=False):
+    @Slot(str, str, "QVariantList", bool, str)
+    def generate(self, prompt, target_id="", file_ids=None, confirm_files=False, operation_hint=""):
         if self._busy or self._files_loading or self._media.state["busy"]:
             return
         identifiers = tuple(file_ids or ())
@@ -333,7 +348,17 @@ class AssistantController(QObject):
             return
         file_context = self._files_context
         self._draft_material_ids = ()
-        operation = "split" if target_id else "create"
+        if operation_hint not in ("", "create", "split", "update"):
+            self._error = "Неизвестный режим помощника."
+            self.changed.emit()
+            return
+        operation = operation_hint or ("split" if target_id else "create")
+        if operation in ("create", "update"):
+            target_id = ""
+        if operation == "split" and not target_id:
+            self._error = "Выберите задачу для разбиения."
+            self.changed.emit()
+            return
         if not prompt.strip() or len(prompt) > 20000:
             self._error = "Введите запрос длиной до 20 000 символов."
             self.changed.emit()
@@ -363,6 +388,13 @@ class AssistantController(QObject):
             try:
                 with TaskStore(self.profile / "tasks.sqlite3") as store:
                     selected = store.get_task(UUID(target_id)) if target_id else None
+                    snapshot = (
+                        tuple(t for t in store.list_tasks() if not t.completed)
+                        if operation == "update"
+                        else ()
+                    )
+                if operation == "update":
+                    active_context(snapshot)
                 if target_id and selected is None:
                     raise ValueError("Выбранная задача удалена. Обновите список.")
                 materials, files = (
@@ -383,17 +415,23 @@ class AssistantController(QObject):
                     history,
                     skill=skill,
                     files=files,
+                    tasks=snapshot,
+                    current_time=self._clock(),
                 )
                 response = adapter.generate(request, cancelled)
                 if cancelled.is_set():
                     return
-                draft = parse_draft(identifier, response, selected)
+                draft = (
+                    parse_update(identifier, response, snapshot)
+                    if operation == "update"
+                    else parse_draft(identifier, response, selected)
+                )
                 with TaskStore(self.profile / "tasks.sqlite3") as store:
                     material_ids = tuple(
                         e.id for e in store.list_materials() if str(e.id) in identifiers
                     )
                 self._ready.emit(identifier, "generate", (draft, material_ids), "")
-            except (ChatGPTError, FileTextError) as error:
+            except (ChatGPTError, ValueError) as error:
                 self._ready.emit(identifier, "generate", None, str(error))
             except Exception:
                 self._ready.emit(
@@ -427,19 +465,22 @@ class AssistantController(QObject):
             return
         try:
             draft = self._draft
-            if deadline_local is not None and draft.baseline is None:
+            if deadline_local is not None and (
+                draft.baseline is None or draft.operation == "update"
+            ):
                 data = json.loads(payload)
                 if not isinstance(data, dict):
                     raise ValueError("Неверный формат черновика")
+                fields = data.setdefault("changes", {}) if draft.operation == "update" else data
                 for field in ("difficulty", "expected_minutes"):
-                    if isinstance(data.get(field), str):
+                    if isinstance(fields.get(field), str):
                         try:
-                            data[field] = int(data[field])
+                            fields[field] = int(fields[field])
                         except ValueError as error:
                             raise ValueError(
                                 "Сложность и минуты должны быть целыми числами"
                             ) from error
-                data["deadline"] = (
+                fields["deadline"] = (
                     (
                         datetime.strptime(deadline_local.strip(), "%d.%m.%Y %H:%M")
                         .astimezone()
@@ -449,7 +490,14 @@ class AssistantController(QObject):
                     else None
                 )
                 payload = json.dumps(data)
-            self._draft = parse_draft(draft.id, payload, draft.baseline)
+            checked = (
+                parse_update(draft.id, payload, (draft.baseline,))
+                if draft.operation == "update"
+                else parse_draft(draft.id, payload, draft.baseline)
+            )
+            if isinstance(checked, TaskAnswer):
+                raise ValueError("Черновик должен содержать изменения")
+            self._draft = checked
             self._error = ""
             self._valid = True
             if self._conversation:
@@ -497,9 +545,15 @@ class AssistantController(QObject):
             self._message("notice", error)
         if not error:
             if action == "generate":
-                self._draft, self._draft_material_ids = result
-                self._valid = True
-                preview = self._preview()
+                proposal, self._draft_material_ids = result
+                if isinstance(proposal, TaskAnswer):
+                    self._draft = None
+                    self._valid = False
+                    preview = "Ответ по снимку активных задач:\n" + proposal.text
+                else:
+                    self._draft = proposal
+                    self._valid = True
+                    preview = self._preview()
                 self._conversation.append(
                     (ChatTurn("user", self._pending_prompt), ChatTurn("assistant", preview))
                 )

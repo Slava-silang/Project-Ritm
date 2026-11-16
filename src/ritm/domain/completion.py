@@ -138,3 +138,22 @@ def restore_node(current: Task | None, before: Task, after: Task | None, node_id
                     )
                 )
     raise KeyError(node_id)
+
+
+def rename_node(task: Task, node_id: UUID, title: str) -> Task:
+    if task.id == node_id:
+        return replace(task, title=title)
+    found = any(c.id == node_id or any(i.id == node_id for i in c.items) for c in task.subtasks)
+    if not found:
+        raise KeyError(node_id)
+    return replace(
+        task,
+        subtasks=tuple(
+            replace(c, title=title)
+            if c.id == node_id
+            else replace(
+                c, items=tuple(replace(i, title=title) if i.id == node_id else i for i in c.items)
+            )
+            for c in task.subtasks
+        ),
+    )

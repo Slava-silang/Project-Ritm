@@ -40,6 +40,7 @@ class Draft:
     baseline: Task | None
     task: Task
     payload: str
+    operation: str = ""
 
     @property
     def digest(self):

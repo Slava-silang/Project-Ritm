@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import dataclass, field
+from datetime import datetime
 from threading import Event
 from typing import Literal, Protocol
 from uuid import UUID
@@ -43,13 +44,15 @@ class ChatTurn:
 class Request:
     id: UUID
     prompt: str
-    operation: Literal["create", "split", "schedule"]
+    operation: Literal["create", "split", "schedule", "update"]
     selected: Task | None = None
     materials: tuple[SourceText, ...] = ()
     history: tuple[ChatTurn, ...] = ()
     planning: dict | None = None
     skill: Skill | None = None
     files: tuple[SourceFile, ...] = ()
+    tasks: tuple[Task, ...] = ()
+    current_time: datetime | None = None
 
 
 class Adapter(Protocol):
@@ -64,12 +67,28 @@ class MockAdapter:
     """Предсказуемый сценарий, явно обозначенный в интерфейсе как тестовый."""
 
     connection = Connection(
-        "mock", "local-demo", "none", frozenset({"create", "split", "schedule"})
+        "mock", "local-demo", "none", frozenset({"create", "split", "schedule", "update"})
     )
 
     def generate(self, request: Request, cancelled: Event) -> str:
         if cancelled.wait(0.15):
             raise ValueError("Запрос отменён")
+        if request.operation == "update":
+            matches = [
+                task for task in request.tasks if task.title.casefold() in request.prompt.casefold()
+            ]
+            return json.dumps(
+                {
+                    "task_id": str(matches[0].id) if len(matches) == 1 else None,
+                    "answer": "Найдена задача: " + matches[0].title
+                    if len(matches) == 1
+                    else (
+                        "Тестовый помощник ищет точное название в запросе. "
+                        "Уточните название задачи."
+                    ),
+                },
+                ensure_ascii=False,
+            )
         if request.operation == "schedule":
             from datetime import datetime, timedelta
 

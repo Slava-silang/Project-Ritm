@@ -103,7 +103,8 @@ Dialog {
         }
     }
     function send(confirmed) {
-        agent.generate(prompt.text, operation.currentIndex === 1 ? taskBackend.detail.id : "", selectedFiles, confirmed);
+        agent.generate(prompt.text, operation.currentIndex === 1 ? taskBackend.detail.id : "", selectedFiles, confirmed,
+            operation.currentIndex === 2 ? "update" : operation.currentIndex === 1 ? "split" : "create");
     }
     Connections {
         target: dialog.agent ? dialog.agent.media : null
@@ -115,10 +116,11 @@ Dialog {
     }
     function loadDraft() {
         form = JSON.parse(JSON.stringify(state.draft || {}));
-        titleInput.text = form.title || "";
-        descriptionInput.text = form.description || "";
-        difficultyInput.text = form.difficulty ? String(form.difficulty) : "";
-        minutesInput.text = form.expected_minutes ? String(form.expected_minutes) : "";
+        const fields = state.updateMode ? state.editFields : form;
+        titleInput.text = fields.title || "";
+        descriptionInput.text = fields.description || "";
+        difficultyInput.text = fields.difficulty ? String(fields.difficulty) : "";
+        minutesInput.text = fields.expected_minutes ? String(fields.expected_minutes) : "";
         deadlineInput.text = state.deadlineText || "";
         weightsInput.text = (form.weights || []).join("; ");
         dirty = false;
@@ -126,7 +128,13 @@ Dialog {
     }
     function checkDraft() {
         let proposal = JSON.parse(JSON.stringify(form));
-        if (!state.split) {
+        if (state.updateMode) {
+            proposal.changes = Object.assign({}, proposal.changes || {}, {
+                title: titleInput.text, description: descriptionInput.text,
+                difficulty: difficultyInput.text.trim() || null,
+                expected_minutes: minutesInput.text.trim() || null
+            });
+        } else if (!state.split) {
             proposal.title = titleInput.text;
             proposal.description = descriptionInput.text;
             proposal.difficulty = difficultyInput.text.trim() || null;
@@ -284,7 +292,7 @@ Dialog {
                         text: qsTr("Продолжить этот диалог")
                         onClicked: dialog.agent.resumeChat(chatEntry.modelData.chat,
                             operation.currentIndex === 1 ? (dialog.taskBackend.detail.id || "") : "",
-                            operation.currentIndex === 1 ? "split" : "create")
+                            operation.currentIndex === 2 ? "update" : operation.currentIndex === 1 ? "split" : "create")
                     }
                     Button {
                         visible: chatEntry.modelData.text.length > 300
@@ -298,8 +306,14 @@ Dialog {
                 objectName: "assistantOperation"
                 Layout.fillWidth: true
                 enabled: !dialog.state.busy && !dialog.state.hasDraft
-                model: [qsTr("Создать новую задачу"), qsTr("Добавить подзадачи к выбранной задаче")]
+                model: [qsTr("Создать новую задачу"), qsTr("Добавить подзадачи к выбранной задаче"), qsTr("Найти и изменить задачу")]
                 onActivated: dialog.agent.newChat()
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: operation.currentIndex === 2
+                wrapMode: Text.Wrap
+                text: qsTr("В этом режиме модель получит названия, описания, сроки и состояние всех активных задач с подзадачами. Корзина, завершённые главные задачи и файлы автоматически не передаются. Можно спросить, существует ли задача, или предложить её изменение. Правки одной задачи сохраняются после проверки и подтверждения.")
             }
             Label {
                 Layout.fillWidth: true
@@ -396,7 +410,7 @@ Dialog {
                     && !dialog.state.filesLoading && (!dialog.agent || !dialog.agent.media.state.busy)
                     && (!dialog.agent || !dialog.agent.skills.state.busy)
                     && (!dialog.connection || !dialog.connection.state.busy)
-                    && (operation.currentIndex === 0 || !!dialog.taskBackend.detail.id)
+                    && (operation.currentIndex !== 1 || !!dialog.taskBackend.detail.id)
                 onClicked: {
                     if (dialog.selectedFiles.length > 0 && dialog.state.contextCount > 0) resendDialog.open();
                     else dialog.send(false);
@@ -411,6 +425,7 @@ Dialog {
                 wrapMode: Text.Wrap
             }
             Label {
+                objectName: "assistantDraftPreview"
                 Layout.fillWidth: true
                 visible: dialog.state.hasDraft && !dialog.editing
                 text: dialog.state.preview || ""
@@ -473,6 +488,41 @@ Dialog {
                     objectName: "draftWeights"
                     Layout.fillWidth: true
                     onTextEdited: dialog.dirty = true
+                }
+                CheckBox {
+                    objectName: "draftRootCompleted"
+                    visible: !!dialog.state.updateMode && Object.prototype.hasOwnProperty.call(dialog.form.changes || {}, "completed")
+                    text: qsTr("Выполнить всю задачу (с подзадачами)")
+                    checked: !!(dialog.form.changes || {}).completed
+                    onToggled: { dialog.form.changes.completed = checked; dialog.dirty = true; }
+                }
+                Repeater {
+                    model: dialog.state.updateMode ? dialog.form.nodes || [] : []
+                    delegate: ColumnLayout {
+                        id: nodeEdit
+                        required property var modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: qsTr("Правка существующего пункта ") + (nodeEdit.index + 1)
+                        }
+                        TextField {
+                            objectName: "draftNodeTitle_" + nodeEdit.index
+                            Layout.fillWidth: true
+                            visible: Object.prototype.hasOwnProperty.call(nodeEdit.modelData, "title")
+                            text: nodeEdit.modelData.title || ""
+                            onTextEdited: { dialog.form.nodes[nodeEdit.index].title = text; dialog.dirty = true; }
+                        }
+                        CheckBox {
+                            objectName: "draftNodeCompleted_" + nodeEdit.index
+                            visible: Object.prototype.hasOwnProperty.call(nodeEdit.modelData, "completed")
+                            text: qsTr("Отметить пункт выполненным")
+                            checked: !!nodeEdit.modelData.completed
+                            onToggled: { dialog.form.nodes[nodeEdit.index].completed = checked; dialog.dirty = true; }
+                        }
+                    }
                 }
                 Repeater {
                     model: dialog.form.subtasks || []
