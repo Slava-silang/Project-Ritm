@@ -223,13 +223,19 @@ def _validate_database(path: Path) -> dict[UUID, str]:
     with TaskStore(Path(":memory:")) as reference, closing(_sqlite(path, "ro")) as db:
         version = db.execute("PRAGMA user_version").fetchone()[0]
         expected = [tuple(row) for row in schema(reference._db)]
+        if version < 12:
+            expected = [
+                row
+                for row in expected
+                if row[0] not in ("source_links", "source_links_target", "mail_proposals")
+            ]
         if version < 11:
             expected = [row for row in expected if row[0] != "pomodoro"]
         if version == 9:
             expected = [row for row in expected if row[0] != "applied_proposals"]
         if (
             db.execute("PRAGMA application_id").fetchone()[0] != APPLICATION_ID
-            or version not in (9, 10, SCHEMA_VERSION)
+            or version not in (9, 10, 11, SCHEMA_VERSION)
             or schema(db) != expected
             or db.execute("PRAGMA integrity_check").fetchall() != [("ok",)]
             or db.execute("PRAGMA foreign_key_check").fetchone() is not None
@@ -240,6 +246,7 @@ def _validate_database(path: Path) -> dict[UUID, str]:
         for task in store.list_tasks():
             initialize_weights(task)
         store.get_pomodoro()
+        store.list_source_links()
         store.list_categories()
         store.list_work_blocks()
         for session in store.list_focus_sessions():

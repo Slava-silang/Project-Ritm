@@ -166,6 +166,8 @@ def test_v10_migration_preserves_tasks_and_focus(tmp_path):
         store.change_focus("start", START, None, task_id=task.id)
         original = store.active_focus()
     with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE mail_proposals")
+        db.execute("DROP TABLE source_links")
         db.execute("DROP TABLE pomodoro")
         db.execute("PRAGMA user_version=10")
     with TaskStore(path) as store:
@@ -251,6 +253,8 @@ def test_backup_preserves_cycle_and_restores_v10(tmp_path):
         assert store.get_pomodoro() == state
         assert store.get_task(task.id) == task
     with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE mail_proposals")
+        db.execute("DROP TABLE source_links")
         db.execute("DROP TABLE pomodoro")
         db.execute("PRAGMA user_version=10")
     old_archive = backup.create_backup(tmp_path, tmp_path / "copies", START)

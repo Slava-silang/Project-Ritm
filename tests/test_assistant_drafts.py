@@ -148,6 +148,8 @@ def test_v9_profile_and_archive_migrate_and_receipts_survive_new_backup(tmp_path
         store.create_task(Task(title="Из версии 9"))
     with sqlite3.connect(path) as db:
         db.execute("DROP TABLE applied_proposals")
+        db.execute("DROP TABLE mail_proposals")
+        db.execute("DROP TABLE source_links")
         db.execute("DROP TABLE pomodoro")
         db.execute("PRAGMA user_version=9")
     database = path.read_bytes()

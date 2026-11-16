@@ -13,12 +13,21 @@ from uuid import UUID, uuid4
 from ritm.domain.calendar import WorkBlock, from_instant_us, instant_us
 from ritm.domain.focus import FocusSession
 from ritm.domain.pomodoro import Pomodoro
+from ritm.domain.sources import SourceLink, SourceRef
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.storage.attachments import Attachment
 from ritm.storage.codec import decode_task, encode_task
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
+SOURCE_SCHEMA = (
+    "CREATE TABLE source_links (key TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, "
+    "url TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('task','event')), "
+    "target_id TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision>=1))",
+    "CREATE INDEX source_links_target ON source_links(kind,target_id)",
+    "CREATE TABLE mail_proposals (id TEXT PRIMARY KEY NOT NULL, digest TEXT NOT NULL, "
+    "source_key TEXT NOT NULL REFERENCES source_links(key), target_id TEXT NOT NULL)",
+)
 POMODORO_SCHEMA = (
     "CREATE TABLE pomodoro (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)"
 )
@@ -197,7 +206,7 @@ class TaskStore:
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10) and app_id == APPLICATION_ID:
+            if version in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -220,7 +229,10 @@ class TaskStore:
                     self._db.execute(CLEANUP_SCHEMA)
                 if version < 10:
                     self._db.execute(PROPOSAL_SCHEMA)
-                self._db.execute(POMODORO_SCHEMA)
+                if version < 11:
+                    self._db.execute(POMODORO_SCHEMA)
+                for statement in SOURCE_SCHEMA:
+                    self._db.execute(statement)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._db.commit()
                 return
@@ -241,6 +253,8 @@ class TaskStore:
             self._db.execute(CLEANUP_SCHEMA)
             self._db.execute(PROPOSAL_SCHEMA)
             self._db.execute(POMODORO_SCHEMA)
+            for statement in SOURCE_SCHEMA:
+                self._db.execute(statement)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             self._db.commit()
@@ -334,6 +348,105 @@ class TaskStore:
                 (str(identifier), digest, str(task.id)),
             )
             return task.id
+
+    @staticmethod
+    def _read_source_link(row):
+        return SourceLink(
+            SourceRef(row["key"], row["fingerprint"], row["url"]),
+            row["kind"],
+            UUID(row["target_id"]),
+            row["revision"],
+        )
+
+    def get_source_link(self, key: str) -> SourceLink | None:
+        row = self._db.execute("SELECT * FROM source_links WHERE key=?", (key,)).fetchone()
+        return self._read_source_link(row) if row is not None else None
+
+    def list_source_links(self) -> tuple[SourceLink, ...]:
+        return tuple(
+            self._read_source_link(row)
+            for row in self._db.execute("SELECT * FROM source_links ORDER BY key")
+        )
+
+    def apply_mail_proposal(self, draft) -> UUID:
+        """Изменение одной записи, связь источника и квитанция атомарны."""
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            receipt = self._db.execute(
+                "SELECT digest,target_id FROM mail_proposals WHERE id=?", (str(draft.id),)
+            ).fetchone()
+            if receipt is not None:
+                if receipt["digest"] != draft.digest:
+                    raise ValueError("Предложение по письму уже применено с другим содержимым.")
+                return UUID(receipt["target_id"])
+            current_link = self.get_source_link(draft.source.key)
+            if current_link != draft.link:
+                raise ValueError(
+                    "Письмо уже обработано или связь изменилась. Обновите предложение."
+                )
+            if draft.link is not None and (
+                draft.link.target_id != draft.after.id or draft.link.kind != draft.kind
+            ):
+                raise ValueError("Предложение не должно менять связанную с письмом запись.")
+            if draft.before is None:
+                if draft.link is not None:
+                    raise ValueError("Связанная запись удалена. Повторное создание запрещено.")
+                if isinstance(draft.after, Task):
+                    known = self._db.execute(
+                        "SELECT 1 FROM task_identities WHERE id=?", (str(draft.after.id),)
+                    ).fetchone()
+                else:
+                    known = self._db.execute(
+                        "SELECT 1 FROM work_blocks WHERE id=?", (str(draft.after.id),)
+                    ).fetchone()
+                if known:
+                    raise ValueError("Запись из письма уже существует.")
+            else:
+                current = (
+                    self.get_task(draft.before.id)
+                    if isinstance(draft.before, Task)
+                    else self.get_work_block(draft.before.id)
+                )
+                if current != draft.before or draft.after.id != draft.before.id:
+                    raise ValueError(
+                        "Связанная запись изменилась или удалена. Обновите предложение."
+                    )
+            if isinstance(draft.after, Task):
+                self._write_task(draft.after)
+            else:
+                block = draft.after
+                if block.task_id is not None:
+                    raise ValueError("Письмо может предложить только самостоятельное событие.")
+                self._db.execute(
+                    "INSERT INTO work_blocks(id,task_id,starts_us,ends_us,title) "
+                    "VALUES (?,NULL,?,?,?) "
+                    "ON CONFLICT(id) DO UPDATE SET starts_us=excluded.starts_us,"
+                    "ends_us=excluded.ends_us,title=excluded.title",
+                    (
+                        str(block.id),
+                        instant_us(block.starts_at),
+                        instant_us(block.ends_at),
+                        block.title,
+                    ),
+                )
+            revision = current_link.revision + 1 if current_link else 1
+            self._db.execute(
+                "INSERT INTO source_links VALUES (?,?,?,?,?,?) ON CONFLICT(key) DO UPDATE SET "
+                "fingerprint=excluded.fingerprint,url=excluded.url,revision=excluded.revision",
+                (
+                    draft.source.key,
+                    draft.source.fingerprint,
+                    draft.source.url,
+                    draft.kind,
+                    str(draft.after.id),
+                    revision,
+                ),
+            )
+            self._db.execute(
+                "INSERT INTO mail_proposals VALUES (?,?,?,?)",
+                (str(draft.id), draft.digest, draft.source.key, str(draft.after.id)),
+            )
+            return draft.after.id
 
     def update_task(
         self, identifier: UUID, transform: Callable[[Task], Task], category: Category | None = None

@@ -62,7 +62,9 @@ class TaskAnswer:
     task_id: UUID | None = None
 
 
-def parse_update(identifier: UUID, payload: str, snapshot: tuple[Task, ...]) -> Draft | TaskAnswer:
+def parse_update(
+    identifier: UUID, payload: str, snapshot: tuple[Task, ...], *, preserve_completed=False
+) -> Draft | TaskAnswer:
     if not isinstance(payload, str) or len(payload.encode()) > MAX_BYTES:
         raise ValueError("Ответ помощника слишком большой")
     try:
@@ -72,7 +74,12 @@ def parse_update(identifier: UUID, payload: str, snapshot: tuple[Task, ...]) -> 
         )
         target = UUID(data["task_id"]) if isinstance(data["task_id"], str) else None
         baseline = next(
-            (task for task in snapshot if task.id == target and not task.completed), None
+            (
+                task
+                for task in snapshot
+                if task.id == target and (preserve_completed or not task.completed)
+            ),
+            None,
         )
         if data["task_id"] is not None and baseline is None:
             raise ValueError("Помощник выбрал задачу вне снимка активного списка.")
@@ -156,6 +163,14 @@ def parse_update(identifier: UUID, payload: str, snapshot: tuple[Task, ...]) -> 
             task = weights.set_weights(
                 task, {c.id: Decimal(str(v)) for c, v in zip(task.subtasks, requested, strict=True)}
             )
+        if preserve_completed and baseline.completed:
+            if changes.get("completed", True) is False or any(
+                patch.get("completed", True) is False for patch in nodes
+            ):
+                raise ValueError(
+                    "Обновление из письма должно сохранить выполненную задачу выполненной."
+                )
+            task = completion.set_completed(task, task.id, True)
         if task == baseline:
             raise ValueError("Нет изменений. Для ответа без правок используйте answer.")
         data["weights"] = [str(child.weight) for child in task.subtasks]
