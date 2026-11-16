@@ -18,12 +18,12 @@ class TaskService:
     def __init__(self, store: TaskStore):
         self._store = store
 
-    def apply_proposal(self, draft: Draft) -> UUID:
+    def apply_proposal(self, draft: Draft, *, material_ids: tuple[UUID, ...] = ()) -> UUID:
         checked = parse_draft(draft.id, draft.payload, draft.baseline)
         if checked.task != draft.task:
             raise ValueError("Содержимое черновика не соответствует проверенному предложению")
         return self._store.apply_proposal(
-            checked.id, checked.digest, checked.baseline, checked.task
+            checked.id, checked.digest, checked.baseline, checked.task, material_ids=material_ids
         )
 
     def set_completed(self, task_id: UUID, node_id: UUID, completed: bool) -> Task:

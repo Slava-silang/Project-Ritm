@@ -11,13 +11,15 @@ from uuid import UUID, uuid4
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from ritm.application.drafts import parse_draft
-from ritm.application.file_context import file_catalog, selected_texts
+from ritm.application.file_context import file_catalog
+from ritm.application.media import IMAGES, capability, prepare_sources
 from ritm.application.tasks import TaskService
 from ritm.integrations.assistant import Adapter, ChatTurn, MockAdapter, Request
 from ritm.integrations.chatgpt import ChatGPTError
 from ritm.integrations.file_text import FileTextError
 from ritm.storage.chat_history import ChatHistory, HistoryError
 from ritm.storage.sqlite import TaskStore
+from ritm.ui.media import MediaController
 from ritm.ui.skills import SkillController
 
 
@@ -61,8 +63,14 @@ class AssistantController(QObject):
         self._history_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ritm-history")
         self._historyReady.connect(self._finish_history)
         self._history_job("load")
+        self._media = MediaController(profile, locked=lambda: self._busy)
+        self._draft_material_ids = ()
         self._skills = SkillController(profile, locked=lambda: self._busy)
         self._skills.selectionChanged.connect(self._skill_changed)
+
+    @Property(QObject, constant=True)
+    def media(self):
+        return self._media
 
     @Property(QObject, constant=True)
     def skills(self):
@@ -95,6 +103,7 @@ class AssistantController(QObject):
             "contextCount": len(self._context()),
             "files": self._files,
             "filesLoading": self._files_loading,
+            "inputKinds": sorted(self.adapter.connection.input_kinds),
             "filesError": self._files_error,
             "busy": self._busy,
             "saving": self._saving,
@@ -280,12 +289,20 @@ class AssistantController(QObject):
         identifier = self._files_id = uuid4()
         self._files_context = context
         self._files, self._files_error, self._files_loading = [], "", True
+        connection = self.adapter.connection
         self.changed.emit()
 
         def work():
             try:
                 with TaskStore(self.profile / "tasks.sqlite3") as store:
                     result = file_catalog(store, context)
+                    entries = {str(e.id): e for e in store.list_materials()}
+                    entries.update({str(e.id): e for e in store.list_attachments()})
+                    for row in result:
+                        entry = entries[row["id"]]
+                        row["kind"] = capability(entry.suffix, connection)
+                        row["supported"] = bool(row["kind"])
+                        row["image"] = entry.suffix.lower() in IMAGES
                 self._filesReady.emit(identifier, result, "")
             except (ValueError, OSError, sqlite3.Error):
                 self._filesReady.emit(identifier, [], "Не удалось загрузить список файлов.")
@@ -301,15 +318,21 @@ class AssistantController(QObject):
 
     @Slot(str, str)
     @Slot(str, str, "QVariantList")
-    def generate(self, prompt, target_id="", file_ids=None):
-        if self._busy or self._files_loading:
+    @Slot(str, str, "QVariantList", bool)
+    def generate(self, prompt, target_id="", file_ids=None, confirm_files=False):
+        if self._busy or self._files_loading or self._media.state["busy"]:
             return
         identifiers = tuple(file_ids or ())
         if any(not isinstance(value, str) for value in identifiers) or len(identifiers) > 5:
             self._error = "Выберите не более пяти файлов из списка."
             self.changed.emit()
             return
+        if identifiers and self._context() and not confirm_files:
+            self._error = "Подтвердите повторную передачу выбранных файлов."
+            self.changed.emit()
+            return
         file_context = self._files_context
+        self._draft_material_ids = ()
         operation = "split" if target_id else "create"
         if not prompt.strip() or len(prompt) > 20000:
             self._error = "Введите запрос длиной до 20 000 символов."
@@ -342,21 +365,34 @@ class AssistantController(QObject):
                     selected = store.get_task(UUID(target_id)) if target_id else None
                 if target_id and selected is None:
                     raise ValueError("Выбранная задача удалена. Обновите список.")
-                materials = (
-                    selected_texts(self.profile, file_context, identifiers, cancelled)
+                materials, files = (
+                    prepare_sources(
+                        self.profile, file_context, identifiers, cancelled, adapter.connection
+                    )
                     if identifiers
-                    else ()
+                    else ((), ())
                 )
                 if cancelled.is_set():
                     return
                 request = Request(
-                    identifier, prompt, operation, selected, materials, history, skill=skill
+                    identifier,
+                    prompt,
+                    operation,
+                    selected,
+                    materials,
+                    history,
+                    skill=skill,
+                    files=files,
                 )
                 response = adapter.generate(request, cancelled)
                 if cancelled.is_set():
                     return
                 draft = parse_draft(identifier, response, selected)
-                self._ready.emit(identifier, "generate", draft, "")
+                with TaskStore(self.profile / "tasks.sqlite3") as store:
+                    material_ids = tuple(
+                        e.id for e in store.list_materials() if str(e.id) in identifiers
+                    )
+                self._ready.emit(identifier, "generate", (draft, material_ids), "")
             except (ChatGPTError, FileTextError) as error:
                 self._ready.emit(identifier, "generate", None, str(error))
             except Exception:
@@ -429,6 +465,7 @@ class AssistantController(QObject):
         if self._busy or self._draft is None or not self._valid:
             return
         draft = self._draft
+        material_ids = self._draft_material_ids
         self._error = ""
         self._busy = self._saving = True
         self.changed.emit()
@@ -436,7 +473,7 @@ class AssistantController(QObject):
         def work():
             try:
                 with TaskStore(self.profile / "tasks.sqlite3") as store:
-                    identifier = TaskService(store).apply_proposal(draft)
+                    identifier = TaskService(store).apply_proposal(draft, material_ids=material_ids)
                 self._ready.emit(draft.id, "apply", identifier, "")
             except (ValueError, KeyError) as error:
                 self._ready.emit(draft.id, "apply", None, str(error))
@@ -460,7 +497,7 @@ class AssistantController(QObject):
             self._message("notice", error)
         if not error:
             if action == "generate":
-                self._draft = result
+                self._draft, self._draft_material_ids = result
                 self._valid = True
                 preview = self._preview()
                 self._conversation.append(
@@ -478,6 +515,7 @@ class AssistantController(QObject):
     def close(self):
         self._closed = True
         self._cancelled.set()
+        self._media.close()
         self._pool.shutdown(wait=True, cancel_futures=True)
         self._history_pool.shutdown(wait=True)
         self._skills.close()

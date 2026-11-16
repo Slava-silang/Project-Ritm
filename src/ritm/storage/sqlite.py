@@ -1,5 +1,6 @@
 """SQLite с версионированной схемой. Каждый экземпляр используется только в создавшем его потоке."""
 
+import hashlib
 import json
 import sqlite3
 from collections.abc import Callable
@@ -291,9 +292,19 @@ class TaskStore:
             self._write_task(task)
 
     def apply_proposal(
-        self, identifier: UUID, digest: str, before: Task | None, task: Task
+        self,
+        identifier: UUID,
+        digest: str,
+        before: Task | None,
+        task: Task,
+        *,
+        material_ids: tuple[UUID, ...] = (),
     ) -> UUID:
-        """Проверка снимка, запись дерева и квитанция — одна транзакция."""
+        """Проверка снимка, запись дерева, ссылки и квитанция — одна транзакция."""
+        if material_ids:
+            digest = hashlib.sha256(
+                (digest + "|" + ",".join(sorted(str(i) for i in set(material_ids)))).encode()
+            ).hexdigest()
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
             receipt = self._db.execute(
@@ -311,6 +322,13 @@ class TaskStore:
             elif task.id != before.id or self.get_task(before.id) != before:
                 raise ValueError("Задача изменилась или удалена. Сформируйте новый черновик.")
             self._write_task(task)
+            for material_id in material_ids:
+                if not self.list_materials(material_id):
+                    raise ValueError("Материал больше не доступен. Выберите файлы заново.")
+                self._db.execute(
+                    "INSERT INTO material_links VALUES (?,?,?) ON CONFLICT DO NOTHING",
+                    (str(task.id), str(task.id), str(material_id)),
+                )
             self._db.execute(
                 "INSERT INTO applied_proposals VALUES (?,?,?)",
                 (str(identifier), digest, str(task.id)),

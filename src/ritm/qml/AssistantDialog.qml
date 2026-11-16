@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 
 Dialog {
@@ -13,9 +14,14 @@ Dialog {
     property var state: agent ? agent.state : ({busy: false, hasDraft: false, saving: false})
     property var form: ({})
     property var selectedFiles: []
+    property string pendingFile: ""
+    property string catalogConnection: ""
     property string fileContext: taskBackend.detail.id || ""
     onFileContextChanged: {
         selectedFiles = [];
+        pendingFile = "";
+        mediaEditor.close();
+        if (agent) agent.media.reset();
         if (agent && !state.saving) {
             agent.cancel();
             agent.newChat();
@@ -31,7 +37,7 @@ Dialog {
     title: state.provider === "chatgpt" ? qsTr("Помощник — подписка ChatGPT") : qsTr("Тестовый помощник — без сети")
     modal: false
     closePolicy: state.saving ? Popup.NoAutoClose : Popup.CloseOnEscape
-    onClosed: if (agent) agent.cancel()
+    onClosed: if (agent) { agent.cancel(); agent.media.reset(); mediaEditor.close(); }
     background: Rectangle {
         color: dialog.uiAppearance.colors.surface
         border.color: dialog.uiAppearance.colors.border
@@ -60,6 +66,51 @@ Dialog {
                 text: qsTr("Отмена")
                 onClicked: clearHistoryDialog.close()
             }
+        }
+    }
+    FileDialog {
+        id: assistantFilePicker
+        objectName: "assistantFilePicker"
+        title: qsTr("Добавить файл для помощника")
+        onAccepted: dialog.agent.media.importFile(selectedFile)
+    }
+    MediaDialog {
+        id: mediaEditor
+        media: dialog.agent ? dialog.agent.media : null
+        uiAppearance: dialog.uiAppearance
+        context: dialog.fileContext
+    }
+    Dialog {
+        id: resendDialog
+        objectName: "assistantResendDialog"
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: Math.min(dialog.uiAppearance.dp(480), parent.width - 24)
+        height: Math.min(dialog.uiAppearance.dp(280), parent.height - 24)
+        modal: true
+        title: qsTr("Повторно передать файлы?")
+        contentItem: Label {
+            text: qsTr("Выбранные файлы снова получит текущая модель. Файлы из прежних сообщений автоматически не добавляются.")
+            wrapMode: Text.Wrap
+        }
+        footer: DialogButtonBox {
+            Button { objectName: "assistantCancelResend"; text: qsTr("Отмена"); onClicked: resendDialog.close() }
+            Button {
+                objectName: "assistantConfirmResend"
+                text: qsTr("Передать и отправить")
+                onClicked: { resendDialog.close(); dialog.send(true); }
+            }
+        }
+    }
+    function send(confirmed) {
+        agent.generate(prompt.text, operation.currentIndex === 1 ? taskBackend.detail.id : "", selectedFiles, confirmed);
+    }
+    Connections {
+        target: dialog.agent ? dialog.agent.media : null
+        function onImported(identifier) {
+            dialog.pendingFile = identifier;
+            dialog.agent.loadFiles(dialog.fileContext);
+            dialog.taskBackend.reload();
         }
     }
     function loadDraft() {
@@ -93,6 +144,18 @@ Dialog {
     Connections {
         target: dialog.agent
         function onChanged() {
+            const key = dialog.state.provider + "/" + dialog.state.model;
+            if (key !== dialog.catalogConnection) {
+                dialog.catalogConnection = key;
+                dialog.selectedFiles = [];
+                if (dialog.visible && !dialog.state.busy && !dialog.state.filesLoading)
+                    dialog.agent.loadFiles(dialog.fileContext);
+            }
+            if (dialog.pendingFile && !dialog.state.filesLoading) {
+                const row = (dialog.state.files || []).find(x => x.id === dialog.pendingFile);
+                if (row && row.supported) dialog.selectedFiles = dialog.selectedFiles.concat([row.id]);
+                dialog.pendingFile = "";
+            }
             if (!dialog.state.hasDraft)
                 dialog.editing = false;
         }
@@ -248,7 +311,19 @@ Dialog {
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
-                text: qsTr("Материалы для помощника: отметьте нужные файлы. Передаётся только их текст, после нажатия кнопки отправки. TXT, Markdown и PDF с текстовым слоем; до 5 файлов и 60 000 символов суммарно.")
+                text: qsTr("Отметьте файлы для текущего сообщения: до 5 файлов, до 8 МиБ каждый и до 20 МиБ суммарно. Изображения и документы передаются целиком, если это поддерживает выбранная модель. Иначе доступен прежний текстовый режим TXT/MD/PDF (60 000 символов). Выбранные материалы прикрепятся к задаче после подтверждения предложения.")
+            }
+            Button {
+                objectName: "assistantAddFile"
+                text: qsTr("Добавить файл…")
+                enabled: !dialog.state.busy && !dialog.state.hasDraft && (!dialog.agent || !dialog.agent.media.state.busy)
+                onClicked: assistantFilePicker.open()
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: dialog.agent ? dialog.agent.media.state.error || "" : ""
+                visible: text.length > 0
             }
             Button {
                 objectName: "assistantRefreshFiles"
@@ -265,26 +340,37 @@ Dialog {
             }
             Repeater {
                 model: dialog.state.files || []
-                delegate: CheckBox {
-                    id: fileChoice
+                delegate: ColumnLayout {
+                    id: fileRow
                     required property var modelData
                     required property int index
-                    objectName: "assistantFile_" + index
                     Layout.fillWidth: true
-                    enabled: !dialog.state.busy && !dialog.state.hasDraft && modelData.supported
-                    text: modelData.name + " — " + modelData.source
-                        + (modelData.supported ? "" : qsTr(" (формат пока не поддерживается)"))
-                    checked: dialog.selectedFiles.indexOf(modelData.id) >= 0
-                    contentItem: Label {
-                        text: fileChoice.text
-                        textFormat: Text.PlainText
-                        leftPadding: fileChoice.indicator.width + fileChoice.spacing
-                        wrapMode: Text.Wrap
+                    CheckBox {
+                        id: fileChoice
+                        objectName: "assistantFile_" + fileRow.index
+                        Layout.fillWidth: true
+                        enabled: !dialog.state.busy && !dialog.state.hasDraft && fileRow.modelData.supported
+                        text: fileRow.modelData.name + " — " + fileRow.modelData.source
+                            + (fileRow.modelData.supported ? "" : qsTr(" (формат или модель не поддерживается; можно сменить модель)"))
+                        checked: dialog.selectedFiles.indexOf(fileRow.modelData.id) >= 0
+                        contentItem: Label {
+                            text: fileChoice.text
+                            textFormat: Text.PlainText
+                            leftPadding: fileChoice.indicator.width + fileChoice.spacing
+                            wrapMode: Text.Wrap
+                        }
+                        onToggled: {
+                            dialog.selectedFiles = checked
+                                ? dialog.selectedFiles.concat([fileRow.modelData.id])
+                                : dialog.selectedFiles.filter(x => x !== fileRow.modelData.id);
+                        }
                     }
-                    onToggled: {
-                        dialog.selectedFiles = checked
-                            ? dialog.selectedFiles.concat([modelData.id])
-                            : dialog.selectedFiles.filter(x => x !== modelData.id);
+                    Button {
+                        objectName: "assistantPreview_" + fileRow.index
+                        visible: !!fileRow.modelData.image
+                        text: qsTr("Посмотреть / обрезать")
+                        enabled: !dialog.state.busy && !dialog.state.hasDraft && (!dialog.agent || !dialog.agent.media.state.busy)
+                        onClicked: mediaEditor.showFile(fileRow.modelData.id)
                     }
                 }
             }
@@ -307,11 +393,14 @@ Dialog {
                 objectName: "assistantGenerate"
                 text: dialog.state.busy ? qsTr("Подготовка…") : (dialog.state.provider === "chatgpt" ? qsTr("Отправить сообщение") : qsTr("Отправить в тестовый чат"))
                 enabled: !dialog.state.busy && !dialog.state.hasDraft && !dialog.taskBackend.busy
-                    && !dialog.state.filesLoading
+                    && !dialog.state.filesLoading && (!dialog.agent || !dialog.agent.media.state.busy)
                     && (!dialog.agent || !dialog.agent.skills.state.busy)
                     && (!dialog.connection || !dialog.connection.state.busy)
                     && (operation.currentIndex === 0 || !!dialog.taskBackend.detail.id)
-                onClicked: dialog.agent.generate(prompt.text, operation.currentIndex === 1 ? dialog.taskBackend.detail.id : "", dialog.selectedFiles)
+                onClicked: {
+                    if (dialog.selectedFiles.length > 0 && dialog.state.contextCount > 0) resendDialog.open();
+                    else dialog.send(false);
+                }
             }
             Label {
                 Layout.fillWidth: true

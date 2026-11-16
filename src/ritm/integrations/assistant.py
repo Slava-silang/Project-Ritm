@@ -1,7 +1,7 @@
 """Общий контракт без привязки к SDK, аккаунту или ключу провайдера."""
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from threading import Event
 from typing import Literal, Protocol
 from uuid import UUID
@@ -16,12 +16,21 @@ class Connection:
     model: str
     authentication: Literal["none", "account", "api_key"]
     operations: frozenset[str] = frozenset({"create", "split"})
+    input_kinds: frozenset[str] = frozenset({"text"})
 
 
 @dataclass(frozen=True)
 class SourceText:
     name: str
     text: str
+
+
+@dataclass(frozen=True)
+class SourceFile:
+    name: str
+    mime: str
+    data: bytes = field(repr=False)
+    kind: Literal["image", "file"] = "file"
 
 
 @dataclass(frozen=True)
@@ -40,6 +49,7 @@ class Request:
     history: tuple[ChatTurn, ...] = ()
     planning: dict | None = None
     skill: Skill | None = None
+    files: tuple[SourceFile, ...] = ()
 
 
 class Adapter(Protocol):
