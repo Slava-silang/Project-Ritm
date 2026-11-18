@@ -7,11 +7,16 @@ from dataclasses import asdict, dataclass
 from fractions import Fraction
 from pathlib import Path
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from ritm.domain.garden import Garden, GardenItem, GardenState, apply_command, coins, natural
+from ritm.domain.garden_rewards import RewardLedger, decode_ledger, encode_ledger, reconcile_time
 
 APPLICATION_ID = 0x52494744
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+REWARD_SCHEMA = (
+    "CREATE TABLE garden_reward_state (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)"
+)
 MAX_PAYLOAD = 4 * 1024 * 1024
 SCHEMA = (
     "CREATE TABLE gardens (month TEXT PRIMARY KEY NOT NULL, payload TEXT NOT NULL)",
@@ -116,12 +121,19 @@ class GardenStore:
             self._db.execute("BEGIN IMMEDIATE")
             version = self._db.execute("PRAGMA user_version").fetchone()[0]
             app_id = self._db.execute("PRAGMA application_id").fetchone()[0]
+            if version == 1 and app_id == APPLICATION_ID:
+                self._snapshot()
+                self._check_month(month)
+                self._db.execute(REWARD_SCHEMA)
+                self._db.execute(
+                    "INSERT INTO garden_reward_state VALUES (1,?)", (encode_ledger(RewardLedger()),)
+                )
+                self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+                version = SCHEMA_VERSION
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
-                state = self._snapshot()
-                if month is not None and state.garden.month != month:
-                    raise ValueError(
-                        "Открытие базы не переводит месяц сада. Нужна отдельная ротация."
-                    )
+                self._snapshot()
+                self._reward_snapshot()
+                self._check_month(month)
                 return
             tables = self._db.execute(
                 "SELECT name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
@@ -135,8 +147,27 @@ class GardenStore:
                 "INSERT INTO gardens VALUES (?,?)", (month, encode_garden(initial.garden))
             )
             self._db.execute("INSERT INTO garden_state VALUES (1,?,0,'0','1')", (month,))
+            self._db.execute(REWARD_SCHEMA)
+            self._db.execute(
+                "INSERT INTO garden_reward_state VALUES (1,?)", (encode_ledger(RewardLedger()),)
+            )
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+
+    def _check_month(self, month):
+        if month is not None and self._snapshot().garden.month != month:
+            raise ValueError("Открытие базы не переводит месяц сада. Нужна отдельная ротация.")
+
+    def _reward_snapshot(self):
+        row = self._db.execute("SELECT payload FROM garden_reward_state WHERE id=1").fetchone()
+        if row is None:
+            raise ValueError("Журнал оплаты отсутствует. Автоматический сброс не выполняется.")
+        return decode_ledger(row["payload"])
+
+    def reward_snapshot(self):
+        with self._db:
+            self._db.execute("BEGIN")
+            return self._reward_snapshot()
 
     def _snapshot(self):
         row = self._db.execute(
@@ -222,6 +253,51 @@ class GardenStore:
             if replay:
                 return replay
             state = GardenState(current.garden, current.balance + amount, current.revision + 1)
+            return self._write(state, key, digest, None)
+
+    def reconcile_focus(
+        self,
+        identifier: UUID,
+        intervals,
+        *,
+        now_us,
+        zone: str,
+        expected_revision: int,
+        enabled=None,
+    ):
+        """Внутренний протокол T39c1; ещё не вызывается обычным приложением."""
+        if not isinstance(identifier, UUID) or not isinstance(zone, str):
+            raise ValueError("Нужен UUID сверки и явный часовой пояс.")
+        natural(expected_revision)
+        intervals = tuple(tuple(pair) for pair in intervals)
+        payload = json.dumps(
+            {"intervals": intervals, "now_us": now_us, "zone": zone, "enabled": enabled},
+            sort_keys=True,
+            allow_nan=False,
+        )
+        if len(payload.encode()) > MAX_PAYLOAD:
+            raise ValueError("Снимок интервалов слишком большой.")
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        key = "focus:" + str(identifier)
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            current = self._snapshot()
+            ledger = self._reward_snapshot()
+            replay = self._receipt(key, digest, current)
+            if replay:
+                return replay
+            if current.revision != expected_revision:
+                raise ValueError("Сад или кошелёк изменились. Обновите снимок перед действием.")
+            reward = reconcile_time(
+                ledger, intervals, now_us=now_us, zone=ZoneInfo(zone), enabled=enabled
+            )
+            encoded = encode_ledger(reward.ledger)
+            if len(encoded.encode()) > MAX_PAYLOAD:
+                raise ValueError("Журнал оплаты слишком большой.")
+            self._db.execute("UPDATE garden_reward_state SET payload=? WHERE id=1", (encoded,))
+            state = GardenState(
+                current.garden, current.balance + reward.coins, current.revision + 1
+            )
             return self._write(state, key, digest, None)
 
     def close(self):
