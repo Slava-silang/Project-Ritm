@@ -1,0 +1,762 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "references/approved-sample-02.png",
+    "references/probe-stages-2x.png"
+  ],
+  "assets": [
+    {
+      "id": "sakura_01",
+      "species": "sakura",
+      "name": "Сакура",
+      "terrain": "grass",
+      "footprint": [
+        2,
+        2
+      ],
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "max_size": [
+        14,
+        16
+      ],
+      "stage": 1,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A tiny fresh cherry-tree sprout with just two small oval serrated GREEN leaves and a short stem. No flowers yet. Do not draw a miniature adult tree.\nLogical silhouette fits at most 14x16 pixels; full canvas 192x256, ground anchor(96,224). Four stages exist, but show ONLY stage1.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "sakura_02",
+      "species": "sakura",
+      "name": "Сакура",
+      "terrain": "grass",
+      "footprint": [
+        2,
+        2
+      ],
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "max_size": [
+        30,
+        52
+      ],
+      "stage": 2,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A taller slender cherry sapling: warm-brown twig trunk, three small branches with groups of fresh oval green leaves. No broad crown yet, no flowers, no bonsai pot.\nLogical silhouette fits at most 30x52 pixels; full canvas 192x256, ground anchor(96,224). Four stages exist, but show ONLY stage2.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "sakura_03",
+      "species": "sakura",
+      "name": "Сакура",
+      "terrain": "grass",
+      "footprint": [
+        2,
+        2
+      ],
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "max_size": [
+        104,
+        108
+      ],
+      "stage": 3,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A young branching SAKURA cherry tree with medium widening crown: brown trunk and forked limbs, several pink blossom clusters beginning to cover green leaf clusters. Clearly younger and smaller than adult, not just a scaled adult.\nLogical silhouette fits at most 104x108 pixels; full canvas 192x256, ground anchor(96,224). Four stages exist, but show ONLY stage3.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "sakura_04",
+      "species": "sakura",
+      "name": "Сакура",
+      "terrain": "grass",
+      "footprint": [
+        2,
+        2
+      ],
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "max_size": [
+        176,
+        184
+      ],
+      "stage": 4,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A large mature SAKURA, Japanese flowering cherry tree, comparable height and mass to approved large oak. Tall substantial warm-brown trunk, branching limbs, dense full asymmetrical rounded crown made of big pale pink and warm blush blossom masses with deeper rose/mauve shadows, very small scattered light green leaf accents. Volumetric chunky pixel clusters, no individual tiny petals cluttering the image. Crown tall and lush, not flat bonsai. No cherries, no falling petals, no ground litter, no Japanese props.\nLogical silhouette fits at most 176x184 pixels; full canvas 192x256, ground anchor(96,224). Four stages exist, but show ONLY stage4.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "poppy_01",
+      "species": "poppy",
+      "name": "Мак",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        12,
+        12
+      ],
+      "stage": 1,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A tiny POPPY sprout: two narrow fresh green leaves pointing up and out from a short stem, one seedling only. No flowers or buds.\nLogical silhouette fits at most 12x12 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage1.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "poppy_02",
+      "species": "poppy",
+      "name": "Мак",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        20,
+        26
+      ],
+      "stage": 2,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A taller poppy stem with two paired levels of small lobed green leaves, a small leaf at its top. No flower and no bud yet.\nLogical silhouette fits at most 20x26 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage2.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "poppy_03",
+      "species": "poppy",
+      "name": "Мак",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        28,
+        38
+      ],
+      "stage": 3,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A taller wider leafy poppy with one CLOSED green oval bud at the top on a gently bent neck, slight red hint at bud seam. Bud must not be open. No white petals.\nLogical silhouette fits at most 28x38 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage3.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "poppy_04",
+      "species": "poppy",
+      "name": "Мак",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        34,
+        50
+      ],
+      "stage": 4,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A mature RED POPPY: one broad scarlet red open blossom with four overlapping chunky petal masses and a distinctly dark near-black center, upright slender green stem and paired lobed leaves. Same scale as mature approved daisy, not a giant rose, no vase.\nLogical silhouette fits at most 34x50 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage4.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "fern_01",
+      "species": "fern",
+      "name": "Папоротник",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        12,
+        12
+      ],
+      "stage": 1,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A very tiny FERN sprout, one upright tightly curled fiddlehead and two small basal green leaflets. Simple readable compact silhouette, not a flower.\nLogical silhouette fits at most 12x12 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage1.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "fern_02",
+      "species": "fern",
+      "name": "Папоротник",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        22,
+        23
+      ],
+      "stage": 2,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A young fern with two taller unfurling curled fiddlehead fronds and a few small paired leaflets on lower stems. No flowers.\nLogical silhouette fits at most 22x23 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage2.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "fern_03",
+      "species": "fern",
+      "name": "Папоротник",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        34,
+        33
+      ],
+      "stage": 3,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A medium fern, three upward/outward arching fronds partly unfurled, clear paired feather-like leaflets and one curled frond tip; broader and taller than stage2. Compact single clump.\nLogical silhouette fits at most 34x33 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage3.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "fern_04",
+      "species": "fern",
+      "name": "Папоротник",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        48,
+        44
+      ],
+      "stage": 4,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A mature lush FERN clump with five arching pinnate fronds, visibly feather-like paired leaflets, central fronds taller and side fronds spreading. Olive/lime upper leaflet clusters, deep green shadows. Not a palm tree, not a bush and no flowers; all fronds arise from a single bottom-center crown.\nLogical silhouette fits at most 48x44 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage4.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "carrot_01",
+      "species": "carrot",
+      "name": "Морковь",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        12,
+        12
+      ],
+      "stage": 1,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A tiny CARROT seedling, two very small narrow green cotyledons and a short stem. No visible carrot root yet. No ground or soil.\nLogical silhouette fits at most 12x12 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage1.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "carrot_02",
+      "species": "carrot",
+      "name": "Морковь",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        22,
+        24
+      ],
+      "stage": 2,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A taller young carrot plant: several small feathery divided green leaves rising from one basal crown. No orange root visible yet.\nLogical silhouette fits at most 22x24 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage2.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "carrot_03",
+      "species": "carrot",
+      "name": "Морковь",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        30,
+        34
+      ],
+      "stage": 3,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A growing carrot plant with taller broader finely divided feathery foliage and a SMALL orange carrot shoulder just showing at the base. Root shoulder only, not a full long carrot.\nLogical silhouette fits at most 30x34 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage3.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "carrot_04",
+      "species": "carrot",
+      "name": "Морковь",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        40,
+        46
+      ],
+      "stage": 4,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A mature planted CARROT: full upright spreading fan of feathery carrot greens, with an orange rounded carrot shoulder visibly peeking out at the base, a very short tapered orange lower tip only. Foliage is main height; do NOT draw a harvested long orange carrot dangling below leaves, do NOT draw underground cutaway. No soil, dirt, ground or shadow in sprite.\nLogical silhouette fits at most 40x46 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage4.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "pumpkin_01",
+      "species": "pumpkin",
+      "name": "Тыква",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        14,
+        12
+      ],
+      "stage": 1,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A tiny PUMPKIN seedling, short green stem with two rounded broad cotyledons. One seedling, no fruit or flowers.\nLogical silhouette fits at most 14x12 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage1.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "pumpkin_02",
+      "species": "pumpkin",
+      "name": "Тыква",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        26,
+        21
+      ],
+      "stage": 2,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A young pumpkin plant with two broad angular lobed green leaves and a small third new leaf on a short upright stem, tiny beginning vine at base. No fruit yet. Taller and wider than tiny sprout.\nLogical silhouette fits at most 26x21 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage2.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "pumpkin_03",
+      "species": "pumpkin",
+      "name": "Тыква",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        38,
+        30
+      ],
+      "stage": 3,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A growing pumpkin plant with broader lobed leaves, short curling vine, and one SMALL round immature GREEN pumpkin at the base. Fruit clearly young and green, not ripe orange.\nLogical silhouette fits at most 38x30 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage3.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "pumpkin_04",
+      "species": "pumpkin",
+      "name": "Тыква",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        52,
+        40
+      ],
+      "stage": 4,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A mature pumpkin plant with one squat ripe ORANGE pumpkin, clearly defined darker orange vertical ribs, chunky green-brown curved stalk, two broad lobed green leaves rising behind and short vine. Fruit sits on ground at bottom center of sprite; whole plant fits one logical64x32 tile in plan. Not Halloween: no carved face, no pot, no detached harvested fruit pile.\nLogical silhouette fits at most 52x40 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage4.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "water_lily_01",
+      "species": "water_lily",
+      "name": "Кувшинка",
+      "terrain": "water",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        14,
+        9
+      ],
+      "stage": 1,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A tiny WATER LILY plant with one small green floating oval lily pad with a V notch and a tiny upward rolled green tip. Pad is horizontal in the SAME2:1 isometric ground view. No flower yet. No water or ripple; ONLY floating leaf silhouette.\nLogical silhouette fits at most 14x9 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage1.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "water_lily_02",
+      "species": "water_lily",
+      "name": "Кувшинка",
+      "terrain": "water",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        24,
+        17
+      ],
+      "stage": 2,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A young water lily with a larger NOTCHED horizontal oval green pad and a small upright green closed flower bud on a short central stem. Bud is above pad. No open flower, no water surface.\nLogical silhouette fits at most 24x17 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage2.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "water_lily_03",
+      "species": "water_lily",
+      "name": "Кувшинка",
+      "terrain": "water",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        38,
+        28
+      ],
+      "stage": 3,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A growing water lily: broader green notched oval pad in2:1 ground perspective with small second leaf tucked behind, one taller upright CLOSED pale-pink bud on short stem rising above pad. Closed bud clearly higher than stage2. No water, ripple or shadow.\nLogical silhouette fits at most 38x28 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage3.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "water_lily_04",
+      "species": "water_lily",
+      "name": "Кувшинка",
+      "terrain": "water",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "max_size": [
+        50,
+        42
+      ],
+      "stage": 4,
+      "prompt": "Use case: stylized-concept. Asset type: one isolated pixel-art plant sprite for Ritm isometric garden.\nImage1 is APPROVED artistic reference; image2 shows the already-approved exact exported daisy and oak. Use these ONLY as style/scale references, not edit targets. Create just the SINGLE specified plant at the specified growth stage, no alternative versions, no panel, no row, no extra objects.\nSTYLE MUST MATCH: chunky visible square pixel clusters, sculpted volumetric forms, upper-left light, olive/lime greens, deep forest/teal shadows and dark contour accents, warm brown wood. Fixed2:1 dimetric garden view. Crisp hard edges, limited palette, NO blur, NO gradients, NO smooth vector art, NO photograph or realistic3D, NO fine microtexture. Whole plant uncropped with transparent margin.\nACTUAL TRANSPARENT BACKGROUND. Entire space outside the plant and between branches/leaves is transparent. Do not draw checkerboard or any backdrop. No ground tile, grass base, dirt mound, soil, water surface, pot, shadow, glowing aura, haze, bloom, outline halo, label, number, text, frame, UI. Internal pixels opaque solid colours. Root/stem base centered horizontally at bottom; for water lily, floating pad center is the ground anchor. No wilt/death, no extra species or props.\nSizes below are LOGICAL game pixels for the silhouette; source output may be enlarged but preserve these proportions and coarse pixel density. Mechanical export will fit plant to approved canvas.\nREQUEST: A mature WATER LILY, green floating oval NOTCHED lily pad in2:1 ground perspective with one second small pad tucked behind, and a beautiful open pale pink/ivory water-lily blossom with layered pointed petals and a small warm yellow center, blossom rises above leaf plane. Natural water lily, NOT a tall lotus stalk, NOT a daisy. No water pixels, no ripple, no ground or drop shadow. Pad is the grounding plane and must be distinguishable from the elevated flower.\nLogical silhouette fits at most 50x42 pixels; full canvas 64x96, ground anchor(32,80). Four stages exist, but show ONLY stage4.",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/probe-stages-2x.png"
+      ]
+    },
+    {
+      "id": "grass",
+      "prompt": "Use case: precise-object-edit / game sprite extraction.\nInput image1 is the APPROVED style sheet; image2 is the APPROVED larger-oak scene. Preserve that bold economical chunky pixel style, olive/lime leaf masses, forest/teal dark shadows, warm brown trunk, hard square pixel clusters, upper-left light and same 2:1 isometric view. Produce ONLY the requested SINGLE isolated sprite on REAL TRANSPARENT RGBA background. No checkerboard drawn into the picture, no text, no numerals, no border, no drop shadow, no extra specimens or variants. No smooth 3D rendering, no fuzzy edges. The source images are design references, not backgrounds to keep. Plant sprites must contain NO ground tile, no soil mound, no grass base, no pot, no cast shadow; all surrounding space and spaces between stems/leaves are transparent. Whole sprite uncropped with transparent margins. Maintain identity with approved sample02. This is a production SOURCE to be mechanically trimmed/placed in exact logical canvas, so generous outer transparent margin is fine. Do not add new botanical details or change species.\nREQUESTED SPRITE: Extract ONLY one plain grass terrain tile like the upper-left diamond in image1. Isometric top diamond64 logical pixels wide by32 high, depth8 logical pixels, total content64x40. Top corners (32,0),(64,16),(32,32),(0,16). Gentle flat olive green top with very sparse pixel clusters; no blades, no plants, no dirt on top. Two exposed shallow brown soil sides below front edges to form solid slab. Keep top plane geometric and straight 2:1 edges, not scalloped or wavy. No heavy dark border on TOP plane or bevel, so copies can meet seamlessly; darker outer silhouette belongs to soil sides only. One tile only.",
+      "reused_from": "../probe-v1/prompts.json",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/approved-scene-02.png"
+      ]
+    },
+    {
+      "id": "daisy_04",
+      "prompt": "Use case: precise-object-edit / game sprite extraction.\nInput image1 is the APPROVED style sheet; image2 is the APPROVED larger-oak scene. Preserve that bold economical chunky pixel style, olive/lime leaf masses, forest/teal dark shadows, warm brown trunk, hard square pixel clusters, upper-left light and same 2:1 isometric view. Produce ONLY the requested SINGLE isolated sprite on REAL TRANSPARENT RGBA background. No checkerboard drawn into the picture, no text, no numerals, no border, no drop shadow, no extra specimens or variants. No smooth 3D rendering, no fuzzy edges. The source images are design references, not backgrounds to keep. Plant sprites must contain NO ground tile, no soil mound, no grass base, no pot, no cast shadow; all surrounding space and spaces between stems/leaves are transparent. Whole sprite uncropped with transparent margins. Maintain identity with approved sample02. This is a production SOURCE to be mechanically trimmed/placed in exact logical canvas, so generous outer transparent margin is fine. Do not add new botanical details or change species.\nREQUESTED SPRITE: Extract ONLY the adult white DAISY from stage4 in image1. One yellow-center white-petal flower facing the viewer obliquely, slim upright dark-green stem, two paired leaves levels, chunky dark green outlines. It is a DAISY not sunflower. Flower+foliage logical height48px, maximum width32px. Stem foot centered at bottom, NO grass base. No bud on mature daisy, only one flower.",
+      "reused_from": "../probe-v1/prompts.json",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/approved-scene-02.png"
+      ]
+    },
+    {
+      "id": "oak_04",
+      "prompt": "Use case: precise-object-edit / game sprite extraction.\nInput image1 is the APPROVED style sheet; image2 is the APPROVED larger-oak scene. Preserve that bold economical chunky pixel style, olive/lime leaf masses, forest/teal dark shadows, warm brown trunk, hard square pixel clusters, upper-left light and same 2:1 isometric view. Produce ONLY the requested SINGLE isolated sprite on REAL TRANSPARENT RGBA background. No checkerboard drawn into the picture, no text, no numerals, no border, no drop shadow, no extra specimens or variants. No smooth 3D rendering, no fuzzy edges. The source images are design references, not backgrounds to keep. Plant sprites must contain NO ground tile, no soil mound, no grass base, no pot, no cast shadow; all surrounding space and spaces between stems/leaves are transparent. Whole sprite uncropped with transparent margins. Maintain identity with approved sample02. This is a production SOURCE to be mechanically trimmed/placed in exact logical canvas, so generous outer transparent margin is fine. Do not add new botanical details or change species.\nREQUESTED SPRITE: Extract ONLY the LARGE MATURE OAK from image2, matching its high dense canopy, tall sturdy trunk, asymmetrical broad green clustered crown. NO fruit, NO flowers, NO acorns. Oak above-ground silhouette about184 logical pixels tall, crown maximum176 logical pixels wide; keep tall proportions and bigger size than earlier sample01. Tiny roots may be part of trunk silhouette, but NO grass/soil/shadow/ground patch. Root foot is bottom center. Single full grown oak only, not young sapling.",
+      "reused_from": "../probe-v1/prompts.json",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/approved-scene-02.png"
+      ]
+    },
+    {
+      "id": "daisy_01",
+      "prompt": "Use case: precise-object-edit / game sprite extraction.\nInput image1 is the APPROVED style sheet; image2 is the APPROVED larger-oak scene. Preserve that bold economical chunky pixel style, olive/lime leaf masses, forest/teal dark shadows, warm brown trunk, hard square pixel clusters, upper-left light and same 2:1 isometric view. Produce ONLY the requested SINGLE isolated sprite on REAL TRANSPARENT RGBA background. No checkerboard drawn into the picture, no text, no numerals, no border, no drop shadow, no extra specimens or variants. No smooth 3D rendering, no fuzzy edges. The source images are design references, not backgrounds to keep. Plant sprites must contain NO ground tile, no soil mound, no grass base, no pot, no cast shadow; all surrounding space and spaces between stems/leaves are transparent. Whole sprite uncropped with transparent margins. Maintain identity with approved sample02. This is a production SOURCE to be mechanically trimmed/placed in exact logical canvas, so generous outer transparent margin is fine. Do not add new botanical details or change species.\nHARD PIXEL EDGES: opaque flat pixel blocks against empty transparent background. Absolutely NO glow, no bloom, no outer coloured haze, no aura, no soft cast shadow, no translucent leaves. Do not turn sprite into a lit icon. This is a small game sprite, not poster artwork.\nREQUESTED SPRITE: ONLY daisy stage1: very tiny fresh sprout, two small green oval leaves pointing diagonally upward outwards, short stem. Logical silhouette about12x12 pixels, bottom-center stem foot. No flower, no bud, no roots, no additional leaves, NO ground. Follow daisy stage1 in reference sheet.",
+      "reused_from": "../probe-v1/prompts.json",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/approved-scene-02.png"
+      ]
+    },
+    {
+      "id": "daisy_02",
+      "prompt": "Use case: precise-object-edit / game sprite extraction.\nInput image1 is the APPROVED style sheet; image2 is the APPROVED larger-oak scene. Preserve that bold economical chunky pixel style, olive/lime leaf masses, forest/teal dark shadows, warm brown trunk, hard square pixel clusters, upper-left light and same 2:1 isometric view. Produce ONLY the requested SINGLE isolated sprite on REAL TRANSPARENT RGBA background. No checkerboard drawn into the picture, no text, no numerals, no border, no drop shadow, no extra specimens or variants. No smooth 3D rendering, no fuzzy edges. The source images are design references, not backgrounds to keep. Plant sprites must contain NO ground tile, no soil mound, no grass base, no pot, no cast shadow; all surrounding space and spaces between stems/leaves are transparent. Whole sprite uncropped with transparent margins. Maintain identity with approved sample02. This is a production SOURCE to be mechanically trimmed/placed in exact logical canvas, so generous outer transparent margin is fine. Do not add new botanical details or change species.\nHARD PIXEL EDGES: opaque flat pixel blocks against empty transparent background. Absolutely NO glow, no bloom, no outer coloured haze, no aura, no soft cast shadow, no translucent leaves. Do not turn sprite into a lit icon. This is a small game sprite, not poster artwork.\nREQUESTED SPRITE: ONLY daisy stage2: a taller slim green stem with two pairs of small leaves at two heights, plus a tiny new leaf tip on top. Logical silhouette at most20 wide26 high. No white petals, no flower, no bud, no roots, NO ground. Follow stage2 in approved reference.",
+      "reused_from": "../probe-v1/prompts.json",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/approved-scene-02.png"
+      ]
+    },
+    {
+      "id": "daisy_03",
+      "prompt": "Use case: precise-object-edit / game sprite extraction.\nInput image1 is the APPROVED style sheet; image2 is the APPROVED larger-oak scene. Preserve that bold economical chunky pixel style, olive/lime leaf masses, forest/teal dark shadows, warm brown trunk, hard square pixel clusters, upper-left light and same 2:1 isometric view. Produce ONLY the requested SINGLE isolated sprite on REAL TRANSPARENT RGBA background. No checkerboard drawn into the picture, no text, no numerals, no border, no drop shadow, no extra specimens or variants. No smooth 3D rendering, no fuzzy edges. The source images are design references, not backgrounds to keep. Plant sprites must contain NO ground tile, no soil mound, no grass base, no pot, no cast shadow; all surrounding space and spaces between stems/leaves are transparent. Whole sprite uncropped with transparent margins. Maintain identity with approved sample02. This is a production SOURCE to be mechanically trimmed/placed in exact logical canvas, so generous outer transparent margin is fine. Do not add new botanical details or change species.\nHARD PIXEL EDGES: opaque flat pixel blocks against empty transparent background. Absolutely NO glow, no bloom, no outer coloured haze, no aura, no soft cast shadow, no translucent leaves. Do not turn sprite into a lit icon. This is a small game sprite, not poster artwork.\nREQUESTED SPRITE: ONLY daisy stage3: taller wider green foliage than stage2, with one single CLOSED upright flower bud, pale white/cream petal tip surrounded by dark-green sepals. Bud clearly closed, no open petals. Two pairs of green leaves. Logical silhouette at most28 wide38 high. Stem foot bottom center. No grass/soil/roots. Follow daisy stage3 in reference.",
+      "reused_from": "../probe-v1/prompts.json",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/approved-scene-02.png"
+      ]
+    },
+    {
+      "id": "oak_01",
+      "prompt": "Use case: precise-object-edit / game sprite extraction.\nInput image1 is the APPROVED style sheet; image2 is the APPROVED larger-oak scene. Preserve that bold economical chunky pixel style, olive/lime leaf masses, forest/teal dark shadows, warm brown trunk, hard square pixel clusters, upper-left light and same 2:1 isometric view. Produce ONLY the requested SINGLE isolated sprite on REAL TRANSPARENT RGBA background. No checkerboard drawn into the picture, no text, no numerals, no border, no drop shadow, no extra specimens or variants. No smooth 3D rendering, no fuzzy edges. The source images are design references, not backgrounds to keep. Plant sprites must contain NO ground tile, no soil mound, no grass base, no pot, no cast shadow; all surrounding space and spaces between stems/leaves are transparent. Whole sprite uncropped with transparent margins. Maintain identity with approved sample02. This is a production SOURCE to be mechanically trimmed/placed in exact logical canvas, so generous outer transparent margin is fine. Do not add new botanical details or change species.\nHARD PIXEL EDGES: opaque flat pixel blocks against empty transparent background. Absolutely NO glow, no bloom, no outer coloured haze, no aura, no soft cast shadow, no translucent leaves. Do not turn sprite into a lit icon. This is a small game sprite, not poster artwork.\nREQUESTED SPRITE: ONLY oak stage1: tiny fresh two-leaf oak sprout on a very short stem, two recognisably oak-like green leaves with subtle lobes, large clustered square pixels. Logical silhouette at most14 wide16 high, NOT a miniature adult tree. No canopy, no woody trunk, no acorn, NO ground. Root foot bottom center. Follow oak stage1 in sheet.",
+      "reused_from": "../probe-v1/prompts.json",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/approved-scene-02.png"
+      ]
+    },
+    {
+      "id": "oak_02",
+      "prompt": "Use case: precise-object-edit / game sprite extraction.\nInput image1 is the APPROVED style sheet; image2 is the APPROVED larger-oak scene. Preserve that bold economical chunky pixel style, olive/lime leaf masses, forest/teal dark shadows, warm brown trunk, hard square pixel clusters, upper-left light and same 2:1 isometric view. Produce ONLY the requested SINGLE isolated sprite on REAL TRANSPARENT RGBA background. No checkerboard drawn into the picture, no text, no numerals, no border, no drop shadow, no extra specimens or variants. No smooth 3D rendering, no fuzzy edges. The source images are design references, not backgrounds to keep. Plant sprites must contain NO ground tile, no soil mound, no grass base, no pot, no cast shadow; all surrounding space and spaces between stems/leaves are transparent. Whole sprite uncropped with transparent margins. Maintain identity with approved sample02. This is a production SOURCE to be mechanically trimmed/placed in exact logical canvas, so generous outer transparent margin is fine. Do not add new botanical details or change species.\nHARD PIXEL EDGES: opaque flat pixel blocks against empty transparent background. Absolutely NO glow, no bloom, no outer coloured haze, no aura, no soft cast shadow, no translucent leaves. Do not turn sprite into a lit icon. This is a small game sprite, not poster artwork.\nREQUESTED SPRITE: ONLY oak stage2: slim juvenile oak sapling with taller warm-brown twig trunk, about3 small branches bearing a few groups of lobed green oak leaves, open silhouette, no full canopy yet. Logical silhouette at most28 wide52 high. Very small visible stem foot at bottom center. NO acorn/fruit/flower, NO grass or ground. Follow oak stage2 in sheet.",
+      "reused_from": "../probe-v1/prompts.json",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/approved-scene-02.png"
+      ]
+    },
+    {
+      "id": "oak_03",
+      "prompt": "Use case: precise-object-edit / game sprite extraction.\nInput image1 is the APPROVED style sheet; image2 is the APPROVED larger-oak scene. Preserve that bold economical chunky pixel style, olive/lime leaf masses, forest/teal dark shadows, warm brown trunk, hard square pixel clusters, upper-left light and same 2:1 isometric view. Produce ONLY the requested SINGLE isolated sprite on REAL TRANSPARENT RGBA background. No checkerboard drawn into the picture, no text, no numerals, no border, no drop shadow, no extra specimens or variants. No smooth 3D rendering, no fuzzy edges. The source images are design references, not backgrounds to keep. Plant sprites must contain NO ground tile, no soil mound, no grass base, no pot, no cast shadow; all surrounding space and spaces between stems/leaves are transparent. Whole sprite uncropped with transparent margins. Maintain identity with approved sample02. This is a production SOURCE to be mechanically trimmed/placed in exact logical canvas, so generous outer transparent margin is fine. Do not add new botanical details or change species.\nHARD PIXEL EDGES: opaque flat pixel blocks against empty transparent background. Absolutely NO glow, no bloom, no outer coloured haze, no aura, no soft cast shadow, no translucent leaves. Do not turn sprite into a lit icon. This is a small game sprite, not poster artwork.\nREQUESTED SPRITE: ONLY oak stage3: young branching oak, brown trunk with fork, medium widening crown made of several olive/lime clusters with deep forest/teal shadows. More leaves and broader than sapling but clearly younger than the large dense adult oak. Logical silhouette at most96 wide104 high. Root foot bottom center. NO acorn/fruit/flowers, NO grass/soil/shadow. Match oak stage3 in approved sheet.",
+      "reused_from": "../probe-v1/prompts.json",
+      "reference_images": [
+        "references/approved-sample-02.png",
+        "references/approved-scene-02.png"
+      ]
+    }
+  ]
+}

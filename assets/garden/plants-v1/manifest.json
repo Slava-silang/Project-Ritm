@@ -1,0 +1,2086 @@
+{
+  "version": 1,
+  "status": "plant_catalogue_daylight",
+  "tile_surface": [
+    64,
+    32
+  ],
+  "grid_vectors": [
+    [
+      32,
+      16
+    ],
+    [
+      -32,
+      16
+    ]
+  ],
+  "rotation": false,
+  "species_count": 8,
+  "plant_sprite_count": 32,
+  "supporting_tiles": [
+    "grass"
+  ],
+  "note": "Sakura is the approved flowering tree, not an added species or a rules/economy change. Soil/water tiles, transitions, decor and theme variants are outside this pack.",
+  "anchor_convention": "integer pixel coordinate from top-left. Stems/trunks: ground contact; water lily: center of floating leaf plane.",
+  "assets": [
+    {
+      "id": "carrot_01",
+      "species": "carrot",
+      "name": "Морковь",
+      "role": "plant",
+      "catalog_kind": "carrot",
+      "stage": 1,
+      "file": "sprites/carrot_01.png",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        26,
+        73,
+        12,
+        8
+      ],
+      "source": {
+        "file": "sources/carrot_01.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          366,
+          1185,
+          292,
+          192
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          12,
+          8
+        ],
+        "position": [
+          26,
+          73
+        ],
+        "source_foot": [
+          6,
+          7
+        ]
+      },
+      "sha256": "1b510ed6a67174d54fe2e482b4b846b412c829f88ac7d5c23f24ff5673a09fe5"
+    },
+    {
+      "id": "carrot_02",
+      "species": "carrot",
+      "name": "Морковь",
+      "role": "plant",
+      "catalog_kind": "carrot",
+      "stage": 2,
+      "file": "sprites/carrot_02.png",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        22,
+        57,
+        21,
+        24
+      ],
+      "source": {
+        "file": "sources/carrot_02.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          180,
+          490,
+          656,
+          750
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          21,
+          24
+        ],
+        "position": [
+          22,
+          57
+        ],
+        "source_foot": [
+          10,
+          23
+        ]
+      },
+      "sha256": "622e36e863e1926c859451e417e48a2cec9aba958ef1967f9242a469649d729d"
+    },
+    {
+      "id": "carrot_03",
+      "species": "carrot",
+      "name": "Морковь",
+      "role": "plant",
+      "catalog_kind": "carrot",
+      "stage": 3,
+      "file": "sprites/carrot_03.png",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        18,
+        51,
+        30,
+        30
+      ],
+      "source": {
+        "file": "sources/carrot_03.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          40,
+          322,
+          945,
+          966
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          30,
+          31
+        ],
+        "position": [
+          18,
+          50
+        ],
+        "source_foot": [
+          14,
+          30
+        ]
+      },
+      "sha256": "bddea7ebe9735ddf10530dc2dcfb459b549b2af0eb79af13495caa05106a6306"
+    },
+    {
+      "id": "carrot_04",
+      "species": "carrot",
+      "name": "Морковь",
+      "role": "plant",
+      "catalog_kind": "carrot",
+      "stage": 4,
+      "file": "sprites/carrot_04.png",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        14,
+        36,
+        36,
+        45
+      ],
+      "source": {
+        "file": "sources/carrot_04.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          81,
+          222,
+          862,
+          1093
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          36,
+          46
+        ],
+        "position": [
+          14,
+          36
+        ],
+        "source_foot": [
+          18,
+          44
+        ]
+      },
+      "sha256": "08c026ecec4b5c1343a2c405cb571252d54dd3d7d35a516cde9f4103d7be49b4"
+    },
+    {
+      "id": "daisy_01",
+      "file": "sprites/daisy_01.png",
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "terrain": "grass",
+      "stage": 1,
+      "content_bounds": [
+        26,
+        72,
+        12,
+        9
+      ],
+      "alpha": {
+        "transparent_pixels": 6082,
+        "opaque_pixels": 62,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/daisy_01.png",
+        "canvas": [
+          1536,
+          1024
+        ],
+        "crop": [
+          576,
+          384,
+          385,
+          277
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          12,
+          9
+        ],
+        "position": [
+          26,
+          72
+        ],
+        "source_foot": [
+          6,
+          8
+        ]
+      },
+      "sha256": "bb02112cc83b6b2cbf340b3c75648f068dc05adb0b2b6b964ab26493bb5df618",
+      "species": "daisy",
+      "name": "Ромашка",
+      "role": "plant",
+      "reused_from": "../probe-v1/sprites/daisy_01.png"
+    },
+    {
+      "id": "daisy_02",
+      "file": "sprites/daisy_02.png",
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "terrain": "grass",
+      "stage": 2,
+      "content_bounds": [
+        24,
+        55,
+        16,
+        26
+      ],
+      "alpha": {
+        "transparent_pixels": 5931,
+        "opaque_pixels": 213,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/daisy_02.png",
+        "canvas": [
+          1536,
+          1024
+        ],
+        "crop": [
+          581,
+          227,
+          374,
+          602
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          16,
+          26
+        ],
+        "position": [
+          24,
+          55
+        ],
+        "source_foot": [
+          8,
+          25
+        ]
+      },
+      "sha256": "23be7f92a33eecaa4d5285ebf51a5fa0d9b95e2db403a39ec615b7a438f919df",
+      "species": "daisy",
+      "name": "Ромашка",
+      "role": "plant",
+      "reused_from": "../probe-v1/sprites/daisy_02.png"
+    },
+    {
+      "id": "daisy_03",
+      "file": "sprites/daisy_03.png",
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "terrain": "grass",
+      "stage": 3,
+      "content_bounds": [
+        18,
+        45,
+        28,
+        36
+      ],
+      "alpha": {
+        "transparent_pixels": 5654,
+        "opaque_pixels": 490,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/daisy_03.png",
+        "canvas": [
+          1071,
+          1469
+        ],
+        "crop": [
+          123,
+          234,
+          800,
+          1025
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          28,
+          36
+        ],
+        "position": [
+          18,
+          45
+        ],
+        "source_foot": [
+          14,
+          35
+        ]
+      },
+      "sha256": "74ae73d1ffb932b9dcb84f116d10df8b6b5b502ccfa05d67d1dc54208b7c1a09",
+      "species": "daisy",
+      "name": "Ромашка",
+      "role": "plant",
+      "reused_from": "../probe-v1/sprites/daisy_03.png"
+    },
+    {
+      "id": "daisy_04",
+      "file": "sprites/daisy_04.png",
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "terrain": "grass",
+      "stage": 4,
+      "content_bounds": [
+        17,
+        34,
+        29,
+        47
+      ],
+      "alpha": {
+        "transparent_pixels": 5233,
+        "opaque_pixels": 911,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/daisy_04.png",
+        "canvas": [
+          1536,
+          1024
+        ],
+        "crop": [
+          560,
+          168,
+          416,
+          696
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          29,
+          48
+        ],
+        "position": [
+          17,
+          33
+        ],
+        "source_foot": [
+          15,
+          47
+        ]
+      },
+      "sha256": "f0ea36670a7e93e6a0c0ab30aa257040dde3716b8dcffdf623a0df0557bb624a",
+      "species": "daisy",
+      "name": "Ромашка",
+      "role": "plant",
+      "reused_from": "../probe-v1/sprites/daisy_04.png"
+    },
+    {
+      "id": "fern_01",
+      "species": "fern",
+      "name": "Папоротник",
+      "role": "plant",
+      "catalog_kind": "fern",
+      "stage": 1,
+      "file": "sprites/fern_01.png",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        27,
+        69,
+        10,
+        12
+      ],
+      "source": {
+        "file": "sources/fern_01.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          387,
+          1051,
+          248,
+          306
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          10,
+          12
+        ],
+        "position": [
+          27,
+          69
+        ],
+        "source_foot": [
+          5,
+          11
+        ]
+      },
+      "sha256": "862a2e7c1ad3a12ad87e208ce4836ec8258795d3b918917cb7702183f1cd86e4"
+    },
+    {
+      "id": "fern_02",
+      "species": "fern",
+      "name": "Папоротник",
+      "role": "plant",
+      "catalog_kind": "fern",
+      "stage": 2,
+      "file": "sprites/fern_02.png",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        24,
+        58,
+        15,
+        23
+      ],
+      "source": {
+        "file": "sources/fern_02.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          216,
+          484,
+          563,
+          843
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          15,
+          23
+        ],
+        "position": [
+          24,
+          58
+        ],
+        "source_foot": [
+          8,
+          22
+        ]
+      },
+      "sha256": "d941c976bef4c2731cf56e7c269b2eda442acf1582d11ee9c79beba9f900a8d2"
+    },
+    {
+      "id": "fern_03",
+      "species": "fern",
+      "name": "Папоротник",
+      "role": "plant",
+      "catalog_kind": "fern",
+      "stage": 3,
+      "file": "sprites/fern_03.png",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        16,
+        48,
+        29,
+        33
+      ],
+      "source": {
+        "file": "sources/fern_03.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          33,
+          309,
+          898,
+          1028
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          29,
+          33
+        ],
+        "position": [
+          16,
+          48
+        ],
+        "source_foot": [
+          16,
+          32
+        ]
+      },
+      "sha256": "4379616f4b12c14084505981577bb5dbd3e83b6e7adc1211bc206d3c40b47012"
+    },
+    {
+      "id": "fern_04",
+      "species": "fern",
+      "name": "Папоротник",
+      "role": "plant",
+      "catalog_kind": "fern",
+      "stage": 4,
+      "file": "sprites/fern_04.png",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        8,
+        37,
+        47,
+        44
+      ],
+      "source": {
+        "file": "sources/fern_04.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          54,
+          359,
+          915,
+          860
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          47,
+          44
+        ],
+        "position": [
+          8,
+          37
+        ],
+        "source_foot": [
+          24,
+          43
+        ]
+      },
+      "sha256": "fe78a50bb0f172bafa2eceb44d9d56ecb216d5322c586ad1fc8d9d08968a16a4"
+    },
+    {
+      "id": "grass",
+      "file": "sprites/grass.png",
+      "canvas": [
+        64,
+        40
+      ],
+      "anchor": [
+        32,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "terrain": "grass",
+      "stage": null,
+      "content_bounds": [
+        0,
+        0,
+        64,
+        40
+      ],
+      "alpha": {
+        "transparent_pixels": 960,
+        "opaque_pixels": 1600,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/grass.png",
+        "canvas": [
+          1536,
+          1024
+        ],
+        "crop": [
+          307,
+          282,
+          922,
+          526
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": "2:1 diamond 64x32 with 8px extrusion",
+        "content": [
+          64,
+          40
+        ],
+        "position": [
+          0,
+          0
+        ],
+        "source_foot": [
+          32,
+          39
+        ]
+      },
+      "sha256": "b05181f5f7b81b332ea78d45888e13343eb6c81cfca9ff3576a26e946bd484a4",
+      "species": null,
+      "name": "Трава",
+      "role": "supporting_tile",
+      "reused_from": "../probe-v1/sprites/grass.png"
+    },
+    {
+      "id": "oak_01",
+      "file": "sprites/oak_01.png",
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "terrain": "grass",
+      "stage": 1,
+      "content_bounds": [
+        88,
+        213,
+        14,
+        12
+      ],
+      "alpha": {
+        "transparent_pixels": 49066,
+        "opaque_pixels": 86,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/oak_01.png",
+        "canvas": [
+          1312,
+          1199
+        ],
+        "crop": [
+          412,
+          410,
+          459,
+          388
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          14,
+          12
+        ],
+        "position": [
+          88,
+          213
+        ],
+        "source_foot": [
+          8,
+          11
+        ]
+      },
+      "sha256": "910a45b445cad779c713db706ed575342e1e35b048a8358f35107cffcb21384d",
+      "species": "oak",
+      "name": "Дуб",
+      "role": "plant",
+      "reused_from": "../probe-v1/sprites/oak_01.png"
+    },
+    {
+      "id": "oak_02",
+      "file": "sprites/oak_02.png",
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "terrain": "grass",
+      "stage": 2,
+      "content_bounds": [
+        83,
+        180,
+        28,
+        45
+      ],
+      "alpha": {
+        "transparent_pixels": 48604,
+        "opaque_pixels": 548,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/oak_02.png",
+        "canvas": [
+          922,
+          1706
+        ],
+        "crop": [
+          208,
+          407,
+          533,
+          860
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          28,
+          45
+        ],
+        "position": [
+          83,
+          180
+        ],
+        "source_foot": [
+          13,
+          44
+        ]
+      },
+      "sha256": "a9654e50e49459bccc43dac7bd8bf9af8eb60391a6d36ef64abf9f683c850d28",
+      "species": "oak",
+      "name": "Дуб",
+      "role": "plant",
+      "reused_from": "../probe-v1/sprites/oak_02.png"
+    },
+    {
+      "id": "oak_03",
+      "file": "sprites/oak_03.png",
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "terrain": "grass",
+      "stage": 3,
+      "content_bounds": [
+        49,
+        136,
+        96,
+        90
+      ],
+      "alpha": {
+        "transparent_pixels": 44711,
+        "opaque_pixels": 4441,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/oak_03.png",
+        "canvas": [
+          1219,
+          1290
+        ],
+        "crop": [
+          135,
+          179,
+          962,
+          905
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          96,
+          90
+        ],
+        "position": [
+          49,
+          136
+        ],
+        "source_foot": [
+          47,
+          88
+        ]
+      },
+      "sha256": "6912b772e13dd241718ab04f3f1f67df23b4318f033ef80e5a228b69d0e762dd",
+      "species": "oak",
+      "name": "Дуб",
+      "role": "plant",
+      "reused_from": "../probe-v1/sprites/oak_03.png"
+    },
+    {
+      "id": "oak_04",
+      "file": "sprites/oak_04.png",
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "terrain": "grass",
+      "stage": 4,
+      "content_bounds": [
+        24,
+        44,
+        156,
+        184
+      ],
+      "alpha": {
+        "transparent_pixels": 33698,
+        "opaque_pixels": 15454,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/oak_04.png",
+        "canvas": [
+          1261,
+          1247
+        ],
+        "crop": [
+          154,
+          45,
+          983,
+          1161
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          156,
+          184
+        ],
+        "position": [
+          24,
+          44
+        ],
+        "source_foot": [
+          72,
+          180
+        ]
+      },
+      "sha256": "75c373037a1efb8ac5b34a4f56573b58a486ed8bada40602ebe5e1943c0d46a0",
+      "species": "oak",
+      "name": "Дуб",
+      "role": "plant",
+      "reused_from": "../probe-v1/sprites/oak_04.png"
+    },
+    {
+      "id": "poppy_01",
+      "species": "poppy",
+      "name": "Мак",
+      "role": "plant",
+      "catalog_kind": "poppy",
+      "stage": 1,
+      "file": "sprites/poppy_01.png",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        26,
+        72,
+        12,
+        9
+      ],
+      "source": {
+        "file": "sources/poppy_01.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          356,
+          1148,
+          313,
+          231
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          12,
+          9
+        ],
+        "position": [
+          26,
+          72
+        ],
+        "source_foot": [
+          6,
+          8
+        ]
+      },
+      "sha256": "89d5111b72456a37938c6f987f57cfd8a71677274b0679cbe38aacbc81453d89"
+    },
+    {
+      "id": "poppy_02",
+      "species": "poppy",
+      "name": "Мак",
+      "role": "plant",
+      "catalog_kind": "poppy",
+      "stage": 2,
+      "file": "sprites/poppy_02.png",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        25,
+        56,
+        14,
+        25
+      ],
+      "source": {
+        "file": "sources/poppy_02.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          210,
+          250,
+          597,
+          1108
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          14,
+          26
+        ],
+        "position": [
+          25,
+          55
+        ],
+        "source_foot": [
+          7,
+          25
+        ]
+      },
+      "sha256": "08049f508ee81a241f8ef37b7fddbb19d6ef3b409ba9a8a4f5a7f1b54521a199"
+    },
+    {
+      "id": "poppy_03",
+      "species": "poppy",
+      "name": "Мак",
+      "role": "plant",
+      "catalog_kind": "poppy",
+      "stage": 3,
+      "file": "sprites/poppy_03.png",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        19,
+        43,
+        28,
+        38
+      ],
+      "source": {
+        "file": "sources/poppy_03.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          77,
+          201,
+          851,
+          1143
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          28,
+          38
+        ],
+        "position": [
+          19,
+          43
+        ],
+        "source_foot": [
+          13,
+          37
+        ]
+      },
+      "sha256": "1c29f025e9c97f736ad995a95ddd4d7bfb9a70f2c15c970d6dd3c9f04ef3818f"
+    },
+    {
+      "id": "poppy_04",
+      "species": "poppy",
+      "name": "Мак",
+      "role": "plant",
+      "catalog_kind": "poppy",
+      "stage": 4,
+      "file": "sprites/poppy_04.png",
+      "terrain": "grass",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        16,
+        31,
+        30,
+        50
+      ],
+      "source": {
+        "file": "sources/poppy_04.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          160,
+          230,
+          684,
+          1143
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          30,
+          50
+        ],
+        "position": [
+          16,
+          31
+        ],
+        "source_foot": [
+          16,
+          49
+        ]
+      },
+      "sha256": "ff9d2b91c7a4f32deecb5032755058bb4412985319b3529752d0e23a3d49d4a8"
+    },
+    {
+      "id": "pumpkin_01",
+      "species": "pumpkin",
+      "name": "Тыква",
+      "role": "plant",
+      "catalog_kind": "pumpkin",
+      "stage": 1,
+      "file": "sprites/pumpkin_01.png",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        25,
+        72,
+        14,
+        9
+      ],
+      "source": {
+        "file": "sources/pumpkin_01.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          258,
+          852,
+          508,
+          338
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          14,
+          9
+        ],
+        "position": [
+          25,
+          72
+        ],
+        "source_foot": [
+          7,
+          8
+        ]
+      },
+      "sha256": "2c9709f15e241bef123e846a35a157ff3c2be05f49c2666bdfe5f577a8b5c612"
+    },
+    {
+      "id": "pumpkin_02",
+      "species": "pumpkin",
+      "name": "Тыква",
+      "role": "plant",
+      "catalog_kind": "pumpkin",
+      "stage": 2,
+      "file": "sprites/pumpkin_02.png",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        21,
+        60,
+        22,
+        21
+      ],
+      "source": {
+        "file": "sources/pumpkin_02.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          162,
+          567,
+          700,
+          681
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          22,
+          21
+        ],
+        "position": [
+          21,
+          60
+        ],
+        "source_foot": [
+          11,
+          20
+        ]
+      },
+      "sha256": "03d77cea55e64950440181b8d57f99240842cfe4fc36e7597937b965b126c9c6"
+    },
+    {
+      "id": "pumpkin_03",
+      "species": "pumpkin",
+      "name": "Тыква",
+      "role": "plant",
+      "catalog_kind": "pumpkin",
+      "stage": 3,
+      "file": "sprites/pumpkin_03.png",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        16,
+        51,
+        30,
+        30
+      ],
+      "source": {
+        "file": "sources/pumpkin_03.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          126,
+          587,
+          758,
+          752
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          30,
+          30
+        ],
+        "position": [
+          16,
+          51
+        ],
+        "source_foot": [
+          16,
+          29
+        ]
+      },
+      "sha256": "1838eaee5a7edd668ced003796e86a0416df13150a3a8a1498556f1f6de03626"
+    },
+    {
+      "id": "pumpkin_04",
+      "species": "pumpkin",
+      "name": "Тыква",
+      "role": "plant",
+      "catalog_kind": "pumpkin",
+      "stage": 4,
+      "file": "sprites/pumpkin_04.png",
+      "terrain": "tilled_soil",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        12,
+        41,
+        43,
+        40
+      ],
+      "source": {
+        "file": "sources/pumpkin_04.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          77,
+          385,
+          872,
+          808
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          43,
+          40
+        ],
+        "position": [
+          12,
+          41
+        ],
+        "source_foot": [
+          20,
+          39
+        ]
+      },
+      "sha256": "c7097d6f31806d04891a2c2cdb8efc03959ea393fe0df5080e5cc9e7a1a39170"
+    },
+    {
+      "id": "sakura_01",
+      "species": "sakura",
+      "name": "Сакура",
+      "role": "plant",
+      "catalog_kind": "flowering_tree",
+      "stage": 1,
+      "file": "sprites/sakura_01.png",
+      "terrain": "grass",
+      "footprint": [
+        2,
+        2
+      ],
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        89,
+        215,
+        14,
+        10
+      ],
+      "source": {
+        "file": "sources/sakura_01.png",
+        "canvas": [
+          1086,
+          1448
+        ],
+        "crop": [
+          321,
+          998,
+          437,
+          337
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          14,
+          11
+        ],
+        "position": [
+          89,
+          214
+        ],
+        "source_foot": [
+          7,
+          10
+        ]
+      },
+      "sha256": "7d4a729cd3d4b78bf9d829a543ed88114f9c38fd63504441c5c62d71a2ffee62"
+    },
+    {
+      "id": "sakura_02",
+      "species": "sakura",
+      "name": "Сакура",
+      "role": "plant",
+      "catalog_kind": "flowering_tree",
+      "stage": 2,
+      "file": "sprites/sakura_02.png",
+      "terrain": "grass",
+      "footprint": [
+        2,
+        2
+      ],
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        82,
+        173,
+        28,
+        52
+      ],
+      "source": {
+        "file": "sources/sakura_02.png",
+        "canvas": [
+          1086,
+          1448
+        ],
+        "crop": [
+          285,
+          311,
+          499,
+          919
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          28,
+          52
+        ],
+        "position": [
+          82,
+          173
+        ],
+        "source_foot": [
+          14,
+          51
+        ]
+      },
+      "sha256": "2d1fd9b72abc3c3a3cbd7a84bcddceee3da140e720be3d5322544ea52210ed34"
+    },
+    {
+      "id": "sakura_03",
+      "species": "sakura",
+      "name": "Сакура",
+      "role": "plant",
+      "catalog_kind": "flowering_tree",
+      "stage": 3,
+      "file": "sprites/sakura_03.png",
+      "terrain": "grass",
+      "footprint": [
+        2,
+        2
+      ],
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        47,
+        130,
+        104,
+        97
+      ],
+      "source": {
+        "file": "sources/sakura_03.png",
+        "canvas": [
+          1086,
+          1448
+        ],
+        "crop": [
+          142,
+          459,
+          810,
+          754
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          104,
+          97
+        ],
+        "position": [
+          47,
+          130
+        ],
+        "source_foot": [
+          49,
+          94
+        ]
+      },
+      "sha256": "5242a5c74bf99884420173834d0c49f3eec94b47c9035c6f5f6054bb53087dba"
+    },
+    {
+      "id": "sakura_04",
+      "species": "sakura",
+      "name": "Сакура",
+      "role": "plant",
+      "catalog_kind": "flowering_tree",
+      "stage": 4,
+      "file": "sprites/sakura_04.png",
+      "terrain": "grass",
+      "footprint": [
+        2,
+        2
+      ],
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "anchor_kind": "stem_or_trunk_ground_contact",
+      "content_bounds": [
+        27,
+        43,
+        146,
+        184
+      ],
+      "source": {
+        "file": "sources/sakura_04.png",
+        "canvas": [
+          1086,
+          1448
+        ],
+        "crop": [
+          32,
+          69,
+          1020,
+          1284
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          146,
+          184
+        ],
+        "position": [
+          27,
+          43
+        ],
+        "source_foot": [
+          69,
+          181
+        ]
+      },
+      "sha256": "32a29ed599c68fd822e309d481726c84ed1a9bb3ab0c8e2c18ce82eba11d0ab9"
+    },
+    {
+      "id": "water_lily_01",
+      "species": "water_lily",
+      "name": "Кувшинка",
+      "role": "plant",
+      "catalog_kind": "water_lily",
+      "stage": 1,
+      "file": "sprites/water_lily_01.png",
+      "terrain": "water",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "floating_pad_center",
+      "content_bounds": [
+        25,
+        74,
+        14,
+        9
+      ],
+      "source": {
+        "file": "sources/water_lily_01.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          370,
+          1233,
+          284,
+          173
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          14,
+          9
+        ],
+        "position": [
+          25,
+          74
+        ],
+        "source_foot": [
+          7,
+          6
+        ]
+      },
+      "sha256": "8f688b51326b6d38af377a3db0633d31955080fe66edc4b1c862e9bd8e6e4de3"
+    },
+    {
+      "id": "water_lily_02",
+      "species": "water_lily",
+      "name": "Кувшинка",
+      "role": "plant",
+      "catalog_kind": "water_lily",
+      "stage": 2,
+      "file": "sprites/water_lily_02.png",
+      "terrain": "water",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "floating_pad_center",
+      "content_bounds": [
+        22,
+        68,
+        20,
+        17
+      ],
+      "source": {
+        "file": "sources/water_lily_02.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          173,
+          611,
+          677,
+          580
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          20,
+          17
+        ],
+        "position": [
+          22,
+          68
+        ],
+        "source_foot": [
+          10,
+          12
+        ]
+      },
+      "sha256": "33c0e83161b90bc6eb1d58392f3ec68454266c55ac7aea8cd5f584ef2d2afb86"
+    },
+    {
+      "id": "water_lily_03",
+      "species": "water_lily",
+      "name": "Кувшинка",
+      "role": "plant",
+      "catalog_kind": "water_lily",
+      "stage": 3,
+      "file": "sprites/water_lily_03.png",
+      "terrain": "water",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "floating_pad_center",
+      "content_bounds": [
+        21,
+        58,
+        23,
+        28
+      ],
+      "source": {
+        "file": "sources/water_lily_03.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          181,
+          526,
+          651,
+          803
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          23,
+          28
+        ],
+        "position": [
+          21,
+          58
+        ],
+        "source_foot": [
+          11,
+          22
+        ]
+      },
+      "sha256": "0539c83b2f43c941fc28b69e0419a2ed3a0eec546d11ed6f8463a4eb92064ebe"
+    },
+    {
+      "id": "water_lily_04",
+      "species": "water_lily",
+      "name": "Кувшинка",
+      "role": "plant",
+      "catalog_kind": "water_lily",
+      "stage": 4,
+      "file": "sprites/water_lily_04.png",
+      "terrain": "water",
+      "footprint": [
+        1,
+        1
+      ],
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "anchor_kind": "floating_pad_center",
+      "content_bounds": [
+        6,
+        52,
+        50,
+        41
+      ],
+      "source": {
+        "file": "sources/water_lily_04.png",
+        "canvas": [
+          1024,
+          1536
+        ],
+        "crop": [
+          134,
+          805,
+          734,
+          603
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "content": [
+          50,
+          41
+        ],
+        "position": [
+          6,
+          52
+        ],
+        "source_foot": [
+          26,
+          28
+        ]
+      },
+      "sha256": "3d377f33274f29899f185efdbd9acad942cda716dd0055cecab3abee3df4546c"
+    }
+  ]
+}
