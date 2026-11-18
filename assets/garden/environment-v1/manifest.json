@@ -1,0 +1,1840 @@
+{
+  "version": 1,
+  "palette": "daylight",
+  "tile_surface": [
+    64,
+    32
+  ],
+  "tile_depth": 8,
+  "grid_vectors": [
+    [
+      32,
+      16
+    ],
+    [
+      -32,
+      16
+    ]
+  ],
+  "edge_bits": [
+    {
+      "bit": 1,
+      "neighbor": [
+        -1,
+        0
+      ],
+      "name": "NW"
+    },
+    {
+      "bit": 2,
+      "neighbor": [
+        0,
+        -1
+      ],
+      "name": "NE"
+    },
+    {
+      "bit": 4,
+      "neighbor": [
+        1,
+        0
+      ],
+      "name": "SE"
+    },
+    {
+      "bit": 8,
+      "neighbor": [
+        0,
+        1
+      ],
+      "name": "SW"
+    }
+  ],
+  "corners": [
+    {
+      "index": 0,
+      "sides": [
+        1,
+        2
+      ],
+      "diagonal": [
+        -1,
+        -1
+      ]
+    },
+    {
+      "index": 1,
+      "sides": [
+        2,
+        4
+      ],
+      "diagonal": [
+        1,
+        -1
+      ]
+    },
+    {
+      "index": 2,
+      "sides": [
+        4,
+        8
+      ],
+      "diagonal": [
+        1,
+        1
+      ]
+    },
+    {
+      "index": 3,
+      "sides": [
+        8,
+        1
+      ],
+      "diagonal": [
+        -1,
+        1
+      ]
+    }
+  ],
+  "compositing": "Grounds back-to-front; overlay soil_grass on soil, water_soil then water_grass on water. Mask0 means no image. Corner cap only if both adjacent side neighbors equal base terrain and diagonal equals neighbor terrain. Objects afterwards in depth order.",
+  "decisions": {
+    "ui": "quiet readable panels plus pixel garden",
+    "shore": "natural narrow grass/earth bank, same surface elevation",
+    "decor_terrain": [
+      "grass",
+      "tilled_soil"
+    ],
+    "decor_rotation": false
+  },
+  "assets": [
+    {
+      "id": "rock",
+      "catalog_kind": "stone",
+      "role": "decor",
+      "file": "decor/rock.png",
+      "anchor": [
+        32,
+        80
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "allowed_terrain": [
+        "grass",
+        "tilled_soil"
+      ],
+      "occupied_cell_offsets": [
+        [
+          0,
+          0
+        ]
+      ],
+      "footprint_note": null,
+      "source": "sources/rock.png",
+      "export": {
+        "source_crop": {
+          "left": 558,
+          "top": 296,
+          "width": 647,
+          "height": 415
+        },
+        "content": [
+          42,
+          27
+        ],
+        "position": [
+          12,
+          54
+        ],
+        "anchor_in_content": [
+          20,
+          26
+        ],
+        "nearest": true,
+        "alpha_threshold": 128,
+        "colours": 16
+      },
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        12,
+        54,
+        42,
+        27
+      ],
+      "sha256": "fe9b455e17f19329e00fb5410c6cb23128924ca97f5907fc979e5dd158789bcb"
+    },
+    {
+      "id": "lantern",
+      "catalog_kind": "lantern",
+      "role": "decor",
+      "file": "decor/lantern.png",
+      "anchor": [
+        32,
+        112
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "allowed_terrain": [
+        "grass",
+        "tilled_soil"
+      ],
+      "occupied_cell_offsets": [
+        [
+          0,
+          0
+        ]
+      ],
+      "footprint_note": null,
+      "source": "sources/lantern.png",
+      "export": {
+        "source_crop": {
+          "left": 235,
+          "top": 442,
+          "width": 415,
+          "height": 1064
+        },
+        "content": [
+          30,
+          77
+        ],
+        "position": [
+          17,
+          36
+        ],
+        "anchor_in_content": [
+          15,
+          76
+        ],
+        "nearest": true,
+        "alpha_threshold": 128,
+        "colours": 16
+      },
+      "canvas": [
+        64,
+        128
+      ],
+      "bounds": [
+        17,
+        36,
+        30,
+        77
+      ],
+      "sha256": "379bd47ba772775d259b8fa4158a5bda89a2e65714b281e1c6bd667fac90bba8"
+    },
+    {
+      "id": "bench",
+      "catalog_kind": "bench",
+      "role": "decor",
+      "file": "decor/bench.png",
+      "anchor": [
+        64,
+        104
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "allowed_terrain": [
+        "grass",
+        "tilled_soil"
+      ],
+      "occupied_cell_offsets": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "footprint_note": "Local 2x1 along NE-SW; with grid i=(32,16), j=(-32,16), cells differ by j. Authoritative offsets above.",
+      "source": "sources/bench.png",
+      "export": {
+        "source_crop": {
+          "left": 365,
+          "top": 119,
+          "width": 848,
+          "height": 864
+        },
+        "content": [
+          86,
+          88
+        ],
+        "position": [
+          17,
+          27
+        ],
+        "anchor_in_content": [
+          47,
+          77
+        ],
+        "nearest": true,
+        "alpha_threshold": 128,
+        "colours": 16
+      },
+      "canvas": [
+        128,
+        128
+      ],
+      "bounds": [
+        17,
+        27,
+        86,
+        88
+      ],
+      "sha256": "74c2be06b4f3147cfa7b5faba776fedc13fa88a34350aa19ea8437bf95493c1e"
+    },
+    {
+      "id": "fence",
+      "catalog_kind": "fence",
+      "role": "decor",
+      "file": "decor/fence.png",
+      "anchor": [
+        40,
+        72
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "allowed_terrain": [
+        "grass",
+        "tilled_soil"
+      ],
+      "occupied_cell_offsets": [
+        [
+          0,
+          0
+        ]
+      ],
+      "footprint_note": null,
+      "sockets": {
+        "canonical": [
+          [
+            24,
+            80
+          ],
+          [
+            56,
+            64
+          ]
+        ],
+        "actual": [
+          [
+            24,
+            80
+          ],
+          [
+            56,
+            64
+          ]
+        ],
+        "step": [
+          32,
+          -16
+        ]
+      },
+      "source": "sources/fence.png",
+      "export": {
+        "source_crop": {
+          "left": 325,
+          "top": 152,
+          "width": 885,
+          "height": 746
+        },
+        "content": [
+          40,
+          48
+        ],
+        "position": [
+          20,
+          33
+        ],
+        "anchor_in_content": [
+          20,
+          39
+        ],
+        "nearest": true,
+        "alpha_threshold": 128,
+        "colours": 16
+      },
+      "canvas": [
+        80,
+        96
+      ],
+      "bounds": [
+        20,
+        33,
+        40,
+        48
+      ],
+      "sha256": "5eeadbc96470d45063c1e3960fa91bd5733f0b32f523813799faabbb88d5358c"
+    },
+    {
+      "id": "fertilizer",
+      "catalog_kind": "fertilizer",
+      "role": "item_icon",
+      "file": "icons/fertilizer.png",
+      "anchor": [
+        32,
+        52
+      ],
+      "footprint": null,
+      "allowed_terrain": null,
+      "occupied_cell_offsets": null,
+      "footprint_note": null,
+      "source": "sources/fertilizer.png",
+      "export": {
+        "source_crop": {
+          "left": 200,
+          "top": 168,
+          "width": 756,
+          "height": 965
+        },
+        "content": [
+          36,
+          46
+        ],
+        "position": [
+          11,
+          7
+        ],
+        "anchor_in_content": [
+          21,
+          45
+        ],
+        "nearest": true,
+        "alpha_threshold": 128,
+        "colours": 16
+      },
+      "canvas": [
+        64,
+        64
+      ],
+      "bounds": [
+        11,
+        7,
+        36,
+        46
+      ],
+      "sha256": "087fd3dbb6960baf34f5ffdb61db12794ae8db2101c6955f8d37a832fb140205"
+    },
+    {
+      "id": "fertilizer_32",
+      "role": "item_icon",
+      "file": "icons/fertilizer-32.png",
+      "anchor": [
+        16,
+        26
+      ],
+      "derived_from": "fertilizer",
+      "canvas": [
+        32,
+        32
+      ],
+      "bounds": [
+        5,
+        3,
+        18,
+        23
+      ],
+      "sha256": "5feb11ca4847dd32577a14e01a7978aa14aac33e50aaf8849980d9ecc8c8f75f"
+    },
+    {
+      "id": "grass",
+      "role": "terrain",
+      "file": "terrain/grass.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "surface": [
+        64,
+        32
+      ],
+      "depth": 8,
+      "reused": true,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        40
+      ],
+      "sha256": "b05181f5f7b81b332ea78d45888e13343eb6c81cfca9ff3576a26e946bd484a4"
+    },
+    {
+      "id": "tilled_soil",
+      "role": "terrain",
+      "file": "terrain/tilled_soil.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "surface": [
+        64,
+        32
+      ],
+      "depth": 8,
+      "source": "sources/soil_texture.png",
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        40
+      ],
+      "sha256": "a012510c335acddbccf6a400dbdf3bb051b96d16277820292245b9d09adeda02"
+    },
+    {
+      "id": "water",
+      "role": "terrain",
+      "file": "terrain/water.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "surface": [
+        64,
+        32
+      ],
+      "depth": 8,
+      "source": "sources/water_texture.png",
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        40
+      ],
+      "sha256": "5611ad5e0bacd7390db69519b8db06b6ab13140f44237b0debc6cdb5510fb4be"
+    },
+    {
+      "id": "soil_grass_1",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-01.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 1,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        34,
+        17
+      ],
+      "sha256": "54475330592f473d2ca4ac1937729e80a72d0bf4ce7ac1330cba704036669c9b"
+    },
+    {
+      "id": "soil_grass_2",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-02.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 2,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        30,
+        0,
+        34,
+        17
+      ],
+      "sha256": "ee5a2307024a84910927083021ee2aa4eee06ca9bf910ed80da4ce438a3f0df7"
+    },
+    {
+      "id": "soil_grass_3",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-03.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 3,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        17
+      ],
+      "sha256": "41af04ff6b3420fa0dde3d77ac4ee85dec0a65951cc888877401f729510feb7a"
+    },
+    {
+      "id": "soil_grass_4",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-04.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 4,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        30,
+        15,
+        34,
+        17
+      ],
+      "sha256": "40ea980814e8a35bfc315cdd7e384e08ba50f98555a2222d00ce2879d7a99a89"
+    },
+    {
+      "id": "soil_grass_5",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-05.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 5,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "b37217e47145b70a6caf697ff9b992448954c0b8c17a3ed927f37912a80fb3b8"
+    },
+    {
+      "id": "soil_grass_6",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-06.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 6,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        30,
+        0,
+        34,
+        32
+      ],
+      "sha256": "41f93dfe7ad215c008f739d154910568a9c07d682aac68b282f16c879013e4e6"
+    },
+    {
+      "id": "soil_grass_7",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-07.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 7,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "c89ef9da6e01c61bef7c810b1aadf4dda45f689305e522b07a7ee1f334dbf58c"
+    },
+    {
+      "id": "soil_grass_8",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-08.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 8,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        15,
+        34,
+        17
+      ],
+      "sha256": "2084376d695f7595f0bda2cabf0c53516a1f7ef8bcebef65e30600f788e18d4c"
+    },
+    {
+      "id": "soil_grass_9",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-09.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 9,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        34,
+        32
+      ],
+      "sha256": "3180a65d3bc37854cceca479917b97f04ffc7c7c0ae94925c9feba135405bd8f"
+    },
+    {
+      "id": "soil_grass_10",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-0a.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 10,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "d8e769d7fd6a0f08b88974a26411fe65b094b480dffebd0614434187eb5dda02"
+    },
+    {
+      "id": "soil_grass_11",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-0b.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 11,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "381ae2ac9ffb1434f4125025407762c0ed4f43571a53fc943b4190bbfa406d32"
+    },
+    {
+      "id": "soil_grass_12",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-0c.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 12,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        15,
+        64,
+        17
+      ],
+      "sha256": "a592b9ce803e0bbced45358d4806672bf2f92b084635770b263f4db04244c194"
+    },
+    {
+      "id": "soil_grass_13",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-0d.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 13,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "d33562f82b2bc75144beb26d4d11afbb462d31e4a228177b4c68720995039dfd"
+    },
+    {
+      "id": "soil_grass_14",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-0e.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 14,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "87f3e66e713241b2f4245a72218de13585a64e9e0671616ca57a65d56798913e"
+    },
+    {
+      "id": "soil_grass_15",
+      "role": "edge_overlay",
+      "file": "transitions/soil_grass-0f.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "mask": 15,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "29b50a0826ecfaefbacf1734f0d9239a612ca06e30e9064079468edef777ce65"
+    },
+    {
+      "id": "soil_grass_corner_0",
+      "role": "inner_corner_overlay",
+      "file": "transitions/soil_grass-corner-0.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "corner": 0,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        30,
+        0,
+        5,
+        2
+      ],
+      "sha256": "a754441dc02581cd333c36f58045c247731206b8105c1c689690d8fc97f4168a"
+    },
+    {
+      "id": "soil_grass_corner_1",
+      "role": "inner_corner_overlay",
+      "file": "transitions/soil_grass-corner-1.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "corner": 1,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        60,
+        14,
+        4,
+        4
+      ],
+      "sha256": "ec752be7461a8feb6785fec5edcedc01df4a3367618d32f0b15fbfd48787bca7"
+    },
+    {
+      "id": "soil_grass_corner_2",
+      "role": "inner_corner_overlay",
+      "file": "transitions/soil_grass-corner-2.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "corner": 2,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        29,
+        30,
+        7,
+        2
+      ],
+      "sha256": "e2d5649732c2483a1e2cf264b27ab7425eea1329689c99b3e5dba681aac8d30a"
+    },
+    {
+      "id": "soil_grass_corner_3",
+      "role": "inner_corner_overlay",
+      "file": "transitions/soil_grass-corner-3.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "tilled_soil",
+      "neighbor_terrain": "grass",
+      "corner": 3,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        14,
+        5,
+        3
+      ],
+      "sha256": "b7e1fa1bd35447682670a67c3858a75572fcb4da959a977615ceeebfc33aac70"
+    },
+    {
+      "id": "water_soil_1",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-01.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 1,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        36,
+        18
+      ],
+      "sha256": "e4b3c3b4aa03c622952f6e0e504b624673f8c01f972a3483d08445e8dd92e9a2"
+    },
+    {
+      "id": "water_soil_2",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-02.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 2,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        28,
+        0,
+        36,
+        18
+      ],
+      "sha256": "545c0e2ad673c1d035f0635dee2dcce68540f8e28abf7374d0bd77ddecff9382"
+    },
+    {
+      "id": "water_soil_3",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-03.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 3,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        18
+      ],
+      "sha256": "93eaeb8d73c10bfadeb5b4087e4ad845087d350bfb6c9a14f184638ec8accc73"
+    },
+    {
+      "id": "water_soil_4",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-04.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 4,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        28,
+        14,
+        36,
+        18
+      ],
+      "sha256": "72bb0af1d799678245edc1be6f69dd06aba3711ac9ebe1e07027de6c4b4c14bb"
+    },
+    {
+      "id": "water_soil_5",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-05.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 5,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "5f2d07925af7fca8114773d2196b75ac346592aa72762a64398959fdabc60956"
+    },
+    {
+      "id": "water_soil_6",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-06.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 6,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        28,
+        0,
+        36,
+        32
+      ],
+      "sha256": "db542845633dba8e96e9c413ce78da4e494cc4f54070a5f20715ba84fb4b4af5"
+    },
+    {
+      "id": "water_soil_7",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-07.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 7,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "d37747b3f59523b2c6a2a5629db5eb29d04fa488ccca1d2b65ef77a8530e6f67"
+    },
+    {
+      "id": "water_soil_8",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-08.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 8,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        14,
+        36,
+        18
+      ],
+      "sha256": "9e4d0287032ea1ca4eebea1689a5b1cfc42d5ed2074954a08546867d95e8f1d3"
+    },
+    {
+      "id": "water_soil_9",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-09.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 9,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        36,
+        32
+      ],
+      "sha256": "d1eae0a6f961ac73778f9d36d741f391f3f135b89c33ca20ca147c05fd7f2aab"
+    },
+    {
+      "id": "water_soil_10",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-0a.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 10,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "0f4b44e9b1abfb5d30acaa3b229a6767a408f5204359fe59f18a9f71ebb15346"
+    },
+    {
+      "id": "water_soil_11",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-0b.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 11,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "049f3e79387b7763591a8bf5204d5d1b543e8433b0fa3959219efe13e1184426"
+    },
+    {
+      "id": "water_soil_12",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-0c.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 12,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        14,
+        64,
+        18
+      ],
+      "sha256": "be3557b17c2549b048cee49f1918196c575a45ccc5640023e213d888245ad7e2"
+    },
+    {
+      "id": "water_soil_13",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-0d.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 13,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "942ffdbf9c996d7cb8d0752c352e6e26c6f0c641b0f8ec60ebd4146bf4576cad"
+    },
+    {
+      "id": "water_soil_14",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-0e.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 14,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "a87e2e9affac2f7e0ae79cb70a253a714f5dc26f4515253c660e9fb79bcdea34"
+    },
+    {
+      "id": "water_soil_15",
+      "role": "edge_overlay",
+      "file": "transitions/water_soil-0f.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "mask": 15,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "a0a0620a79a24ae52b66c6eaaac46a800da77f112bc043b6ca2902d6e990b8dd"
+    },
+    {
+      "id": "water_soil_corner_0",
+      "role": "inner_corner_overlay",
+      "file": "transitions/water_soil-corner-0.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "corner": 0,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        24,
+        0,
+        16,
+        5
+      ],
+      "sha256": "602f684c4cadb10f4c009581486ebc61823635b3c3f2e40e8f86a098711abd44"
+    },
+    {
+      "id": "water_soil_corner_1",
+      "role": "inner_corner_overlay",
+      "file": "transitions/water_soil-corner-1.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "corner": 1,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        54,
+        12,
+        10,
+        7
+      ],
+      "sha256": "10a7ed53460e0db58ac33e164ef3db7edf8b1914b782cb91c51e47870ce4a9b3"
+    },
+    {
+      "id": "water_soil_corner_2",
+      "role": "inner_corner_overlay",
+      "file": "transitions/water_soil-corner-2.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "corner": 2,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        26,
+        27,
+        12,
+        5
+      ],
+      "sha256": "6ae5c055e60c6d2142b39d3cfb00b94f51f340c51cf1191be6ccd217e00d7ff4"
+    },
+    {
+      "id": "water_soil_corner_3",
+      "role": "inner_corner_overlay",
+      "file": "transitions/water_soil-corner-3.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "tilled_soil",
+      "corner": 3,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        12,
+        10,
+        8
+      ],
+      "sha256": "3c37b1cb6d420daf50457542dba5b24bda4debdbc91ec54702e3564d3a664a09"
+    },
+    {
+      "id": "water_grass_1",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-01.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 1,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        36,
+        18
+      ],
+      "sha256": "2c108ab354421517cfc5882f17fe3e11a7a2c7589db8ab130fe0fd71ce599f82"
+    },
+    {
+      "id": "water_grass_2",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-02.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 2,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        28,
+        0,
+        36,
+        18
+      ],
+      "sha256": "1f16d5f2a00e46d3554b48d54c9dcef6ed461241c4a07a444ea7860aecf46e82"
+    },
+    {
+      "id": "water_grass_3",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-03.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 3,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        18
+      ],
+      "sha256": "9dd3604b35ecb059a86e65d9699683d12f2c395cf0a0af63637b77a0a2035efd"
+    },
+    {
+      "id": "water_grass_4",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-04.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 4,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        28,
+        14,
+        36,
+        18
+      ],
+      "sha256": "f805535b53c9e5e51bd19846fe02d0fbeda84019871079db4047e6fe3066e15c"
+    },
+    {
+      "id": "water_grass_5",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-05.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 5,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "3ae99a63d02950f0b7b162e4e8d3d542e39d9b79d27a741bc4ad8f79b7ae5237"
+    },
+    {
+      "id": "water_grass_6",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-06.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 6,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        28,
+        0,
+        36,
+        32
+      ],
+      "sha256": "9e8e2227a4929d6a31dae8f088f4eae57a14444432b720851cebc67294a25821"
+    },
+    {
+      "id": "water_grass_7",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-07.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 7,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "80b7c80ac470381fc2448303ad7ed4843d5d934ae9c3cf915873964dc7e09971"
+    },
+    {
+      "id": "water_grass_8",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-08.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 8,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        14,
+        36,
+        18
+      ],
+      "sha256": "0260dbc29925fe7ea42bafa01edd396ea336502d50bb91b506093ce170267585"
+    },
+    {
+      "id": "water_grass_9",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-09.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 9,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        36,
+        32
+      ],
+      "sha256": "0d77f34af41382917080055c24bb19c842a2b2d377ff853b99b8fa1c18775115"
+    },
+    {
+      "id": "water_grass_10",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-0a.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 10,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "fa1ab84134cc98bea7ab67d203ccfbc4e3f8115402326dc46c0969c957958a47"
+    },
+    {
+      "id": "water_grass_11",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-0b.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 11,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "53a6c463cf27359471e7a6c836b9b835611d14cf9b34de55a81b838cf8ca4446"
+    },
+    {
+      "id": "water_grass_12",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-0c.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 12,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        14,
+        64,
+        18
+      ],
+      "sha256": "856eed5f1464101e1f45c044875b2084e95a741820bca68da94ec7f9f3c01680"
+    },
+    {
+      "id": "water_grass_13",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-0d.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 13,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "54427087ca77210b8ee66a9b4fe15ebb953463f7e9bfc4795ae6e1528b46e2d0"
+    },
+    {
+      "id": "water_grass_14",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-0e.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 14,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "1b34006b8943342747edade469b302f003cce17c6efe6303b6f99ffb2aa0ed60"
+    },
+    {
+      "id": "water_grass_15",
+      "role": "edge_overlay",
+      "file": "transitions/water_grass-0f.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "mask": 15,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        32
+      ],
+      "sha256": "c323f858be1a171e203c871d4c12c32fac368f7211e979df10d67b4167918c33"
+    },
+    {
+      "id": "water_grass_corner_0",
+      "role": "inner_corner_overlay",
+      "file": "transitions/water_grass-corner-0.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "corner": 0,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        24,
+        0,
+        16,
+        5
+      ],
+      "sha256": "cf9b3fb809b2368c519e46a9c9f2964a90dee256b869573f0279625a317cf425"
+    },
+    {
+      "id": "water_grass_corner_1",
+      "role": "inner_corner_overlay",
+      "file": "transitions/water_grass-corner-1.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "corner": 1,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        54,
+        12,
+        10,
+        7
+      ],
+      "sha256": "0f409313dd992e2fcfa6ccc76b6567215ef9e93174036da4ff685b2748996e87"
+    },
+    {
+      "id": "water_grass_corner_2",
+      "role": "inner_corner_overlay",
+      "file": "transitions/water_grass-corner-2.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "corner": 2,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        26,
+        27,
+        12,
+        5
+      ],
+      "sha256": "f02f8969fec75c9e907c57f9afc49c8f667ad25db2dd1bcf160496e1832b325c"
+    },
+    {
+      "id": "water_grass_corner_3",
+      "role": "inner_corner_overlay",
+      "file": "transitions/water_grass-corner-3.png",
+      "anchor": [
+        32,
+        16
+      ],
+      "base_terrain": "water",
+      "neighbor_terrain": "grass",
+      "corner": 3,
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        12,
+        10,
+        8
+      ],
+      "sha256": "ae3999417da2e9ce25d234c80078e79bdd0f74be81c2e2f553c391ff7e96f963"
+    }
+  ]
+}

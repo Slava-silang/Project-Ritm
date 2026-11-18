@@ -1,0 +1,127 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "references/approved-plants.png"
+  ],
+  "assets": [
+    {
+      "id": "rock",
+      "kind": "decor",
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "max_size": [
+        42,
+        28
+      ],
+      "prompt": "Use case: stylized-concept. Asset type: a single isolated game-art source for Ritm garden. Reference is the approved garden pixel-art set. Match its hard square pixel clusters, sculpted small volumes, upper-left light, olive greens, warm brown wood, dark forest/teal contour shadows and limited palette. Fixed2:1 dimetric/isometric camera. NO photorealism, NO soft3D, NO gradients, blur, bloom, glow or haze. No text, numerals, logo, price, frame or UI. No extra objects, no variants or contact sheet. Whole object unclipped with generous transparent margin. ACTUAL TRANSPARENT background with empty holes/gaps. Do not draw a checkerboard, grass tile, ground mound, floor, water, soil or cast shadow. Stem/base contact centered at bottom. Logical pixel sizes below refer to final small-game sprite, output may be enlarged for source. REQUEST: ONE modest low grey garden boulder occupying one64x32 ground cell. Faceted asymmetrical solid stone, lighter muted slate-grey top-left faces, cool grey shadow side, a few simple pixel cracks but no moss or grass. Not a pile or cliff. Maximum logical silhouette42x28 px, base touches ground at bottom center.",
+      "transparent": true
+    },
+    {
+      "id": "lantern",
+      "kind": "decor",
+      "canvas": [
+        64,
+        128
+      ],
+      "anchor": [
+        32,
+        112
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "max_size": [
+        30,
+        78
+      ],
+      "prompt": "Use case: stylized-concept. Asset type: a single isolated game-art source for Ritm garden. Reference is the approved garden pixel-art set. Match its hard square pixel clusters, sculpted small volumes, upper-left light, olive greens, warm brown wood, dark forest/teal contour shadows and limited palette. Fixed2:1 dimetric/isometric camera. NO photorealism, NO soft3D, NO gradients, blur, bloom, glow or haze. No text, numerals, logo, price, frame or UI. No extra objects, no variants or contact sheet. Whole object unclipped with generous transparent margin. ACTUAL TRANSPARENT background with empty holes/gaps. Do not draw a checkerboard, grass tile, ground mound, floor, water, soil or cast shadow. Stem/base contact centered at bottom. Logical pixel sizes below refer to final small-game sprite, output may be enlarged for source. REQUEST: ONE small standing garden LANTERN on a short elegant dark charcoal metal post, wide stable simple foot, square glass lantern housing with warm amber opaque panes and a small pointed metal cap. Lamp has warm panes but NO emitted glow halo or light pool. Fits one64x32 cell. Logical silhouette30 wide78 high. Not hand-held, no wire or modern street lamp. Closed square housing, few visible pixels, same view as garden trees.",
+      "transparent": true
+    },
+    {
+      "id": "bench",
+      "kind": "decor",
+      "canvas": [
+        128,
+        128
+      ],
+      "anchor": [
+        64,
+        104
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "max_size": [
+        100,
+        62
+      ],
+      "prompt": "Use case: stylized-concept. Asset type: a single isolated game-art source for Ritm garden. Reference is the approved garden pixel-art set. Match its hard square pixel clusters, sculpted small volumes, upper-left light, olive greens, warm brown wood, dark forest/teal contour shadows and limited palette. Fixed2:1 dimetric/isometric camera. NO photorealism, NO soft3D, NO gradients, blur, bloom, glow or haze. No text, numerals, logo, price, frame or UI. No extra objects, no variants or contact sheet. Whole object unclipped with generous transparent margin. ACTUAL TRANSPARENT background with empty holes/gaps. Do not draw a checkerboard, grass tile, ground mound, floor, water, soil or cast shadow. Stem/base contact centered at bottom. Logical pixel sizes below refer to final small-game sprite, output may be enlarged for source. REQUEST: ONE simple rustic wooden garden BENCH, warm brown wooden seat slats and backrest, two dark wood supports/legs. Long axis points FROM LOWER LEFT TOWARD UPPER RIGHT following screen direction vector(32,-16), with backrest on its upper-left side. Fixed2:1 isometric view, visible top seat, volumetric slat thickness, NOT front view and NOT long axis down-right. Footprint two adjacent cells,2x1, combined diamond96x48; logical silhouette about100 wide62 high. No cushions, no plants, no metal scrolls, no ground. Make supports visibly grounded, no shadow.",
+      "transparent": true
+    },
+    {
+      "id": "fence",
+      "kind": "decor",
+      "canvas": [
+        80,
+        96
+      ],
+      "anchor": [
+        40,
+        72
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "max_size": [
+        46,
+        46
+      ],
+      "prompt": "Use case: stylized-concept. Asset type: a single isolated game-art source for Ritm garden. Reference is the approved garden pixel-art set. Match its hard square pixel clusters, sculpted small volumes, upper-left light, olive greens, warm brown wood, dark forest/teal contour shadows and limited palette. Fixed2:1 dimetric/isometric camera. NO photorealism, NO soft3D, NO gradients, blur, bloom, glow or haze. No text, numerals, logo, price, frame or UI. No extra objects, no variants or contact sheet. Whole object unclipped with generous transparent margin. ACTUAL TRANSPARENT background with empty holes/gaps. Do not draw a checkerboard, grass tile, ground mound, floor, water, soil or cast shadow. Stem/base contact centered at bottom. Logical pixel sizes below refer to final small-game sprite, output may be enlarged for source. REQUEST: ONE modular rustic wooden FENCE SECTION occupying one cell. Two plain square wood posts, two horizontal rails between them. Section runs FROM LOWER LEFT TO UPPER RIGHT along the screen vector(32,-16), not down-right. Fixed2:1 isometric view, warm brown wood matching bench. The section spans ONE logical cell edge in that direction, endpoints32px horizontally and16px vertically apart; height about28logical pixels. Leave rails and posts clean to butt against adjacent identical section, no decorative terminal caps. No extra sections, corner turns, gate or ground. Open transparent gaps between rails.",
+      "transparent": true
+    },
+    {
+      "id": "fertilizer",
+      "kind": "item_icon",
+      "canvas": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        52
+      ],
+      "footprint": null,
+      "max_size": [
+        42,
+        46
+      ],
+      "prompt": "Use case: stylized-concept. Asset type: a single isolated game-art source for Ritm garden. Reference is the approved garden pixel-art set. Match its hard square pixel clusters, sculpted small volumes, upper-left light, olive greens, warm brown wood, dark forest/teal contour shadows and limited palette. Fixed2:1 dimetric/isometric camera. NO photorealism, NO soft3D, NO gradients, blur, bloom, glow or haze. No text, numerals, logo, price, frame or UI. No extra objects, no variants or contact sheet. Whole object unclipped with generous transparent margin. ACTUAL TRANSPARENT background with empty holes/gaps. Do not draw a checkerboard, grass tile, ground mound, floor, water, soil or cast shadow. Stem/base contact centered at bottom. Logical pixel sizes below refer to final small-game sprite, output may be enlarged for source. REQUEST: ONE icon of a small tan/buff paper or fabric sack of garden fertilizer, tied at top with dark green cord, simple green LEAF symbol centered on front. One type only. Slightly isometric chunky volume, folded top and solid stable bottom, warm sand highlights and brown shadow side. Readable at32px. No letters, words, quantities, bottle, tools or spilled granules. Sack alone on actual transparency. Logical silhouette42wide46high. Shop and inventory use same icon.",
+      "transparent": true
+    },
+    {
+      "id": "soil_texture",
+      "kind": "terrain_texture",
+      "prompt": "Use case: stylized-concept. Reference is the approved Ritm pixel garden. Generate ONE seamless TOP-DOWN SQUARE swatch of healthy freshly TILLED garden SOIL. Whole image filled opaque edge-to-edge with earthy medium/deep warm brown soil; about FOUR broad parallel planting furrows running top to bottom of the square, shallow raised ridges with restrained warm-brown highlights and deep-brown grooves. Hard square pixel clusters, source should look like a128x128 logical pixel texture uniformly enlarged. Very sparse clods, no grass, no plants, no stones, no pots, no text, no border, NO isometric tile slab, NO bevel, NO shadow, no perspective, no gradient, no blur. Source will be projected to exact64x32 isometric cell, so keep texture calm and coarse; furrows should continue cleanly at opposite edges. Match colours with approved garden's brown soil sides but top texture distinct darker richer soil. Do NOT reproduce the reference sheet; only the square texture.",
+      "transparent": false
+    },
+    {
+      "id": "water_texture",
+      "kind": "terrain_texture",
+      "prompt": "Use case: stylized-concept. Reference is approved Ritm garden. Generate ONE seamless TOP-DOWN SQUARE swatch of calm garden pond WATER, filled opaque edge-to-edge. Muted blue-teal base, restrained short pale-cyan angular pixel wavelets distributed sparsely, a few darker teal patches. Calm even colour with NO gradient, NO photographic reflection, NO bloom, NO transparency, NO light glare, NO shiny3D. Hard square pixel-art clusters, source looks like128x128 logical pixels uniformly enlarged. NO shoreline, grass, soil, plants, lily pads, fish, text, border, or isometric slab. No perspective: a flat square top-down MATERIAL swatch to project onto64x32 isometric cell. Keep legibility beneath water lilies and natural narrow banks in the existing pixel-art style.",
+      "transparent": false
+    }
+  ]
+}
