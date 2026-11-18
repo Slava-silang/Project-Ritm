@@ -17,9 +17,10 @@ from ritm.domain.sources import SourceLink, SourceRef
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.storage.attachments import Attachment
 from ritm.storage.codec import decode_task, encode_task
+from ritm.storage.garden_source import GardenSourceMixin, create_source
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 SOURCE_SCHEMA = (
     "CREATE TABLE source_links (key TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, "
     "url TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('task','event')), "
@@ -184,7 +185,7 @@ ATTACHMENT_OWNER = """
 """
 
 
-class TaskStore:
+class TaskStore(GardenSourceMixin):
     def __init__(self, path: Path, *, clock: Callable[[], datetime] | None = None):
         self._clock = clock or (lambda: datetime.now(UTC))
         path = Path(path)
@@ -206,7 +207,7 @@ class TaskStore:
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11) and app_id == APPLICATION_ID:
+            if version in range(1, 13) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -231,8 +232,10 @@ class TaskStore:
                     self._db.execute(PROPOSAL_SCHEMA)
                 if version < 11:
                     self._db.execute(POMODORO_SCHEMA)
-                for statement in SOURCE_SCHEMA:
-                    self._db.execute(statement)
+                if version < 12:
+                    for statement in SOURCE_SCHEMA:
+                        self._db.execute(statement)
+                create_source(self._db)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._db.commit()
                 return
@@ -255,6 +258,7 @@ class TaskStore:
             self._db.execute(POMODORO_SCHEMA)
             for statement in SOURCE_SCHEMA:
                 self._db.execute(statement)
+            create_source(self._db)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             self._db.commit()
@@ -290,6 +294,7 @@ class TaskStore:
 
     def save_task(self, task: Task):
         with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
             self._write_task(task)
 
     def create_task(self, task: Task, category: Category | None = None):
@@ -529,7 +534,8 @@ class TaskStore:
             for row in self._db.execute("SELECT task_id,completed_us FROM task_completion_dates")
         }
 
-    def _write_task(self, task: Task, *, restore_root: bool = False):
+    def _write_task(self, task: Task, *, restore_root: bool = False, restore_event: bool = False):
+        before = self.get_task(task.id) if self._garden_subscribed() else None
         task_id = str(task.id)
         previous = self._db.execute(
             "SELECT completed FROM nodes WHERE id=? AND kind=0", (task_id,)
@@ -579,6 +585,17 @@ class TaskStore:
             self._save_child(child, task.id, position, 1, child.weight)
             for item_position, item in enumerate(child.items):
                 self._save_child(item, child.id, item_position, 2, None)
+        if self._garden_subscribed() and before != task:
+            self._garden_event(
+                "task",
+                {
+                    "id": task_id,
+                    "before": encode_task(before) if before else None,
+                    "after": encode_task(task),
+                    "restore": restore_root or restore_event,
+                },
+                self._clock(),
+            )
 
     def _save_child(self, child, parent_id, position, kind, weight):
         self._db.execute(
@@ -692,6 +709,16 @@ class TaskStore:
             )
             if after is None:
                 self._db.execute("DELETE FROM nodes WHERE id=?", (str(task_id),))
+                self._garden_event(
+                    "task",
+                    {
+                        "id": str(task_id),
+                        "before": encode_task(before),
+                        "after": None,
+                        "restore": False,
+                    },
+                    deleted_at,
+                )
             else:
                 self._write_task(after)
             return identifier
@@ -761,7 +788,15 @@ class TaskStore:
             for task_id in roots:
                 self._purge_attachment_rows(task_id)
                 self._db.execute("DELETE FROM work_blocks WHERE task_id=?", (task_id,))
+                removed_sessions = [
+                    row[0]
+                    for row in self._db.execute(
+                        "SELECT id FROM focus_sessions WHERE task_id=?", (task_id,)
+                    )
+                ]
                 self._db.execute("DELETE FROM focus_sessions WHERE task_id=?", (task_id,))
+                for identifier in removed_sessions:
+                    self._garden_focus_event(identifier, self._clock())
                 self._db.execute("DELETE FROM task_completion_dates WHERE task_id=?", (task_id,))
                 self._db.execute("DELETE FROM task_identities WHERE id=?", (task_id,))
             self._db.executemany("DELETE FROM trash WHERE id=?", ((key,) for key in selected))
@@ -817,7 +852,9 @@ class TaskStore:
             restored = transform(current, before, after, UUID(entry["node_id"]))
             if restored.id != before.id:
                 raise ValueError("Восстановление не должно менять ID задачи")
-            self._write_task(restored, restore_root=current is None and entry["kind"] == 0)
+            self._write_task(
+                restored, restore_root=current is None and entry["kind"] == 0, restore_event=True
+            )
             self._db.execute("DELETE FROM trash WHERE id=?", (str(identifier),))
             return restored
 
@@ -1121,6 +1158,7 @@ class TaskStore:
             self._db.execute(
                 "INSERT INTO focus_intervals VALUES (?,0,?,NULL)", (identifier, now_us)
             )
+            self._garden_focus_event(identifier, now)
             return
         if active is None:
             raise ValueError("Нет активной фокус-сессии")
@@ -1154,6 +1192,7 @@ class TaskStore:
         else:
             raise ValueError("Это действие недоступно в текущем состоянии сессии")
         self._db.execute("UPDATE focus_sessions SET revision=revision+1 WHERE id=?", (identifier,))
+        self._garden_focus_event(identifier, now)
 
     def _close_focus_interval(self, identifier: str, now_us: int):
         self._db.execute(
@@ -1171,6 +1210,7 @@ class TaskStore:
                )), revision=revision+1 WHERE id=?""",
             (now_us, identifier, identifier),
         )
+        self._garden_focus_event(identifier, from_instant_us(now_us))
 
     def list_finished_focus_intervals(self) -> dict[UUID, list[tuple[int, int]]]:
         result = {}
@@ -1201,6 +1241,7 @@ class TaskStore:
             self._db.execute(
                 "INSERT INTO focus_intervals VALUES (?,0,?,?)", (identifier, start_us, end_us)
             )
+            self._garden_focus_event(identifier, now)
 
     def edit_focus_duration(self, identifier: UUID, revision: int, duration_us: int, now: datetime):
         if duration_us <= 0:
@@ -1247,6 +1288,7 @@ class TaskStore:
                 "UPDATE focus_sessions SET finished_us=?,revision=revision+1 WHERE id=?",
                 (end, str(identifier)),
             )
+            self._garden_focus_event(identifier, now)
 
     def _require_attachment_owner(self, task_id: UUID, node_id: UUID):
         owner = self._db.execute(

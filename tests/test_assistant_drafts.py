@@ -151,6 +151,8 @@ def test_v9_profile_and_archive_migrate_and_receipts_survive_new_backup(tmp_path
         db.execute("DROP TABLE mail_proposals")
         db.execute("DROP TABLE source_links")
         db.execute("DROP TABLE pomodoro")
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=9")
     database = path.read_bytes()
     archive = tmp_path / "old.zip"
@@ -218,6 +220,8 @@ def test_migration_and_receipt_failure_leave_existing_data_intact(tmp_path):
         assert store._db.execute("SELECT count(*) FROM task_identities").fetchone()[0] == 0
     # Ошибка DDL миграции откатывает смену версии и сохраняет исходные байты.
     with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=9")
     before = path.read_bytes()
     with pytest.raises(sqlite3.Error):

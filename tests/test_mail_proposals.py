@@ -293,6 +293,8 @@ def test_v11_migration_and_backups_preserve_ledger_and_old_archives(tmp_path):
     with sqlite3.connect(path) as db:
         db.execute("DROP TABLE mail_proposals")
         db.execute("DROP TABLE source_links")
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=11")
     # Настоящий архив v11: create_backup текущей версии мигрирует свой snapshot.
     database = path.read_bytes()

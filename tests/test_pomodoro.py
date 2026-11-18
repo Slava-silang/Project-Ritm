@@ -169,6 +169,8 @@ def test_v10_migration_preserves_tasks_and_focus(tmp_path):
         db.execute("DROP TABLE mail_proposals")
         db.execute("DROP TABLE source_links")
         db.execute("DROP TABLE pomodoro")
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=10")
     with TaskStore(path) as store:
         assert store.get_task(task.id) == task
@@ -256,6 +258,8 @@ def test_backup_preserves_cycle_and_restores_v10(tmp_path):
         db.execute("DROP TABLE mail_proposals")
         db.execute("DROP TABLE source_links")
         db.execute("DROP TABLE pomodoro")
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=10")
     old_archive = backup.create_backup(tmp_path, tmp_path / "copies", START)
     preview = backup.inspect_backup(old_archive)

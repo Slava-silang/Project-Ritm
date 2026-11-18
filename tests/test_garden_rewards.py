@@ -19,7 +19,7 @@ from ritm.domain.garden_rewards import (
     encode_ledger,
     reconcile_time,
 )
-from ritm.storage.garden import GardenStore
+from ritm.storage.garden import SCHEMA_VERSION, GardenStore
 
 HOUR = 60 * MINUTE
 START = instant_us(datetime(2026, 11, 19, tzinfo=UTC))
@@ -229,6 +229,7 @@ def test_v1_migration_preserves_items_wallet_and_receipts(tmp_path):
         store.credit("old", 300)
         before = store.snapshot()
     with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE garden_source_state")
         db.execute("DROP TABLE garden_reward_state")
         db.execute("PRAGMA user_version=1")
     original = path.read_bytes()
@@ -238,7 +239,7 @@ def test_v1_migration_preserves_items_wallet_and_receipts(tmp_path):
     with GardenStore(path) as store:
         assert store.snapshot() == before and store.credit("old", 300).replayed
         assert store.reward_snapshot() == RewardLedger()
-        assert store._db.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert store._db.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
 
 
 def test_competing_connections_pay_same_observation_once(tmp_path):
@@ -298,7 +299,7 @@ def test_failed_migration_and_corrupt_ledger_leave_database_unchanged(tmp_path):
         GardenStore(path)
     assert path.read_bytes() == original
     with sqlite3.connect(path) as db:
-        db.execute("PRAGMA user_version=2")
+        db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
         db.execute("UPDATE garden_reward_state SET payload='{}'")
     original = path.read_bytes()
     with pytest.raises(ValueError, match="повреждён"):
@@ -315,7 +316,7 @@ def test_new_process_preserves_debt_and_does_not_repay_existing_time(tmp_path):
     code = """from pathlib import Path
 from uuid import uuid4
 import sys
-from ritm.storage.garden import GardenStore
+from ritm.storage.garden import SCHEMA_VERSION, GardenStore
 with GardenStore(Path(sys.argv[1])) as store:
     start, hour = int(sys.argv[2]), int(sys.argv[3])
     assert store.reward_snapshot().debt_us == hour

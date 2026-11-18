@@ -95,6 +95,8 @@ def test_v5_migration_and_completion_transition_dates(tmp_path):
         db.execute("DROP TABLE material_links")
         db.execute("DROP TABLE materials")
         db.execute("DROP TABLE attachments")
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=5")
     with TaskStore(path, clock=lambda: now) as store:
         service = TaskService(store)

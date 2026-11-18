@@ -11,9 +11,13 @@ from zoneinfo import ZoneInfo
 
 from ritm.domain.garden import Garden, GardenItem, GardenState, apply_command, coins, natural
 from ritm.domain.garden_rewards import RewardLedger, decode_ledger, encode_ledger, reconcile_time
+from ritm.storage.garden_source_state import decode_source, empty_source
 
 APPLICATION_ID = 0x52494744
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+CURSOR_SCHEMA = (
+    "CREATE TABLE garden_source_state (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)"
+)
 REWARD_SCHEMA = (
     "CREATE TABLE garden_reward_state (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)"
 )
@@ -128,11 +132,22 @@ class GardenStore:
                 self._db.execute(
                     "INSERT INTO garden_reward_state VALUES (1,?)", (encode_ledger(RewardLedger()),)
                 )
+                self._db.execute("PRAGMA user_version=2")
+                version = 2
+            if version == 2 and app_id == APPLICATION_ID:
+                self._snapshot()
+                self._reward_snapshot()
+                self._check_month(month)
+                self._db.execute(CURSOR_SCHEMA)
+                self._db.execute(
+                    "INSERT INTO garden_source_state VALUES (1,?)", (json.dumps(empty_source()),)
+                )
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 version = SCHEMA_VERSION
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._snapshot()
                 self._reward_snapshot()
+                self._source_snapshot()
                 self._check_month(month)
                 return
             tables = self._db.execute(
@@ -151,6 +166,10 @@ class GardenStore:
             self._db.execute(
                 "INSERT INTO garden_reward_state VALUES (1,?)", (encode_ledger(RewardLedger()),)
             )
+            self._db.execute(CURSOR_SCHEMA)
+            self._db.execute(
+                "INSERT INTO garden_source_state VALUES (1,?)", (json.dumps(empty_source()),)
+            )
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
@@ -168,6 +187,52 @@ class GardenStore:
         with self._db:
             self._db.execute("BEGIN")
             return self._reward_snapshot()
+
+    def _source_snapshot(self):
+        row = self._db.execute("SELECT payload FROM garden_source_state WHERE id=1").fetchone()
+        if row is None or len(row[0].encode()) > MAX_PAYLOAD:
+            raise ValueError("Курсор сада повреждён; автоматический сброс запрещён.")
+        return decode_source(row[0])
+
+    def source_snapshot(self):
+        with self._db:
+            self._db.execute("BEGIN")
+            return self._source_snapshot()
+
+    def apply_source_event(self, identity, event, *, zone, expected_revision, transition):
+        natural(expected_revision)
+        UUID(identity)
+        payload = json.dumps({"event": event, "zone": zone}, sort_keys=True, allow_nan=False)
+        if len(payload.encode()) > MAX_PAYLOAD:
+            raise ValueError("Событие источника слишком большое.")
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        key = f"source:{identity}:{event['seq']}"
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            current = self._snapshot()
+            source, ledger = self._source_snapshot(), self._reward_snapshot()
+            replay = self._receipt(key, digest, current)
+            if replay:
+                return replay
+            if current.revision != expected_revision:
+                raise ValueError("Сад или кошелёк изменились. Обновите снимок перед действием.")
+            source, reward = transition(source, identity, event, ledger, zone)
+            source_payload, ledger_payload = (
+                json.dumps(source, sort_keys=True),
+                encode_ledger(reward.ledger),
+            )
+            if max(len(source_payload.encode()), len(ledger_payload.encode())) > MAX_PAYLOAD:
+                raise ValueError("Журнал источника слишком большой.")
+            self._db.execute(
+                "UPDATE garden_source_state SET payload=? WHERE id=1", (source_payload,)
+            )
+            self._db.execute(
+                "UPDATE garden_reward_state SET payload=? WHERE id=1", (ledger_payload,)
+            )
+            state = GardenState(
+                current.garden, current.balance + reward.coins, current.revision + 1
+            )
+            return self._write(state, key, digest, None)
 
     def _snapshot(self):
         row = self._db.execute(
@@ -283,6 +348,8 @@ class GardenStore:
             self._db.execute("BEGIN IMMEDIATE")
             current = self._snapshot()
             ledger = self._reward_snapshot()
+            if self._source_snapshot()["identity"] is not None:
+                raise ValueError("После подключения источника используйте журнал событий задач.")
             replay = self._receipt(key, digest, current)
             if replay:
                 return replay

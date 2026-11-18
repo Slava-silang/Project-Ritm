@@ -93,6 +93,8 @@ def test_v6_profile_migrates_without_rewriting_task_or_focus(tmp_path):
         db.execute("DROP TABLE material_links")
         db.execute("DROP TABLE materials")
         db.execute("DROP TABLE attachments")
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=6")
     with TaskStore(path) as store:
         assert store.get_task(task.id) == task
@@ -145,6 +147,8 @@ def test_library_links_survive_restart_and_trash_without_copying(tmp_path):
         db.execute("DROP TABLE attachment_cleanup")
         db.execute("DROP TABLE material_links")
         db.execute("DROP TABLE materials")
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=7")
     with TaskStore(path) as store:
         assert store.list_attachments() == (direct,)

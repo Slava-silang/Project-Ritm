@@ -455,3 +455,14 @@ UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked pytest tests/test_garden_rewards
 ```
 
 Проверки используют временные базы, управляемое время и отдельный Python-процесс. Графика/пользовательский интерфейс/основная tasks.sqlite3 этим шагом не меняются.
+
+
+## T39c2a — журнал задач и доставка времени
+
+TaskStore теперь v13, GardenStore v3. Миграции не включают подписку/сад; обычный запуск не создаёт garden.sqlite3. Контракт и ограничения перед worker — GARDEN_EVENTS.md. Новых зависимостей нет.
+
+```sh
+UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked pytest tests/test_garden_events.py tests/test_garden.py tests/test_garden_rewards.py -q
+```
+
+Ручной вызов GardenEventService.begin допустим пока только на временном профиле. Живой checkpoint нельзя делать до аварийного восстановления сессии. Основной backup понимает v9–v13, но согласованная копия обеих БД ещё ожидает T39c3.

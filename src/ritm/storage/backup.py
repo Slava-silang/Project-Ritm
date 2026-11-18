@@ -223,6 +223,8 @@ def _validate_database(path: Path) -> dict[UUID, str]:
     with TaskStore(Path(":memory:")) as reference, closing(_sqlite(path, "ro")) as db:
         version = db.execute("PRAGMA user_version").fetchone()[0]
         expected = [tuple(row) for row in schema(reference._db)]
+        if version < 13:
+            expected = [row for row in expected if row[0] not in ("garden_source", "garden_events")]
         if version < 12:
             expected = [
                 row
@@ -235,7 +237,7 @@ def _validate_database(path: Path) -> dict[UUID, str]:
             expected = [row for row in expected if row[0] != "applied_proposals"]
         if (
             db.execute("PRAGMA application_id").fetchone()[0] != APPLICATION_ID
-            or version not in (9, 10, 11, SCHEMA_VERSION)
+            or version not in (9, 10, 11, 12, SCHEMA_VERSION)
             or schema(db) != expected
             or db.execute("PRAGMA integrity_check").fetchall() != [("ok",)]
             or db.execute("PRAGMA foreign_key_check").fetchone() is not None
