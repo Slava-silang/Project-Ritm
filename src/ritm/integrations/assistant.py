@@ -44,7 +44,7 @@ class ChatTurn:
 class Request:
     id: UUID
     prompt: str
-    operation: Literal["create", "split", "schedule", "update"]
+    operation: Literal["create", "split", "schedule", "update", "mail"]
     selected: Task | None = None
     materials: tuple[SourceText, ...] = ()
     history: tuple[ChatTurn, ...] = ()
@@ -53,6 +53,7 @@ class Request:
     files: tuple[SourceFile, ...] = ()
     tasks: tuple[Task, ...] = ()
     current_time: datetime | None = None
+    mail: dict | None = field(default=None, repr=False)
 
 
 class Adapter(Protocol):
@@ -67,12 +68,27 @@ class MockAdapter:
     """Предсказуемый сценарий, явно обозначенный в интерфейсе как тестовый."""
 
     connection = Connection(
-        "mock", "local-demo", "none", frozenset({"create", "split", "schedule", "update"})
+        "mock", "local-demo", "none", frozenset({"create", "split", "schedule", "update", "mail"})
     )
 
     def generate(self, request: Request, cancelled: Event) -> str:
         if cancelled.wait(0.15):
             raise ValueError("Запрос отменён")
+        if request.operation == "mail":
+            if request.selected or request.mail.get("linked_event"):
+                return json.dumps(
+                    {"answer": "Тестовый шаблон не анализирует обновления. Выберите модель."}
+                )
+            return json.dumps(
+                {
+                    "kind": "task",
+                    "task": {
+                        "title": request.mail["subject"] or "Задача из письма",
+                        "description": "Тестовый шаблон по письму. Проверьте и заполните условие.",
+                    },
+                },
+                ensure_ascii=False,
+            )
         if request.operation == "update":
             matches = [
                 task for task in request.tasks if task.title.casefold() in request.prompt.casefold()

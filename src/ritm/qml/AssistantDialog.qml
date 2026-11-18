@@ -171,6 +171,7 @@ Dialog {
             dialog.taskBackend.reload();
             dialog.close();
         }
+        function onMailApplied() { dialog.taskBackend.reload(); }
     }
     contentItem: ScrollView {
         id: scroll

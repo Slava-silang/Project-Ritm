@@ -368,7 +368,7 @@ class TaskStore:
             for row in self._db.execute("SELECT * FROM source_links ORDER BY key")
         )
 
-    def apply_mail_proposal(self, draft) -> UUID:
+    def apply_mail_proposal(self, draft, *, expected_overlaps=None) -> UUID:
         """Изменение одной записи, связь источника и квитанция атомарны."""
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
@@ -417,6 +417,18 @@ class TaskStore:
                 block = draft.after
                 if block.task_id is not None:
                     raise ValueError("Письмо может предложить только самостоятельное событие.")
+                if expected_overlaps is not None:
+                    nearby = tuple(
+                        b
+                        for b in self.list_work_blocks(
+                            window_start=block.starts_at, window_end=block.ends_at
+                        )
+                        if b.id != block.id
+                    )
+                    if nearby != expected_overlaps:
+                        raise ValueError(
+                            "Календарь изменился. Обновите предпросмотр перед подтверждением."
+                        )
                 self._db.execute(
                     "INSERT INTO work_blocks(id,task_id,starts_us,ends_us,title) "
                     "VALUES (?,NULL,?,?,?) "

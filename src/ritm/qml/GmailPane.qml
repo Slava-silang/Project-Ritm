@@ -9,6 +9,7 @@ ColumnLayout {
     required property var source
     required property var appearance
     property var mailState: source ? source.state : ({busy: false, messages: []})
+    property bool writing: !!source && source.proposals.state.saving
     function closeSource() { viewer.close(); }
     Connections {
         target: pane.source
@@ -39,6 +40,7 @@ ColumnLayout {
         height: Math.min(parent.height - pane.appearance.dp(24), pane.appearance.dp(720))
         title: qsTr("Источник Gmail — только чтение")
         modal: true
+        closePolicy: pane.source && pane.source.proposals.state.saving ? Popup.NoAutoClose : Popup.CloseOnEscape
         onClosed: { consent.checked = false; pane.source.cancel(); configPicker.close(); }
         background: Rectangle {
             color: pane.appearance.colors.surface
@@ -55,7 +57,7 @@ ColumnLayout {
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    text: qsTr("Gmail подключается отдельно от модели. Письма читаются вручную, не отмечаются прочитанными и пока не передаются ИИ. Просмотр хранится только до закрытия этого окна.")
+                    text: qsTr("Gmail подключается отдельно от модели. Письма читаются вручную и не отмечаются прочитанными. Для передачи выбранного письма модели потребуется отдельное согласие. Просмотр хранится только до закрытия этого окна.")
                 }
                 Label {
                     Layout.fillWidth: true
@@ -69,28 +71,28 @@ ColumnLayout {
                         objectName: "gmailImportConfig"
                         width: Math.min(implicitWidth, parent.width)
                         text: qsTr("Загрузить конфигурацию Google")
-                        enabled: !pane.mailState.busy && !pane.mailState.connected
+                        enabled: !pane.mailState.busy && !pane.writing && !pane.mailState.connected
                         onClicked: configPicker.open()
                     }
                     Button {
                         objectName: "gmailRestore"
                         width: Math.min(implicitWidth, parent.width)
                         text: qsTr("Открыть сохранённое подключение")
-                        enabled: !pane.mailState.busy
+                        enabled: !pane.mailState.busy && !pane.writing
                         onClicked: pane.source.restore()
                     }
                     Button {
                         objectName: "gmailLogin"
                         width: Math.min(implicitWidth, parent.width)
                         text: qsTr("Войти через Google")
-                        enabled: !pane.mailState.busy && !!pane.mailState.configured
+                        enabled: !pane.mailState.busy && !pane.writing && !!pane.mailState.configured
                         onClicked: pane.source.login()
                     }
                     Button {
                         objectName: "gmailLogout"
                         width: Math.min(implicitWidth, parent.width)
                         text: qsTr("Удалить подключение с устройства")
-                        enabled: !pane.mailState.busy
+                        enabled: !pane.mailState.busy && !pane.writing
                         onClicked: pane.source.logout()
                     }
                 }
@@ -124,7 +126,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     placeholderText: "from:teacher@example.org newer_than:30d"
                     maximumLength: 2000
-                    enabled: !pane.mailState.busy
+                    enabled: !pane.mailState.busy && !pane.writing
                     onTextEdited: { consent.checked = false; pane.source.cancel(); }
                 }
                 CheckBox {
@@ -132,14 +134,14 @@ ColumnLayout {
                     objectName: "gmailIncludeSpam"
                     checked: true
                     text: qsTr("Включать спам и корзину Gmail")
-                    enabled: !pane.mailState.busy
+                    enabled: !pane.mailState.busy && !pane.writing
                     onToggled: { consent.checked = false; pane.source.cancel(); }
                 }
                 CheckBox {
                     id: consent
                     objectName: "gmailReadConsent"
                     Layout.fillWidth: true
-                    enabled: !!pane.mailState.connected && !pane.mailState.busy
+                    enabled: !!pane.mailState.connected && !pane.mailState.busy && !pane.writing
                     text: qsTr("Разрешаю прочитать непрочитанные письма выбранного аккаунта с этим фильтром")
                     contentItem: Label {
                         text: consent.text
@@ -163,7 +165,7 @@ ColumnLayout {
                     text: pane.mailState.error || ""
                 }
                 Label {
-                    visible: !!pane.mailState.busy
+                    visible: !!pane.mailState.busy && !pane.writing
                     text: qsTr("Ожидание Gmail… Можно отменить.")
                 }
                 Label {
@@ -199,18 +201,31 @@ ColumnLayout {
                     text: pane.mailState.bodyAvailable ? pane.mailState.body
                         : qsTr("Текст недоступен. Вложения автоматически не загружаются.")
                 }
+                Button {
+                    text: qsTr("Открыть выбранное письмо в Gmail")
+                    visible: !!pane.mailState.sourceUrl
+                    onClicked: Qt.openUrlExternally(pane.mailState.sourceUrl)
+                }
+                MailProposalPane {
+                    Layout.fillWidth: true
+                    visible: pane.mailState.selected >= 0
+                    helper: pane.source ? pane.source.proposals : null
+                    appearance: pane.appearance
+                    sourceState: pane.mailState
+                }
             }
         }
         footer: DialogButtonBox {
             Button {
                 objectName: "gmailCancel"
                 text: qsTr("Отменить")
-                enabled: !!pane.mailState.busy
+                enabled: (!!pane.mailState.busy || (!!pane.source && pane.source.proposals.state.busy)) && !pane.writing && !pane.writing
                 onClicked: pane.source.cancel()
             }
             Button {
                 objectName: "gmailClose"
                 text: qsTr("Закрыть")
+                enabled: !pane.source || !pane.source.proposals.state.saving
                 onClicked: viewer.close()
             }
         }

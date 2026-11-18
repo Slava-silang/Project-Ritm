@@ -913,6 +913,16 @@ ApplicationWindow {
                             color: window.current.description ? window.appearance.colors.secondary : window.appearance.colors.muted
                             font.pixelSize: window.appearance.dp(15)
                         }
+                        Repeater {
+                            model: window.current.sourceUrls || []
+                            delegate: Button {
+                                required property string modelData
+                                required property int index
+                                objectName: "taskSourceLink_" + index
+                                text: qsTr("Источник — письмо Gmail")
+                                onClicked: Qt.openUrlExternally(modelData)
+                            }
+                        }
                         Flow {
                             Layout.fillWidth: true
                             spacing: window.appearance.dp(12)

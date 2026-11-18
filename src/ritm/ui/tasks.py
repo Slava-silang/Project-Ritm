@@ -1063,6 +1063,11 @@ class TaskController(QObject):
                 pending_cleanup = len(store.pending_attachment_cleanup())
                 raw = store.list_tasks()
                 blocks = store.list_work_blocks()
+                source_urls = {}
+                for link in store.list_source_links():
+                    source_urls.setdefault((link.kind, str(link.target_id)), []).append(
+                        link.source.url
+                    )
                 active = None
                 history = {}
                 for session in store.list_focus_sessions():
@@ -1085,12 +1090,14 @@ class TaskController(QObject):
                     selected=date.fromisoformat(config["day"]),
                     today=self._clock().astimezone(self._zone).date(),
                     zone=self._zone,
+                    sources=source_urls,
                 )
                 categories = [{"id": str(x.id), "title": x.title} for x in store.list_categories()]
                 names = {x["id"]: x["title"] for x in categories}
                 rows = [
                     {
                         **task_view(task),
+                        "sourceUrls": source_urls.get(("task", str(task.id)), []),
                         "category": names.get(str(task.category_id), ""),
                         "plannedText": planned[task.id],
                         "focusTotal": focus_time(

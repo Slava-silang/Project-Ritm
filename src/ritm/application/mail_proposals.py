@@ -206,10 +206,10 @@ class MailProposalService:
             target,
         )
 
-    def apply(self, draft):
+    def apply(self, draft, *, expected_overlaps=None):
         checked = parse_mail_proposal(
             draft.id, draft.payload, draft.source, link=draft.link, before=draft.before
         )
         if checked != draft:
             raise ValueError("Содержимое предложения по письму не соответствует проверенному.")
-        return self.store.apply_mail_proposal(checked)
+        return self.store.apply_mail_proposal(checked, expected_overlaps=expected_overlaps)

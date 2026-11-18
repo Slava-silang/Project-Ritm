@@ -111,6 +111,8 @@ class ConnectionController(QObject):
         if self._busy or self.assistant.state["busy"] or self._closed:
             return
         self._busy, self._error = True, ""
+        self.assistant._connecting = True
+        self.assistant.changed.emit()
         self._cancelled = Event()
         self.changed.emit()
 
@@ -131,6 +133,7 @@ class ConnectionController(QObject):
         if self._closed:
             return
         self._busy, self._error = False, error
+        self.assistant._connecting = False
         self.changed.emit()
         self.assistant.changed.emit()
 

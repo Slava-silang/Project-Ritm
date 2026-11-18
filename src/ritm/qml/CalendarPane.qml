@@ -478,6 +478,14 @@ ColumnLayout {
                 width: blockForm.availableWidth
                 spacing: pane.appearance.dp(12)
                 enabled: !pane.backend.busy
+                Repeater {
+                    model: blockEditor.entry ? blockEditor.entry.sourceUrls || [] : []
+                    delegate: Button {
+                        required property string modelData
+                        text: qsTr("Источник — письмо Gmail")
+                        onClicked: Qt.openUrlExternally(modelData)
+                    }
+                }
                 Label {
                     text: qsTr("Тип записи")
                     color: pane.appearance.colors.muted

@@ -12,6 +12,7 @@ from PySide6.QtGui import QDesktopServices
 from ritm.integrations.gmail import GmailError, MailScope, check_cancelled
 from ritm.integrations.google_auth import GmailSession
 from ritm.platform.gmail_credentials import GmailVault
+from ritm.ui.mail_assistant import MailAssistantController
 
 
 class GmailController(QObject):
@@ -19,7 +20,7 @@ class GmailController(QObject):
     _ready = Signal(object, object, str)
     _browser = Signal(object, str, object)
 
-    def __init__(self, profile, session=None, *, browser=None):
+    def __init__(self, profile, session=None, *, browser=None, assistant=None):
         super().__init__()
         self.session = session if session is not None else GmailSession(GmailVault(profile))
         self.browser = browser or (lambda url: QDesktopServices.openUrl(QUrl(url)))
@@ -30,6 +31,14 @@ class GmailController(QObject):
         self._error, self._batch, self._selected = "", None, -1
         self._ready.connect(self._finish)
         self._browser.connect(self._open_browser)
+        self._proposals = MailAssistantController(profile, self, assistant)
+
+    @Property(QObject, constant=True)
+    def proposals(self):
+        return self._proposals
+
+    def selected_mail(self):
+        return self._batch.messages[self._selected] if self._batch and self._selected >= 0 else None
 
     @Property("QVariantMap", notify=changed)
     def state(self):
@@ -48,11 +57,13 @@ class GmailController(QObject):
             "selected": self._selected,
             "body": selected.body if selected else "",
             "bodyAvailable": selected.body_available if selected else False,
+            "sourceUrl": selected.source_url if selected else "",
         }
 
     def _run(self, job):
-        if self._busy or self._closed:
+        if self._busy or self._closed or self._proposals.saving:
             return
+        self._proposals.cancel()
         self._busy, self._error, self._batch, self._selected = True, "", None, -1
         identifier, cancelled = uuid4(), Event()
         self._id, self._cancelled = identifier, cancelled
@@ -124,12 +135,22 @@ class GmailController(QObject):
 
     @Slot(int)
     def selectMessage(self, index):
-        if not self._busy and self._batch and 0 <= index < len(self._batch.messages):
+        if (
+            not self._busy
+            and not self._proposals.saving
+            and self._batch
+            and 0 <= index < len(self._batch.messages)
+        ):
+            if index != self._selected:
+                self._proposals.cancel()
             self._selected = index
             self.changed.emit()
 
     @Slot()
     def cancel(self):
+        if self._proposals.saving:
+            return
+        self._proposals.cancel()
         self._cancelled.set()
         self._batch, self._selected = None, -1
         self.changed.emit()
@@ -158,6 +179,7 @@ class GmailController(QObject):
         self.changed.emit()
 
     def close(self):
+        self._proposals.close()
         self._closed = True
         self.cancel()
         self._pool.shutdown(wait=True, cancel_futures=True)

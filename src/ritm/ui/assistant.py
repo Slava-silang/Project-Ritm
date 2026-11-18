@@ -27,6 +27,7 @@ from ritm.ui.skills import SkillController
 class AssistantController(QObject):
     changed = Signal()
     applied = Signal(str)
+    mailApplied = Signal()
     _ready = Signal(object, str, object, str)
     _filesReady = Signal(object, object, str)
     _historyReady = Signal(int, str, object, str)
@@ -69,7 +70,9 @@ class AssistantController(QObject):
         self._draft_material_ids = ()
         self._skills = SkillController(profile, locked=lambda: self._busy)
         self._skills.selectionChanged.connect(self._skill_changed)
-        self._gmail = GmailController(profile)
+        self._gmail = GmailController(profile, assistant=self)
+        self._gmail.proposals.changed.connect(self.changed.emit)
+        self._gmail.proposals.applied.connect(self.mailApplied.emit)
 
     @Property(QObject, constant=True)
     def gmail(self):
@@ -112,7 +115,9 @@ class AssistantController(QObject):
             "filesLoading": self._files_loading,
             "inputKinds": sorted(self.adapter.connection.input_kinds),
             "filesError": self._files_error,
-            "busy": self._busy,
+            "busy": self._busy
+            or getattr(self, "_connecting", False)
+            or bool(getattr(self, "_gmail", None) and self._gmail.proposals.busy),
             "saving": self._saving,
             "error": self._error,
             "provider": self.adapter.connection.provider,
@@ -341,7 +346,7 @@ class AssistantController(QObject):
     @Slot(str, str, "QVariantList", bool)
     @Slot(str, str, "QVariantList", bool, str)
     def generate(self, prompt, target_id="", file_ids=None, confirm_files=False, operation_hint=""):
-        if self._busy or self._files_loading or self._media.state["busy"]:
+        if self.state["busy"] or self._files_loading or self._media.state["busy"]:
             return
         identifiers = tuple(file_ids or ())
         if any(not isinstance(value, str) for value in identifiers) or len(identifiers) > 5:
