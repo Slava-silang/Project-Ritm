@@ -8,7 +8,7 @@ ColumnLayout {
     id: pane
     required property var source
     required property var appearance
-    property var mailState: source ? source.state : ({busy: false, messages: []})
+    property var mailState: source ? source.state : ({busy: false, messages: [], selected: -1})
     property bool writing: !!source && source.proposals.state.saving
     function closeSource() { viewer.close(); }
     Connections {
