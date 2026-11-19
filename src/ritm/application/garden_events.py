@@ -6,13 +6,24 @@ from functools import partial
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from ritm.domain.garden_achievements import advance_achievements
 from ritm.domain.garden_payments import EventReward, allocate_time, claim_completion
 from ritm.domain.garden_rewards import reconcile_time
 from ritm.storage.codec import decode_task
 from ritm.storage.garden_source_state import _focus
 
 
-def apply_event(state, identity, event, ledger, zone, *, completion_awards=True):
+def apply_event(
+    state,
+    identity,
+    event,
+    ledger,
+    zone,
+    *,
+    completion_awards=True,
+    achievement_state=None,
+    achievement_awards=False,
+):
     UUID(identity)
     if state["identity"] not in (None, identity):
         raise ValueError("Источник сада не совпадает с базой задач.")
@@ -90,15 +101,30 @@ def apply_event(state, identity, event, ledger, zone, *, completion_awards=True)
             restored=payload["restore"],
         )
     state.update(identity=identity, seq=event["seq"], event_id=event["id"])
-    return state, EventReward(reward.ledger, reward.paid_us, bonus)
+    achievements = None
+    if achievement_awards:
+        achievements = advance_achievements(
+            achievement_state,
+            enabled=ledger.enabled or reward.ledger.enabled,
+            paid_us=reward.paid_us,
+            now_us=event["happened_us"],
+            zone=ZoneInfo(zone),
+            before=decode_task(payload["before"]) if kind == "task" and payload["before"] else None,
+            after=decode_task(payload["after"]) if kind == "task" and payload["after"] else None,
+            restored=payload["restore"] if kind == "task" else False,
+        )
+    return state, EventReward(reward.ledger, reward.paid_us, bonus, achievements)
 
 
 class GardenEventService:
     """Оба соединения принадлежат вызывающему потоку; обычный UI пока не подключён."""
 
-    def __init__(self, source, garden, *, zone="UTC"):
+    def __init__(self, source, garden, *, zone="UTC", award_achievements=False):
         ZoneInfo(zone)
+        if type(award_achievements) is not bool:
+            raise ValueError("Нужен логический режим достижений.")
         self.source, self.garden, self.zone = source, garden, zone
+        self.award_achievements = award_achievements
 
     def begin(self, now):
         self.source.begin_garden_source(now)
@@ -122,7 +148,7 @@ class GardenEventService:
                     event,
                     zone=self.zone,
                     expected_revision=self.garden.snapshot().revision,
-                    transition=apply_event,
+                    transition=partial(apply_event, achievement_awards=self.award_achievements),
                 )
                 count += 1
 

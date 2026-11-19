@@ -10,12 +10,21 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from ritm.domain.garden import Garden, GardenItem, GardenState, apply_command, coins, natural
+from ritm.domain.garden_achievements import (
+    AchievementState,
+    decode_achievements,
+    encode_achievements,
+)
 from ritm.domain.garden_payments import validate_payment_totals
 from ritm.domain.garden_rewards import RewardLedger, decode_ledger, encode_ledger, reconcile_time
 from ritm.storage.garden_source_state import decode_source, empty_source
 
 APPLICATION_ID = 0x52494744
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
+ACHIEVEMENT_SCHEMA = (
+    "CREATE TABLE garden_achievement_state "
+    "(id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)"
+)
 CURSOR_SCHEMA = (
     "CREATE TABLE garden_source_state (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)"
 )
@@ -143,6 +152,7 @@ class GardenStore:
                 self._db.execute(
                     "INSERT INTO garden_source_state VALUES (1,?)", (json.dumps(empty_source()),)
                 )
+                self._create_achievements()
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 version = SCHEMA_VERSION
             if version == 3 and app_id == APPLICATION_ID:
@@ -159,12 +169,22 @@ class GardenStore:
                     "UPDATE garden_source_state SET payload=? WHERE id=1",
                     (json.dumps(source, sort_keys=True),),
                 )
+                self._create_achievements()
+                self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+                version = SCHEMA_VERSION
+            if version == 4 and app_id == APPLICATION_ID:
+                self._snapshot()
+                self._reward_snapshot()
+                self._source_snapshot()
+                self._check_month(month)
+                self._create_achievements()
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 version = SCHEMA_VERSION
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._snapshot()
                 self._reward_snapshot()
                 self._source_snapshot()
+                self._achievement_snapshot()
                 self._check_month(month)
                 return
             tables = self._db.execute(
@@ -187,8 +207,27 @@ class GardenStore:
             self._db.execute(
                 "INSERT INTO garden_source_state VALUES (1,?)", (json.dumps(empty_source()),)
             )
+            self._create_achievements()
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+
+    def _create_achievements(self):
+        self._db.execute(ACHIEVEMENT_SCHEMA)
+        self._db.execute(
+            "INSERT INTO garden_achievement_state VALUES (1,?)",
+            (encode_achievements(AchievementState()),),
+        )
+
+    def _achievement_snapshot(self):
+        row = self._db.execute("SELECT payload FROM garden_achievement_state WHERE id=1").fetchone()
+        if row is None:
+            raise ValueError("Журнал достижений отсутствует; автоматический сброс запрещён.")
+        return decode_achievements(row[0])
+
+    def achievement_snapshot(self):
+        with self._db:
+            self._db.execute("BEGIN")
+            return self._achievement_snapshot()
 
     def _check_month(self, month):
         if month is not None and self._snapshot().garden.month != month:
@@ -231,12 +270,28 @@ class GardenStore:
             self._db.execute("BEGIN IMMEDIATE")
             current = self._snapshot()
             source, ledger = self._source_snapshot(), self._reward_snapshot()
+            achievements = self._achievement_snapshot()
             replay = self._receipt(key, digest, current)
             if replay:
                 return replay
             if current.revision != expected_revision:
                 raise ValueError("Сад или кошелёк изменились. Обновите снимок перед действием.")
-            source, reward = transition(source, identity, event, ledger, zone)
+            source, reward = transition(
+                source, identity, event, ledger, zone, achievement_state=achievements
+            )
+            if reward.achievements is None:
+                if achievements.welcomed:
+                    raise ValueError(
+                        "После запуска достижений нельзя доставлять события без их учёта."
+                    )
+            else:
+                encoded_achievements = encode_achievements(reward.achievements.state)
+                if len(encoded_achievements.encode()) > MAX_PAYLOAD:
+                    raise ValueError("Журнал достижений слишком большой.")
+                self._db.execute(
+                    "UPDATE garden_achievement_state SET payload=? WHERE id=1",
+                    (encoded_achievements,),
+                )
             source_payload, ledger_payload = (
                 json.dumps(source, sort_keys=True),
                 encode_ledger(reward.ledger),

@@ -323,6 +323,7 @@ def legacy_v3(pair, tmp_path, *, spend=False):
         payload = json.loads(db.execute("SELECT payload FROM garden_source_state").fetchone()[0])
         del payload["payments"]
         db.execute("UPDATE garden_source_state SET payload=?", (json.dumps(payload),))
+        db.execute("DROP TABLE garden_achievement_state")
         db.execute("PRAGMA user_version=3")
     return source, path, task
 

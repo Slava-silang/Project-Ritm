@@ -7,6 +7,7 @@ from uuid import UUID
 
 from ritm.domain.focus import focus_by_day
 from ritm.domain.garden import coins, completion_bonus, natural
+from ritm.domain.garden_achievements import AchievementReward
 from ritm.domain.garden_rewards import DAY_LIMIT, QUANTUM, RewardLedger
 from ritm.domain.weights import initialize_weights
 
@@ -181,7 +182,9 @@ class EventReward:
     ledger: RewardLedger
     paid_us: int
     bonus: Fraction
+    achievements: AchievementReward | None = None
 
     @property
     def coins(self):
-        return Fraction(self.paid_us * 10, QUANTUM) + self.bonus
+        extra = self.achievements.coins if self.achievements is not None else 0
+        return Fraction(self.paid_us * 10, QUANTUM) + self.bonus + extra
