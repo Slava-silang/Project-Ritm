@@ -23,10 +23,23 @@ class Product:
     terrain: str | None
     size: int | None
     doses: tuple[int, ...] = ()
+    footprint: tuple[tuple[int, int], ...] = ()
 
     @property
     def growing(self):
         return self.category in ("plant", "tree")
+
+    @property
+    def cell_offsets(self):
+        return self.footprint or tuple((x, y) for x in range(self.size) for y in range(self.size))
+
+    @property
+    def allowed_terrain(self):
+        return (
+            frozenset({"grass", "tilled_soil"})
+            if self.category == "decor"
+            else frozenset({self.terrain})
+        )
 
 
 CATALOG = MappingProxyType(
@@ -47,7 +60,15 @@ CATALOG = MappingProxyType(
             Product("oak", "Дуб", "tree", 320, "grass", 2, (16, 32, 64)),
             Product("sakura", "Сакура", "tree", 320, "grass", 2, (16, 32, 64)),
             *(
-                Product(key, title, "decor", price, None, None)
+                Product(
+                    key,
+                    title,
+                    "decor",
+                    price,
+                    None,
+                    None,
+                    footprint=((0, 0), (0, 1)) if key == "bench" else ((0, 0),),
+                )
                 for key, title, price in (
                     ("stone", "Камень", 40),
                     ("fence", "Секция забора", 40),
@@ -132,12 +153,7 @@ class GardenItem:
     def cells(self):
         if not self.placed:
             return frozenset()
-        size = self.product.size
-        if size is None:
-            raise ValueError("Размер украшения ещё не утверждён. Оно остаётся в инвентаре.")
-        return frozenset(
-            (x, y) for x in range(self.x, self.x + size) for y in range(self.y, self.y + size)
-        )
+        return frozenset((self.x + x, self.y + y) for x, y in self.product.cell_offsets)
 
     @property
     def sprite_id(self):
@@ -176,8 +192,10 @@ class Garden:
                 raise ValueError("Предмет выходит за границы поля.")
             if occupied.intersection(cells):
                 raise ValueError("Клетка занята другим предметом.")
-            if any(self.terrain[y * WIDTH + x] != item.product.terrain for x, y in cells):
-                raise ValueError("Растение не совместимо с этим грунтом.")
+            if any(
+                self.terrain[y * WIDTH + x] not in item.product.allowed_terrain for x, y in cells
+            ):
+                raise ValueError("Предмет не совместим с этим грунтом.")
             occupied.update(cells)
         if sum(i.placed and i.product.category == "tree" for i in self.items) > TREE_LIMIT:
             raise ValueError("На поле допускается не больше двух деревьев.")

@@ -511,3 +511,15 @@ RITM_UI_PLATFORM=xcb UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked pytest test
 ```
 
 Обе команды используют временные профили и управляемые часы, без личного сада/Google/ИИ/платных запросов. Native-сценарий проверяет включение, 2 часа перед завершением/надбавку, выключенный промежуток, остановку таймера, ошибку доставки/повтор, аварийный startup без оплаты отсутствия, restore с меньшим revision и прежнюю тему. Скриншоты сохраняются в временной папке pytest.
+
+## Графика и декор сада — T39d1
+
+Подготовлены допустимое размещение декора, проверяемый каталог 98 PNG и чистая проекция сцены/выбора клеток. Окно приложения пока без поля; T39d2 подключит QML/команды. Контракт/ресурсные пути/оси скамейки/переходы — GARDEN_SCENE.md. Пакет включает только игровые папки/манифесты (99 PNG с общей вспомогательной травой), без исходников генерации/макетов.
+
+```sh
+UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked --no-sync pytest tests/test_garden_scene.py tests/test_garden.py tests/test_garden_runtime.py tests/test_profile_backup.py -q
+UV_OFFLINE=true UV_CACHE_DIR=/tmp/ritm-uv-cache uv build --wheel --out-dir /tmp/ritm-t39d1-final-wheel
+UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked --no-sync python scripts/check_garden_wheel.py /tmp/ritm-t39d1-final-wheel/project_ritm-0.1.0-py3-none-any.whl
+```
+
+--no-sync использует уже установленное окружение с uv.lock, без повторной пересборки editable при правке упаковки. Для нового окружения сначала uv sync --locked. Первая сборка требует доступных зависимостей hatchling; после получения сборочных зависимостей проверена офлайн-сборка из кеша. Версия имени wheel берётся из ritm.__version__; при изменении версии подставить фактически созданный файл. Скрипт ставит локальный wheel во временную папку без зависимостей/сети и проверяет импорт/Qt PNG/проекцию из другого каталога, не меняя .venv и личный профиль. Standalone/Nuitka не пересобраны, T30–T32 не запускаются этим шагом.

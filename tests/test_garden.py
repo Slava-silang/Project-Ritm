@@ -178,14 +178,15 @@ def test_growth_cost_storage_stage_and_sale_refunds_only_plant_price():
         action(state, "sell", id=str(identifier))
 
 
-def test_decor_prices_inventory_but_no_unapproved_footprints():
+def test_decor_prices_approved_placement_and_no_growth():
     state = GardenState(Garden("2026-11"), 1000)
     for kind, price in (("stone", 40), ("fence", 40), ("lantern", 100), ("bench", 160)):
         before = state.balance
         state, identifier = action(state, "buy", kind=kind)
         assert state.balance == before - price and state.garden.item(identifier).stage == 0
-        with pytest.raises(ValueError, match="Размер украшения"):
-            action(state, "place", id=str(identifier), x=0, y=0)
+        placed, _ = action(state, "place", id=str(identifier), x=0, y=0)
+        assert placed.garden.item(identifier).placed
+        assert not state.garden.item(identifier).placed
         with pytest.raises(ValueError, match="не растёт"):
             action(state, "grow", id=str(identifier))
 
