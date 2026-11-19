@@ -10,11 +10,12 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from ritm.domain.garden import Garden, GardenItem, GardenState, apply_command, coins, natural
+from ritm.domain.garden_payments import validate_payment_totals
 from ritm.domain.garden_rewards import RewardLedger, decode_ledger, encode_ledger, reconcile_time
 from ritm.storage.garden_source_state import decode_source, empty_source
 
 APPLICATION_ID = 0x52494744
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 CURSOR_SCHEMA = (
     "CREATE TABLE garden_source_state (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)"
 )
@@ -144,6 +145,22 @@ class GardenStore:
                 )
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 version = SCHEMA_VERSION
+            if version == 3 and app_id == APPLICATION_ID:
+                self._snapshot()
+                self._reward_snapshot()
+                self._check_month(month)
+                row = self._db.execute(
+                    "SELECT payload FROM garden_source_state WHERE id=1"
+                ).fetchone()
+                if row is None:
+                    raise ValueError("Курсор сада отсутствует; автоматический сброс запрещён.")
+                source = decode_source(row[0], legacy=True)
+                self._db.execute(
+                    "UPDATE garden_source_state SET payload=? WHERE id=1",
+                    (json.dumps(source, sort_keys=True),),
+                )
+                self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+                version = SCHEMA_VERSION
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._snapshot()
                 self._reward_snapshot()
@@ -192,7 +209,10 @@ class GardenStore:
         row = self._db.execute("SELECT payload FROM garden_source_state WHERE id=1").fetchone()
         if row is None or len(row[0].encode()) > MAX_PAYLOAD:
             raise ValueError("Курсор сада повреждён; автоматический сброс запрещён.")
-        return decode_source(row[0])
+        source = decode_source(row[0])
+        if source["identity"] is not None and source["payments"] is not None:
+            validate_payment_totals(source["payments"], self._reward_snapshot())
+        return source
 
     def source_snapshot(self):
         with self._db:
@@ -232,6 +252,47 @@ class GardenStore:
             state = GardenState(
                 current.garden, current.balance + reward.coins, current.revision + 1
             )
+            return self._write(state, key, digest, None)
+
+    def rebuild_source_payments(self, events, *, zone, expected_revision, transition):
+        """Восстановить принадлежность старой оплаты, не менять выданную валюту."""
+        natural(expected_revision)
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            current = self._snapshot()
+            saved, saved_ledger = self._source_snapshot(), self._reward_snapshot()
+            if saved["payments"] is not None:
+                return GardenResult(current, replayed=True)
+            if current.revision != expected_revision or len(events) != saved["seq"]:
+                raise ValueError(
+                    "Снимок или история изменились перед восстановлением распределения."
+                )
+            rebuilt, ledger = empty_source(), RewardLedger()
+            for event in events:
+                encoded = json.dumps(
+                    {"event": event, "zone": zone}, sort_keys=True, allow_nan=False
+                )
+                digest = hashlib.sha256(encoded.encode()).hexdigest()
+                key = f"source:{saved['identity']}:{event['seq']}"
+                if self._receipt(key, digest, current) is None:
+                    raise ValueError("Для прежней оплаты не найдена подтверждённая квитанция.")
+                rebuilt, reward = transition(rebuilt, saved["identity"], event, ledger, zone)
+                ledger = reward.ledger
+            old = {k: v for k, v in saved.items() if k != "payments"}
+            new = {k: v for k, v in rebuilt.items() if k != "payments"}
+            if old != new or ledger != saved_ledger:
+                raise ValueError("История не соответствует сохранённому журналу оплаты.")
+            if any(rebuilt["payments"]["claims"].values()):
+                raise ValueError(
+                    "Восстановление распределения не должно выдавать прежние надбавки."
+                )
+            payload = json.dumps(rebuilt, sort_keys=True)
+            if len(payload.encode()) > MAX_PAYLOAD:
+                raise ValueError("Распределение оплаты слишком большое.")
+            self._db.execute("UPDATE garden_source_state SET payload=? WHERE id=1", (payload,))
+            digest = hashlib.sha256(payload.encode()).hexdigest()
+            key = f"payments-backfill:{saved['identity']}:{saved['seq']}"
+            state = GardenState(current.garden, current.balance, current.revision + 1)
             return self._write(state, key, digest, None)
 
     def _snapshot(self):

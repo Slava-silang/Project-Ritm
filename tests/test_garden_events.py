@@ -52,7 +52,7 @@ def test_subscription_is_explicit_baseline_and_task_changes_are_ordered(pair):
     assert [decode_task(e["payload"]["after"]).completed for e in events[1:]] == [True, False, True]
     assert service.drain() == 3 and service.drain() == 0
     assert garden.source_snapshot()["seq"] == 4
-    assert garden.snapshot().balance == 0  # Completion bonuses belong to T39c2b.
+    assert garden.snapshot().balance == 5  # One minimum bonus, despite the repeated mark.
     assert service.begin(NOW) == 0
 
 

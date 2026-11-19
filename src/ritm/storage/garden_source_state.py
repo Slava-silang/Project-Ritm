@@ -1,14 +1,23 @@
 """Кодек локального зеркала/курсора сада; данные задач остаются в профиле."""
 
 import json
+from decimal import DecimalException
 from uuid import UUID
 
 from ritm.domain.garden import natural
+from ritm.domain.garden_payments import empty_payments, validate_payments
 from ritm.storage.codec import decode_task
 
 
 def empty_source():
-    return {"identity": None, "seq": 0, "event_id": None, "tasks": {}, "focus": {}}
+    return {
+        "identity": None,
+        "seq": 0,
+        "event_id": None,
+        "tasks": {},
+        "focus": {},
+        "payments": empty_payments(),
+    }
 
 
 def _focus(payload):
@@ -31,11 +40,14 @@ def _focus(payload):
     return payload["id"], session
 
 
-def decode_source(payload):
+def decode_source(payload, *, legacy=False):
     try:
         state = json.loads(payload)
-        if type(state) is not dict or set(state) != set(empty_source()):
+        expected = set(empty_source()) - ({"payments"} if legacy else set())
+        if type(state) is not dict or set(state) != expected:
             raise ValueError
+        if legacy:
+            state["payments"] = None if state["identity"] is not None else empty_payments()
         natural(state["seq"])
         if state["identity"] is None:
             if state != empty_source():
@@ -53,6 +65,8 @@ def decode_source(payload):
         for identifier, session in state["focus"].items():
             if _focus({"id": identifier, "session": session})[1] is None:
                 raise ValueError
+        if state["payments"] is not None:
+            validate_payments(state["payments"])
         return state
-    except (ValueError, TypeError, KeyError, AttributeError, RecursionError):
+    except (ValueError, TypeError, KeyError, AttributeError, RecursionError, DecimalException):
         raise ValueError("Курсор/зеркало сада повреждены; автоматический сброс запрещён.") from None

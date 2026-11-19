@@ -1,15 +1,18 @@
 """Последовательная доставка событий задач в отдельную БД сада, без Qt."""
 
 import json
+from fractions import Fraction
+from functools import partial
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from ritm.domain.garden_payments import EventReward, allocate_time, claim_completion
 from ritm.domain.garden_rewards import reconcile_time
 from ritm.storage.codec import decode_task
 from ritm.storage.garden_source_state import _focus
 
 
-def apply_event(state, identity, event, ledger, zone):
+def apply_event(state, identity, event, ledger, zone, *, completion_awards=True):
     UUID(identity)
     if state["identity"] not in (None, identity):
         raise ValueError("Источник сада не совпадает с базой задач.")
@@ -19,6 +22,8 @@ def apply_event(state, identity, event, ledger, zone):
     if type(event["seq"]) is not int or event["seq"] != state["seq"] + 1:
         raise ValueError("Нарушена последовательность событий сада.")
     state = json.loads(json.dumps(state))
+    if state["payments"] is None:
+        raise ValueError("Сначала восстановите распределение прежней оплаты из журнала источника.")
     kind, payload = event["kind"], event["payload"]
     enabled = None
     if kind == "begin":
@@ -74,8 +79,18 @@ def apply_event(state, identity, event, ledger, zone):
     reward = reconcile_time(
         ledger, intervals, now_us=event["happened_us"], zone=ZoneInfo(zone), enabled=enabled
     )
+    allocate_time(state["payments"], state["focus"], reward, ZoneInfo(zone))
+    bonus = Fraction()
+    if kind == "task" and completion_awards:
+        bonus = claim_completion(
+            state["payments"],
+            decode_task(payload["before"]) if payload["before"] else None,
+            decode_task(payload["after"]) if payload["after"] else None,
+            enabled=reward.ledger.enabled,
+            restored=payload["restore"],
+        )
     state.update(identity=identity, seq=event["seq"], event_id=event["id"])
-    return state, reward
+    return state, EventReward(reward.ledger, reward.paid_us, bonus)
 
 
 class GardenEventService:
@@ -90,6 +105,9 @@ class GardenEventService:
         return self.drain()
 
     def drain(self):
+        cursor = self.garden.source_snapshot()
+        if cursor["payments"] is None:
+            self._rebuild_payments(cursor)
         count = 0
         while True:
             cursor = self.garden.source_snapshot()
@@ -107,3 +125,24 @@ class GardenEventService:
                     transition=apply_event,
                 )
                 count += 1
+
+    def _rebuild_payments(self, cursor):
+        events, sequence, event_id = [], 0, None
+        while sequence < cursor["seq"]:
+            _, batch = self.source.garden_events_after(
+                identity=cursor["identity"], sequence=sequence, event_id=event_id
+            )
+            accepted = [e for e in batch if e["seq"] <= cursor["seq"]]
+            if not accepted:
+                raise ValueError("Недостаточно истории для восстановления распределения оплаты.")
+            events.extend(accepted)
+            sequence, event_id = accepted[-1]["seq"], accepted[-1]["id"]
+        self.source.garden_events_after(
+            identity=cursor["identity"], sequence=cursor["seq"], event_id=cursor["event_id"]
+        )
+        self.garden.rebuild_source_payments(
+            events,
+            zone=self.zone,
+            expected_revision=self.garden.snapshot().revision,
+            transition=partial(apply_event, completion_awards=False),
+        )
