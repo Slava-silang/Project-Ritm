@@ -22,6 +22,29 @@ def create_source(db):
 
 
 class GardenSourceMixin:
+    def garden_source_status(self):
+        """Сохраняемая настройка из того же журнала, что входит в backup."""
+        with self._db:
+            self._db.execute("BEGIN")
+            subscribed = self._garden_subscribed()
+            row = self._db.execute(
+                "SELECT kind,payload FROM garden_events WHERE kind IN ('begin','enabled') "
+                "ORDER BY seq DESC LIMIT 1"
+            ).fetchone()
+            if subscribed != (row is not None):
+                raise ValueError("Настройка сада не совпадает с журналом; сброс запрещён.")
+            enabled = bool(row and row["kind"] == "begin")
+            if row and row["kind"] == "enabled":
+                payload = json.loads(row["payload"])
+                if (
+                    type(payload) is not dict
+                    or set(payload) != {"enabled"}
+                    or type(payload["enabled"]) is not bool
+                ):
+                    raise ValueError("Переключатель сада повреждён; автоматический сброс запрещён.")
+                enabled = payload["enabled"]
+            return {"subscribed": subscribed, "enabled": enabled}
+
     def _garden_subscribed(self):
         row = self._db.execute("SELECT subscribed FROM garden_source WHERE id=1").fetchone()
         if row is None:

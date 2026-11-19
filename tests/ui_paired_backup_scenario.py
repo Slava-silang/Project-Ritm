@@ -27,10 +27,12 @@ try:
     gui.click("backupsButton")
     gui.click("createBackupButton")
     archive = profile / "backups" / controller.backups["saved"]
+    with GardenStore(profile / "garden.sqlite3") as garden:
+        before = garden.snapshot()
     controller.saveTask("", {"title": "После копии"})
     gui.idle()
     with GardenStore(profile / "garden.sqlite3") as garden:
-        before = garden.snapshot()
+        assert garden.snapshot().balance == before.balance + 300
     controller.inspectBackup(QUrl.fromLocalFile(str(archive)))
     gui.idle()
     assert controller.backups["preview"]["garden"]
@@ -39,6 +41,8 @@ try:
     gui.click("cancelBackupRestore")
     with TaskStore(profile / "tasks.sqlite3") as source:
         assert len(source.list_tasks()) == 2
+    with GardenStore(profile / "garden.sqlite3") as garden:
+        assert garden.snapshot().balance == before.balance + 300
     controller.saveAppearance("dark", 150)
     gui.idle()
     window.setWidth(640)

@@ -117,7 +117,7 @@ def apply_event(
 
 
 class GardenEventService:
-    """Оба соединения принадлежат вызывающему потоку; обычный UI пока не подключён."""
+    """Оба соединения принадлежат вызывающему потоку; UI вызывает через storage-worker."""
 
     def __init__(self, source, garden, *, zone="UTC", award_achievements=False):
         ZoneInfo(zone)

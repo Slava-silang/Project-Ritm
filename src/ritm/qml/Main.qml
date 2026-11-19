@@ -86,7 +86,7 @@ ApplicationWindow {
     ].concat(window.backend.categories)
 
     property bool modalOpen: [
-        companionDialog, planningDialog, assistantDialog, systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
+        companionDialog, planningDialog, assistantDialog, systemDialog, gardenDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
@@ -473,6 +473,12 @@ ApplicationWindow {
                     petFullscreen.checked = window.companion.state.hide_fullscreen;
                     companionDialog.open();
                 }
+            }
+            Button {
+                objectName: "gardenButton"
+                text: qsTr("Сад")
+                enabled: !window.backend.busy
+                onClicked: gardenDialog.open()
             }
             Button {
                 objectName: "appearanceButton"
@@ -1217,6 +1223,85 @@ ApplicationWindow {
     }
 
     EditorDialog {
+        id: gardenDialog
+        title: qsTr("Сад и достижения")
+        anchors.centerIn: parent
+        width: Math.min(window.appearance.dp(480), window.width - 32)
+        height: Math.min(window.appearance.dp(520), window.height - 32)
+        modal: true
+        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
+        contentItem: ScrollView {
+            id: gardenScroll
+            contentWidth: availableWidth
+            clip: true
+            ColumnLayout {
+                width: gardenScroll.availableWidth
+                spacing: window.appearance.dp(12)
+                CheckBox {
+                    objectName: "gardenEnabled"
+                    text: qsTr("Учитывать работу для сада")
+                    checked: window.backend.garden.enabled
+                    enabled: !window.backend.busy
+                    onClicked: window.backend.setGardenEnabled(checked)
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Награды считаются с включения. При выключении монеты и достижения сохраняются, пропущенное время не начисляется. Поле и магазин появятся на следующем этапе.")
+                }
+                Label {
+                    objectName: "gardenBalance"
+                    text: qsTr("Монеты: %1").arg(window.backend.garden.balance)
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Выполнено задач: %1. Оплачено часов: %2.").arg(window.backend.garden.roots).arg(window.backend.garden.paidHours)
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Космос — 30 оплаченных часов. Джунгли — 15 выполненных главных задач. Открытые темы остаются навсегда.")
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: window.backend.garden.welcomed ? qsTr("Знакомство с садом: получено 100 монет.") : qsTr("Первое включение: 100 монет.")
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: window.backend.garden.firstTask ? qsTr("Первая новая задача: получено 300 монет.") : qsTr("Первая новая задача после включения: 300 монет.")
+                }
+                Label {
+                    objectName: "gardenError"
+                    Layout.fillWidth: true
+                    visible: !!window.backend.garden.error
+                    text: window.backend.garden.error
+                    wrapMode: Text.Wrap
+                    color: window.appearance.colors.warning
+                }
+                Button {
+                    objectName: "retryGarden"
+                    visible: !!window.backend.garden.error
+                    text: qsTr("Повторить обновление")
+                    enabled: !window.backend.busy
+                    onClicked: window.backend.reload()
+                }
+            }
+        }
+        footer: RowLayout {
+            Item { Layout.fillWidth: true }
+            Button {
+                objectName: "closeGarden"
+                text: qsTr("Закрыть")
+                enabled: !window.backend.busy
+                onClicked: gardenDialog.close()
+            }
+        }
+    }
+
+    EditorDialog {
         id: appearanceDialog
         property var themeKeys: ["space", "jungle", "light", "dark", "system"]
         property var scales: [100, 125, 150]
@@ -1240,6 +1325,19 @@ ApplicationWindow {
                     objectName: "appearanceTheme"
                     Layout.fillWidth: true
                     model: [qsTr("Космос"), qsTr("Джунгли"), qsTr("Светлая"), qsTr("Тёмная"), qsTr("Как в системе")]
+                }
+                Caption {
+                    objectName: "themeUnlockHint"
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: {
+                        const key = appearanceDialog.themeKeys[appearanceTheme.currentIndex];
+                        if (window.backend.garden.themes.indexOf(key) >= 0 || key === "system")
+                            return qsTr("Тема доступна.");
+                        if (key === window.backend.appearance.theme)
+                            return qsTr("Ранее выбранная тема сохранена. После смены повторный выбор потребует достижения.");
+                        return key === "space" ? qsTr("Откроется за 30 оплаченных часов в саду.") : qsTr("Откроется за 15 выполненных главных задач в саду.");
+                    }
                 }
                 Caption {
                     Layout.fillWidth: true
@@ -1278,7 +1376,7 @@ ApplicationWindow {
             AccentButton {
                 objectName: "saveAppearance"
                 text: qsTr("Применить")
-                enabled: !window.backend.busy
+                enabled: !window.backend.busy && (window.backend.garden.themes.indexOf(appearanceDialog.themeKeys[appearanceTheme.currentIndex]) >= 0 || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === "system" || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === window.backend.appearance.theme)
                 onClicked: {
                     appearanceDialog.attempted = true;
                     window.backend.saveAppearance(
