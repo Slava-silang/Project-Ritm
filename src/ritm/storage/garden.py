@@ -430,10 +430,16 @@ class GardenStore:
         )
         return GardenResult(state, item_id)
 
-    def execute(self, identifier: UUID, command: dict, *, expected_revision: int):
+    def execute(
+        self, identifier: UUID, command: dict, *, expected_revision: int, expected_identity=None
+    ):
         if not isinstance(identifier, UUID):
             raise ValueError("Нужен UUID операции сада.")
         natural(expected_revision)
+        if expected_identity is not None and (
+            type(expected_identity) is not str or str(UUID(expected_identity)) != expected_identity
+        ):
+            raise ValueError("Некорректное поколение сада.")
         try:
             payload = json.dumps(command, sort_keys=True, ensure_ascii=True, allow_nan=False)
         except (ValueError, TypeError, RecursionError):
@@ -444,6 +450,11 @@ class GardenStore:
         key = "operation:" + str(identifier)
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
+            if (
+                expected_identity is not None
+                and self._source_snapshot()["identity"] != expected_identity
+            ):
+                raise ValueError("Сад восстановлен или заменён. Обновите снимок перед действием.")
             current = self._snapshot()
             replay = self._receipt(key, digest, current)
             if replay:

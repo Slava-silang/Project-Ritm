@@ -50,6 +50,8 @@ ApplicationWindow {
     property bool narrow: width < window.appearance.dp(850)
     property bool detailOpen: true
     property string page: "tasks"
+    onPageChanged: backend.setGardenVisible(window.visible && page === "garden")
+    onVisibleChanged: backend.setGardenVisible(window.visible && page === "garden")
     property bool closeWhenIdle: false
 
     property bool exiting: false
@@ -86,11 +88,11 @@ ApplicationWindow {
     ].concat(window.backend.categories)
 
     property bool modalOpen: [
-        companionDialog, planningDialog, assistantDialog, systemDialog, gardenDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
+        companionDialog, planningDialog, assistantDialog, systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
-    ].some(dialog => dialog.visible) || pomodoroPane.dialogsOpen
+    ].some(dialog => dialog.visible) || pomodoroPane.dialogsOpen || gardenPane.dialogsOpen
     property bool shortcutsEnabled: !window.backend.busy && !window.modalOpen
 
     function openAppearance() {
@@ -357,6 +359,7 @@ ApplicationWindow {
         anchors.margins: window.appearance.dp(window.narrow ? 16 : 24)
         spacing: window.appearance.dp(16)
         RowLayout {
+            visible: window.page !== "garden" || !window.narrow
             Layout.fillWidth: true
             Rectangle {
                 implicitWidth: window.appearance.dp(44)
@@ -378,7 +381,7 @@ ApplicationWindow {
                     elide: Text.ElideRight
                     text: window.page === "tasks" ? qsTr("Мои задачи")
                         : window.page === "calendar" ? qsTr("Календарь")
-                        : window.page === "statistics" ? qsTr("Статистика") : qsTr("Материалы")
+                        : window.page === "statistics" ? qsTr("Статистика") : window.page === "garden" ? qsTr("Сад") : qsTr("Материалы")
                     font.pixelSize: window.appearance.dp(25)
                     font.weight: Font.DemiBold
                     color: window.appearance.colors.text
@@ -478,7 +481,8 @@ ApplicationWindow {
                 objectName: "gardenButton"
                 text: qsTr("Сад")
                 enabled: !window.backend.busy
-                onClicked: gardenDialog.open()
+                highlighted: window.page === "garden"
+                onClicked: window.page = "garden"
             }
             Button {
                 objectName: "appearanceButton"
@@ -518,6 +522,7 @@ ApplicationWindow {
         }
         PomodoroPane {
             id: pomodoroPane
+            visible: window.page !== "garden"
             Layout.fillWidth: true
             Layout.maximumWidth: Infinity
             backend: window.backend
@@ -525,7 +530,7 @@ ApplicationWindow {
         }
         ColumnLayout {
             Layout.fillWidth: true
-            visible: !!window.activeFocus.elapsed
+            visible: !!window.activeFocus.elapsed && window.page !== "garden"
             spacing: window.appearance.dp(4)
             RowLayout {
                 Layout.fillWidth: true
@@ -668,6 +673,17 @@ ApplicationWindow {
                     }
                 }
             }
+        }
+        GardenPane {
+            id: gardenPane
+            objectName: "gardenPane"
+            backend: window.backend
+            appearance: window.appearance
+            visible: window.page === "garden"
+            active: window.visible && visible
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            onLeave: window.page = "tasks"
         }
         StatisticsPane {
             appearance: window.appearance
@@ -1219,85 +1235,6 @@ ApplicationWindow {
             Layout.fillWidth: true
             text: qsTr("В своём темпе. Шаг за шагом.")
             horizontalAlignment: Text.AlignHCenter
-        }
-    }
-
-    EditorDialog {
-        id: gardenDialog
-        title: qsTr("Сад и достижения")
-        anchors.centerIn: parent
-        width: Math.min(window.appearance.dp(480), window.width - 32)
-        height: Math.min(window.appearance.dp(520), window.height - 32)
-        modal: true
-        closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
-        contentItem: ScrollView {
-            id: gardenScroll
-            contentWidth: availableWidth
-            clip: true
-            ColumnLayout {
-                width: gardenScroll.availableWidth
-                spacing: window.appearance.dp(12)
-                CheckBox {
-                    objectName: "gardenEnabled"
-                    text: qsTr("Учитывать работу для сада")
-                    checked: window.backend.garden.enabled
-                    enabled: !window.backend.busy
-                    onClicked: window.backend.setGardenEnabled(checked)
-                }
-                Caption {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: qsTr("Награды считаются с включения. При выключении монеты и достижения сохраняются, пропущенное время не начисляется. Поле и магазин появятся на следующем этапе.")
-                }
-                Label {
-                    objectName: "gardenBalance"
-                    text: qsTr("Монеты: %1").arg(window.backend.garden.balance)
-                }
-                Caption {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: qsTr("Выполнено задач: %1. Оплачено часов: %2.").arg(window.backend.garden.roots).arg(window.backend.garden.paidHours)
-                }
-                Caption {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: qsTr("Космос — 30 оплаченных часов. Джунгли — 15 выполненных главных задач. Открытые темы остаются навсегда.")
-                }
-                Caption {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: window.backend.garden.welcomed ? qsTr("Знакомство с садом: получено 100 монет.") : qsTr("Первое включение: 100 монет.")
-                }
-                Caption {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: window.backend.garden.firstTask ? qsTr("Первая новая задача: получено 300 монет.") : qsTr("Первая новая задача после включения: 300 монет.")
-                }
-                Label {
-                    objectName: "gardenError"
-                    Layout.fillWidth: true
-                    visible: !!window.backend.garden.error
-                    text: window.backend.garden.error
-                    wrapMode: Text.Wrap
-                    color: window.appearance.colors.warning
-                }
-                Button {
-                    objectName: "retryGarden"
-                    visible: !!window.backend.garden.error
-                    text: qsTr("Повторить обновление")
-                    enabled: !window.backend.busy
-                    onClicked: window.backend.reload()
-                }
-            }
-        }
-        footer: RowLayout {
-            Item { Layout.fillWidth: true }
-            Button {
-                objectName: "closeGarden"
-                text: qsTr("Закрыть")
-                enabled: !window.backend.busy
-                onClicked: gardenDialog.close()
-            }
         }
     }
 

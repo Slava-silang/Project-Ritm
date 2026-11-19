@@ -8,7 +8,7 @@ from datetime import UTC, date, datetime, timedelta, tzinfo
 from decimal import Decimal, InvalidOperation
 from fractions import Fraction
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from PySide6.QtCore import Property, QObject, QTimer, QTimeZone, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
@@ -23,6 +23,7 @@ from ritm.domain.statistics import week_start, weekly_statistics
 from ritm.domain.task_list import is_overdue, query_tasks
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.domain.weights import initialize_weights, progress
+from ritm.platform.garden_assets import load_garden_assets
 from ritm.storage.appearance import DEFAULT, load_appearance, save_appearance
 from ritm.storage.attachments import (
     clean_deleted_attachments,
@@ -39,6 +40,7 @@ from ritm.storage.backup import (
     set_backup_folder,
 )
 from ritm.storage.focus_settings import load_focus_settings, save_focus_settings
+from ritm.storage.garden import GardenStore
 from ritm.storage.sqlite import TaskStore
 from ritm.ui.calendar import (
     WEEKDAYS,
@@ -49,6 +51,8 @@ from ritm.ui.calendar import (
     local_instant,
     shift_period,
 )
+from ritm.ui.garden_editor import editor_view, empty_editor, fertilizer_quote, placement_preview
+from ritm.ui.garden_scene import cell_at, garden_scene
 
 DATE_FORMAT = "%d.%m.%Y %H:%M"
 
@@ -233,6 +237,10 @@ class TaskController(QObject):
     appearanceChanged = Signal()
     focusSettingsChanged = Signal()
     gardenChanged = Signal()
+    gardenBoardChanged = Signal()
+    gardenSceneChanged = Signal()
+    gardenCommandDone = Signal(str)
+    _gardenBoardReady = Signal(object)
     _gardenReady = Signal(object)
     pomodoroChanged = Signal()
     pomodoroEnded = Signal(str)
@@ -273,6 +281,17 @@ class TaskController(QObject):
             QTimeZone.systemTimeZoneId()
         ).decode()
         self._garden = empty_view()
+        self._garden_visible = False
+        self._garden_wants_view = False
+        self._garden_board = empty_editor()
+        self._garden_scene = {}
+        self._garden_preview_state = None
+        self._garden_pending = None
+        self._garden_graphics_error = ""
+        self._garden_asset_cache = None
+        self._garden_shape_key = None
+        self._garden_scene_cache = None
+        self._gardenBoardReady.connect(self._set_garden_board)
         self._garden_live_focus = False  # Worker-owned; restore invalidates even during close.
         self._garden_timer = QTimer(self)
         self._garden_timer.setInterval(5000)
@@ -335,6 +354,137 @@ class TaskController(QObject):
     def setGardenEnabled(self, enabled):
         self._submit("garden_settings", {"enabled": enabled})
 
+    @Property("QVariantMap", notify=gardenBoardChanged)
+    def gardenBoard(self):
+        return self._garden_board
+
+    @Property("QVariantMap", notify=gardenSceneChanged)
+    def gardenScene(self):
+        return self._garden_scene
+
+    @Property(bool, notify=stateChanged)
+    def gardenCommandPending(self):
+        return self._garden_pending is not None
+
+    @Slot(bool)
+    def setGardenVisible(self, visible):
+        if self._garden_visible != visible:
+            self._garden_visible = visible
+            if not self._busy:
+                self._submit("garden_view", {})
+
+    @Slot(str, result="QVariantMap")
+    def gardenQuote(self, text):
+        return fertilizer_quote(text, self._garden_board["fertilizerMax"])
+
+    @Slot(float, float, result="QVariantMap")
+    def gardenCellAt(self, px, py):
+        cell = cell_at(self._garden_scene, px, py) if self._garden_scene else None
+        if cell is None:
+            return {"valid": False}
+        return {"valid": True, **self._garden_scene["cells"][cell[1] * 10 + cell[0]]}
+
+    @Slot(str, int, int, result="QVariantMap")
+    def gardenPlacement(self, identifier, x, y):
+        if self._garden_preview_state is None:
+            return {"error": "Сначала откройте сад.", "cells": []}
+        message = placement_preview(self._garden_preview_state, identifier, x, y)
+        item = next((i for i in self._garden_board["items"] if i["id"] == identifier), None)
+        return {
+            "error": message,
+            "cells": [{"x": x + dx, "y": y + dy} for dx, dy in item["offsets"]] if item else [],
+        }
+
+    @Slot("QVariantMap")
+    def gardenCommand(self, command):
+        if self._busy or self._closing or self._garden_pending is not None:
+            return
+        if not self._garden_board["ready"]:
+            return
+        self._garden_pending = {
+            "operation": str(uuid4()),
+            "command": dict(command),
+            "revision": self._garden_board["revision"],
+            "identity": self._garden_board["identity"],
+        }
+        self._submit("garden_command", dict(self._garden_pending))
+
+    @Slot()
+    def retryGardenCommand(self):
+        if self._garden_pending is not None:
+            self._submit("garden_command", dict(self._garden_pending))
+
+    @Slot(object)
+    def _set_garden_board(self, payload):
+        self._garden_preview_state = payload["snapshot"]
+        if self._garden_board != payload["board"]:
+            self._garden_board = payload["board"]
+            self.gardenBoardChanged.emit()
+        if self._garden_scene != payload["scene"]:
+            self._garden_scene = payload["scene"]
+            self.gardenSceneChanged.emit()
+
+    def _prepare_garden_board(self, state, identity, summary):
+        payload = {"board": empty_editor(), "scene": {}, "snapshot": None}
+        if (
+            self._garden_wants_view
+            and not self._closing
+            and summary["enabled"]
+            and state is not None
+        ):
+            try:
+                if self._garden_graphics_error:
+                    raise ValueError(self._garden_graphics_error)
+                if self._garden_asset_cache is None:
+                    self._garden_asset_cache = load_garden_assets()
+                shape = (state.garden.terrain, state.garden.items)
+                if shape != self._garden_shape_key:
+                    self._garden_scene_cache = garden_scene(state.garden, self._garden_asset_cache)
+                    self._garden_shape_key = shape
+                payload = {
+                    "board": editor_view(state, identity, self._garden_asset_cache),
+                    "scene": self._garden_scene_cache,
+                    "snapshot": state,
+                }
+            except Exception:
+                self._garden_graphics_error = (
+                    "Не удалось загрузить графику сада. Проверьте установку и повторите обновление."
+                )
+                payload["board"] = empty_editor(self._garden_graphics_error)
+        if not payload["board"]["ready"]:
+            self._garden_asset_cache = self._garden_shape_key = self._garden_scene_cache = None
+        self._gardenBoardReady.emit(payload)
+
+    def _run_garden_command(self, store, data):
+        try:
+            if not store.garden_source_status()["enabled"]:
+                raise ValueError("Включите учёт сада перед изменением участка.")
+            # Deliver first: a financial tick may have invalidated the displayed revision.
+            summary = self._sync_garden(store)
+            if summary["error"]:
+                raise ValueError(summary["error"])
+            with GardenStore(self._profile / "garden.sqlite3") as garden:
+                result = garden.execute(
+                    UUID(data["operation"]),
+                    data["command"],
+                    expected_revision=data["revision"],
+                    expected_identity=data["identity"],
+                )
+            outcome, error = (
+                {"resolved": True, "itemId": str(result.item_id) if result.item_id else ""},
+                "",
+            )
+        except ValueError as failure:
+            outcome, error = {"resolved": True}, str(failure)
+        except Exception:
+            outcome, error = (
+                {"resolved": False},
+                "Не удалось подтвердить действие сада. "
+                "Повторите ту же операцию, чтобы проверить результат.",
+            )
+        self._sync_garden(store)
+        self._ready.emit(outcome, error, "garden_command")
+
     def _on_garden_tick(self):
         if not self._busy:
             self._submit("garden_tick", {})
@@ -370,6 +520,7 @@ class TaskController(QObject):
                 zone=self._garden_zone,
                 checkpoint=checkpoint,
                 enabled=enabled,
+                with_state=self._garden_wants_view,
             )
         except Exception as error:
             # Optional delivery must never misreport an already committed task as lost.
@@ -386,6 +537,8 @@ class TaskController(QObject):
                     else "Не удалось обновить сад. Проверьте папку профиля и повторите обновление."
                 ),
             }
+        snapshot, identity = state.pop("_state", None), state.pop("_identity", None)
+        self._prepare_garden_board(snapshot, identity, state)
         self._gardenReady.emit(state)
         return state
 
@@ -865,9 +1018,13 @@ class TaskController(QObject):
             dict(self._calendar_config),
             self._statistics_anchor,
             self._focus_loaded and self._recovering is None,
+            self._garden_visible,
         )
 
-    def _run(self, action, data, selected, config, statistics_anchor, live_focus):
+    def _run(self, action, data, selected, config, statistics_anchor, live_focus, garden_visible):
+        self._garden_wants_view = garden_visible
+        if action in ("refresh", "garden_view", "garden_settings", "restore_backup"):
+            self._garden_graphics_error = ""
         self._garden_live_focus = (
             live_focus and not data.get("startup") and action != "restore_backup"
         )
@@ -928,10 +1085,13 @@ class TaskController(QObject):
                     store.checkpoint_pomodoro(self._clock(), startup=True)
                     live_focus = False
                     self._garden_live_focus = False
-                if action in ("garden_settings", "garden_tick"):
+                if action == "garden_command":
+                    self._run_garden_command(store, data)
+                    return
+                if action in ("garden_settings", "garden_tick", "garden_view"):
                     state = self._sync_garden(
                         store,
-                        checkpoint=live_focus,
+                        checkpoint=live_focus and action != "garden_view",
                         enabled=data["enabled"] if action == "garden_settings" else None,
                     )
                     self._ready.emit(
@@ -1326,6 +1486,12 @@ class TaskController(QObject):
         completed_before = {task.id for task in self._source if task.completed}
         if self._closing:
             return
+        if action == "garden_command" and result is not None:
+            if result["resolved"]:
+                self._garden_pending = None
+            if not error:
+                self.gardenCommandDone.emit(result.get("itemId", ""))
+            result = None
         if action == "focus_settings" and result is not None:
             self._pause_on_system = result
             self._focus_settings_error = ""
@@ -1416,6 +1582,8 @@ class TaskController(QObject):
         if action in ("system_pause", "pomodoro_system_pause"):
             self.systemPauseDone.emit()
         self._drain_system_pause()
+        if not self._busy and self._garden_wants_view != self._garden_visible:
+            self._submit("garden_view", {})
         if not error:
             self.actionSucceeded.emit(action)
             if action == "complete":

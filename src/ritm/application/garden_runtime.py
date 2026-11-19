@@ -8,6 +8,12 @@ from ritm.domain.garden_achievements import HOUR, AchievementState
 from ritm.storage.garden import GardenStore
 
 
+def coin_text(amount):
+    # Display does not round an unaffordable exact balance up to a shop price.
+    cents = amount.numerator * 100 // amount.denominator
+    return f"{cents // 100}.{cents % 100:02}"
+
+
 def empty_view():
     return {
         "subscribed": False,
@@ -23,7 +29,7 @@ def empty_view():
     }
 
 
-def sync_garden(source, profile, now, *, zone, enabled=None, checkpoint=False):
+def sync_garden(source, profile, now, *, zone, enabled=None, checkpoint=False, with_state=False):
     """Не подменяет ошибки пустым садом. Соединения принадлежат вызывающему worker."""
     status = source.garden_source_status()
     path = profile / "garden.sqlite3"
@@ -49,12 +55,10 @@ def sync_garden(source, profile, now, *, zone, enabled=None, checkpoint=False):
                 source.set_garden_source_enabled(enabled, now)
         service.drain()
         state, achievements = garden.snapshot(), garden.achievement_snapshot()
-        return {
+        view = {
             **source.garden_source_status(),
             "error": "",
-            "balance": format(
-                Decimal(state.balance.numerator) / Decimal(state.balance.denominator), ".2f"
-            ),
+            "balance": coin_text(state.balance),
             "roots": len(achievements.roots),
             "paidHours": format(Decimal(achievements.paid_us) / HOUR, ".2f"),
             "themes": list(achievements.themes),
@@ -70,3 +74,7 @@ def sync_garden(source, profile, now, *, zone, enabled=None, checkpoint=False):
             "welcomed": achievements.welcomed,
             "firstTask": achievements.first_task,
         }
+        if with_state:
+            view["_state"] = state
+            view["_identity"] = garden.source_snapshot()["identity"]
+        return view

@@ -523,3 +523,15 @@ UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked --no-sync python scripts/check_g
 ```
 
 --no-sync использует уже установленное окружение с uv.lock, без повторной пересборки editable при правке упаковки. Для нового окружения сначала uv sync --locked. Первая сборка требует доступных зависимостей hatchling; после получения сборочных зависимостей проверена офлайн-сборка из кеша. Версия имени wheel берётся из ritm.__version__; при изменении версии подставить фактически созданный файл. Скрипт ставит локальный wheel во временную папку без зависимостей/сети и проверяет импорт/Qt PNG/проекцию из другого каталога, не меняя .venv и личный профиль. Standalone/Nuitka не пересобраны, T30–T32 не запускаются этим шагом.
+
+## Редактор сада — T39d2
+
+«Сад» открывает отдельную страницу. Включите учёт, купите побег, выберите его в инвентаре и нажмите «Разместить», затем свободное основание. Escape/правая кнопка отменяют размещение. Грунт меняется отдельным режимом, рост требует полной дозы удобрения, продажа растения подтверждается. Кнопка «Прогресс» сохраняет прежние сведения; полные месячные достижения — T39d3. На узком экране «Предметы» открывает панель поверх поля, 1×/2× не изменяет масштаб текста. Контракт — GARDEN_EDITOR.md.
+
+```sh
+UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked --no-sync pytest tests/test_garden_editor.py tests/test_garden_runtime.py tests/test_garden_scene.py tests/test_profile_backup.py tests/test_appearance.py tests/test_focus_settings.py -q
+RITM_UI_PLATFORM=xcb UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked --no-sync pytest tests/test_garden_editor.py::test_garden_editor_gui tests/test_garden_runtime.py::test_garden_worker_gui tests/test_appearance.py::test_theme_scale_shortcuts_and_restart -q
+UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked --no-sync pyside6-qmllint src/ritm/qml/*.qml
+```
+
+Сценарии используют временные профили и управляемые часы. «Не удалось подтвердить действие» означает, что конверт сохранён в текущем процессе: «Проверить действие» повторяет тот же UUID, не новую покупку. Конфликт после restore/другого изменения обновляет снимок и не применяет старую команду. Ошибка графики не сбрасывает кошелёк; исправить установку и нажать «Обновить сад». Скрытие страницы/выключение снимают графический Loader, финансовый учёт следует своему переключателю. Все операции/ресурсные проверки выполняются в storage-worker. Windows/Wayland/самостоятельная поставка по-прежнему требуют отдельной проверки.
