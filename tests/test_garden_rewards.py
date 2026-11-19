@@ -229,6 +229,7 @@ def test_v1_migration_preserves_items_wallet_and_receipts(tmp_path):
         store.credit("old", 300)
         before = store.snapshot()
     with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE garden_source_binding")
         db.execute("DROP TABLE garden_achievement_state")
         db.execute("DROP TABLE garden_source_state")
         db.execute("DROP TABLE garden_reward_state")

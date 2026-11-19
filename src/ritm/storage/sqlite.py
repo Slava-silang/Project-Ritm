@@ -18,6 +18,7 @@ from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.storage.attachments import Attachment
 from ritm.storage.codec import decode_task, encode_task
 from ritm.storage.garden_source import GardenSourceMixin, create_source
+from ritm.storage.profile_guard import connect_profile
 
 APPLICATION_ID = 0x5249544D
 SCHEMA_VERSION = 13
@@ -190,7 +191,7 @@ class TaskStore(GardenSourceMixin):
         self._clock = clock or (lambda: datetime.now(UTC))
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        self._db = sqlite3.connect(path)
+        self._db = connect_profile(path)
         self._db.row_factory = sqlite3.Row
         self._db.execute("PRAGMA foreign_keys=ON")
         try:

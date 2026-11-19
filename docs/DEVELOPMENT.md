@@ -488,3 +488,15 @@ UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked pytest tests/test_garden*.py -q
 ```
 
 Проверки — временные базы и подменные часы. До обычного профиля остаются согласованный backup обеих БД и worker/настройка T39c3b–T39c3c. Обычный интерфейс/выбор тем пока не изменены, новых зависимостей нет.
+
+
+## T39c3b — парные копии и восстановление
+
+Контракт — PAIRED_BACKUP.md. Основная база v13, сад v6; миграция не включает сад. Формат 1 без сада читается, формат 2 содержит обе базы и проверки пары. Служебные файлы в профиле: .ritm-restore-lock.sqlite3, при незавершённой операции .ritm-restore.json и .ritm-restore-<UUID>/. Они не включаются в архив. Фоновый startup-worker выполняет recover_profile до открытия базы; прямые вызовы хранилищ при pending отклоняются.
+
+```sh
+UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked pytest tests/test_profile_backup.py tests/test_backup.py -q
+RITM_UI_PLATFORM=xcb UV_CACHE_DIR=/tmp/ritm-uv-cache uv run --locked pytest tests/test_profile_backup.py::test_paired_backup_confirmation_and_narrow_gui -q
+```
+
+Прерывание тестируется отдельным процессом с os._exit на временном профиле. Нельзя удалять страховочные файлы при ошибке recovery: сначала устранить причину записи/проверки, затем повторить recover_profile. При успешном restore обычный worker T39c3c должен перечитать всё состояние сада по новому поколению. Никакой обычный профиль в этих проверках не используется.

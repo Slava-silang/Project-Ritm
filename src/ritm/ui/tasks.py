@@ -33,6 +33,7 @@ from ritm.storage.backup import (
     create_backup,
     daily_backup,
     inspect_backup,
+    recover_profile,
     restore_backup,
     set_backup_folder,
 )
@@ -810,6 +811,7 @@ class TaskController(QObject):
                 self._ready.emit(saved, "", action)
                 return
             if data.get("startup"):
+                recover_profile(self._profile)
                 try:
                     focus_settings = load_focus_settings(self._profile)
                 except (ValueError, OSError) as error:

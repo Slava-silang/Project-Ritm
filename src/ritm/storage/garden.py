@@ -18,9 +18,13 @@ from ritm.domain.garden_achievements import (
 from ritm.domain.garden_payments import validate_payment_totals
 from ritm.domain.garden_rewards import RewardLedger, decode_ledger, encode_ledger, reconcile_time
 from ritm.storage.garden_source_state import decode_source, empty_source
+from ritm.storage.profile_guard import connect_profile
 
 APPLICATION_ID = 0x52494744
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
+BINDING_SCHEMA = (
+    "CREATE TABLE garden_source_binding (id INTEGER PRIMARY KEY CHECK(id=1), identity TEXT)"
+)
 ACHIEVEMENT_SCHEMA = (
     "CREATE TABLE garden_achievement_state "
     "(id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)"
@@ -121,7 +125,7 @@ class GardenStore:
     def __init__(self, path: Path, *, month=None):
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        self._db = sqlite3.connect(path)
+        self._db = connect_profile(path)
         self._db.row_factory = sqlite3.Row
         self._db.execute("PRAGMA foreign_keys=ON")
         try:
@@ -153,6 +157,7 @@ class GardenStore:
                     "INSERT INTO garden_source_state VALUES (1,?)", (json.dumps(empty_source()),)
                 )
                 self._create_achievements()
+                self._create_binding()
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 version = SCHEMA_VERSION
             if version == 3 and app_id == APPLICATION_ID:
@@ -170,6 +175,7 @@ class GardenStore:
                     (json.dumps(source, sort_keys=True),),
                 )
                 self._create_achievements()
+                self._create_binding()
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 version = SCHEMA_VERSION
             if version == 4 and app_id == APPLICATION_ID:
@@ -178,6 +184,16 @@ class GardenStore:
                 self._source_snapshot()
                 self._check_month(month)
                 self._create_achievements()
+                self._create_binding()
+                self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+                version = SCHEMA_VERSION
+            if version == 5 and app_id == APPLICATION_ID:
+                self._snapshot()
+                self._reward_snapshot()
+                self._source_snapshot()
+                self._achievement_snapshot()
+                self._check_month(month)
+                self._create_binding()
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 version = SCHEMA_VERSION
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
@@ -185,6 +201,12 @@ class GardenStore:
                 self._reward_snapshot()
                 self._source_snapshot()
                 self._achievement_snapshot()
+                binding = self._binding_snapshot()
+                if binding is not None and self._source_snapshot()["identity"] not in (
+                    None,
+                    binding,
+                ):
+                    raise ValueError("Привязка источника сада повреждена.")
                 self._check_month(month)
                 return
             tables = self._db.execute(
@@ -208,6 +230,7 @@ class GardenStore:
                 "INSERT INTO garden_source_state VALUES (1,?)", (json.dumps(empty_source()),)
             )
             self._create_achievements()
+            self._create_binding()
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
@@ -217,6 +240,19 @@ class GardenStore:
             "INSERT INTO garden_achievement_state VALUES (1,?)",
             (encode_achievements(AchievementState()),),
         )
+
+    def _create_binding(self):
+        self._db.execute(BINDING_SCHEMA)
+        self._db.execute("INSERT INTO garden_source_binding VALUES (1,NULL)")
+
+    def _binding_snapshot(self):
+        row = self._db.execute("SELECT identity FROM garden_source_binding WHERE id=1").fetchone()
+        if row is None:
+            raise ValueError("Привязка источника сада отсутствует.")
+        if row[0] is not None:
+            if not isinstance(row[0], str) or str(UUID(row[0])) != row[0]:
+                raise ValueError("Привязка источника сада повреждена.")
+        return row[0]
 
     def _achievement_snapshot(self):
         row = self._db.execute("SELECT payload FROM garden_achievement_state WHERE id=1").fetchone()
@@ -271,6 +307,9 @@ class GardenStore:
             current = self._snapshot()
             source, ledger = self._source_snapshot(), self._reward_snapshot()
             achievements = self._achievement_snapshot()
+            binding = self._binding_snapshot()
+            if binding is not None and binding != identity:
+                raise ValueError("Источник сада не совпадает с восстановленным профилем.")
             replay = self._receipt(key, digest, current)
             if replay:
                 return replay
@@ -279,6 +318,7 @@ class GardenStore:
             source, reward = transition(
                 source, identity, event, ledger, zone, achievement_state=achievements
             )
+            self._db.execute("UPDATE garden_source_binding SET identity=? WHERE id=1", (identity,))
             if reward.achievements is None:
                 if achievements.welcomed:
                     raise ValueError(

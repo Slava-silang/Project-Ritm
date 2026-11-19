@@ -1405,7 +1405,10 @@ ApplicationWindow {
             Caption {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
-                text: qsTr("Данные из копии заменят текущие задачи, расписание, историю фокуса, вложения и материалы.")
+                objectName: "backupScope"
+                text: (window.backend.backups.preview || {}).garden
+                    ? qsTr("Данные из копии заменят текущие задачи, расписание, историю фокуса, вложения, материалы и сад, включая монеты и достижения.")
+                    : qsTr("Данные из копии заменят текущие задачи, расписание, историю фокуса, вложения и материалы. В этой копии сада нет.")
             }
             Label {
                 Layout.fillWidth: true
