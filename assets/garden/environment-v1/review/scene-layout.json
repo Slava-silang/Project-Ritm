@@ -1,0 +1,416 @@
+{
+  "synthetic": true,
+  "field": [
+    10,
+    10
+  ],
+  "map": [
+    [
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass"
+    ],
+    [
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass"
+    ],
+    [
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass"
+    ],
+    [
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass"
+    ],
+    [
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass"
+    ],
+    [
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "grass"
+    ],
+    [
+      "water",
+      "water",
+      "grass",
+      "grass",
+      "grass",
+      "grass",
+      "tilled_soil",
+      "tilled_soil",
+      "tilled_soil",
+      "tilled_soil"
+    ],
+    [
+      "water",
+      "water",
+      "water",
+      "water",
+      "grass",
+      "grass",
+      "tilled_soil",
+      "tilled_soil",
+      "tilled_soil",
+      "tilled_soil"
+    ],
+    [
+      "water",
+      "water",
+      "water",
+      "water",
+      "grass",
+      "grass",
+      "tilled_soil",
+      "tilled_soil",
+      "tilled_soil",
+      "tilled_soil"
+    ],
+    [
+      "grass",
+      "water",
+      "water",
+      "grass",
+      "grass",
+      "grass",
+      "tilled_soil",
+      "tilled_soil",
+      "tilled_soil",
+      "grass"
+    ]
+  ],
+  "items": [
+    {
+      "id": "daisy_04",
+      "cells": [
+        [
+          0,
+          3
+        ]
+      ],
+      "x": 248,
+      "y": 240,
+      "depth": 256
+    },
+    {
+      "id": "fence",
+      "cells": [
+        [
+          4,
+          0
+        ]
+      ],
+      "x": 472,
+      "y": 256,
+      "depth": 272
+    },
+    {
+      "id": "poppy_04",
+      "cells": [
+        [
+          1,
+          4
+        ]
+      ],
+      "x": 248,
+      "y": 272,
+      "depth": 288
+    },
+    {
+      "id": "oak_04",
+      "cells": [
+        [
+          2,
+          1
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          2
+        ]
+      ],
+      "x": 376,
+      "y": 256,
+      "depth": 288
+    },
+    {
+      "id": "fence",
+      "cells": [
+        [
+          4,
+          1
+        ]
+      ],
+      "x": 440,
+      "y": 272,
+      "depth": 288
+    },
+    {
+      "id": "fence",
+      "cells": [
+        [
+          4,
+          2
+        ]
+      ],
+      "x": 408,
+      "y": 288,
+      "depth": 304
+    },
+    {
+      "id": "bench",
+      "cells": [
+        [
+          5,
+          2
+        ],
+        [
+          5,
+          3
+        ]
+      ],
+      "x": 424,
+      "y": 312,
+      "depth": 336
+    },
+    {
+      "id": "water_lily_04",
+      "cells": [
+        [
+          7,
+          1
+        ]
+      ],
+      "x": 536,
+      "y": 320,
+      "depth": 336
+    },
+    {
+      "id": "rock",
+      "cells": [
+        [
+          0,
+          9
+        ]
+      ],
+      "x": 56,
+      "y": 336,
+      "depth": 352
+    },
+    {
+      "id": "sakura_04",
+      "cells": [
+        [
+          1,
+          6
+        ],
+        [
+          2,
+          6
+        ],
+        [
+          1,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ],
+      "x": 184,
+      "y": 320,
+      "depth": 352
+    },
+    {
+      "id": "lantern",
+      "cells": [
+        [
+          5,
+          4
+        ]
+      ],
+      "x": 376,
+      "y": 336,
+      "depth": 352
+    },
+    {
+      "id": "fern_04",
+      "cells": [
+        [
+          3,
+          7
+        ]
+      ],
+      "x": 216,
+      "y": 352,
+      "depth": 368
+    },
+    {
+      "id": "poppy_04",
+      "cells": [
+        [
+          4,
+          6
+        ]
+      ],
+      "x": 280,
+      "y": 352,
+      "depth": 368
+    },
+    {
+      "id": "fern_02",
+      "cells": [
+        [
+          5,
+          5
+        ]
+      ],
+      "x": 344,
+      "y": 352,
+      "depth": 368
+    },
+    {
+      "id": "water_lily_02",
+      "cells": [
+        [
+          8,
+          2
+        ]
+      ],
+      "x": 536,
+      "y": 352,
+      "depth": 368
+    },
+    {
+      "id": "daisy_04",
+      "cells": [
+        [
+          4,
+          8
+        ]
+      ],
+      "x": 216,
+      "y": 384,
+      "depth": 400
+    },
+    {
+      "id": "carrot_04",
+      "cells": [
+        [
+          6,
+          6
+        ]
+      ],
+      "x": 344,
+      "y": 384,
+      "depth": 400
+    },
+    {
+      "id": "carrot_02",
+      "cells": [
+        [
+          7,
+          6
+        ]
+      ],
+      "x": 376,
+      "y": 400,
+      "depth": 416
+    },
+    {
+      "id": "carrot_03",
+      "cells": [
+        [
+          8,
+          6
+        ]
+      ],
+      "x": 408,
+      "y": 416,
+      "depth": 432
+    },
+    {
+      "id": "pumpkin_04",
+      "cells": [
+        [
+          7,
+          8
+        ]
+      ],
+      "x": 312,
+      "y": 432,
+      "depth": 448
+    },
+    {
+      "id": "pumpkin_03",
+      "cells": [
+        [
+          8,
+          7
+        ]
+      ],
+      "x": 376,
+      "y": 432,
+      "depth": 448
+    }
+  ],
+  "occupied_plant_cells": 21,
+  "adult_plant_cells": 16,
+  "selected": "fern_02",
+  "wallet": 1240,
+  "fertilizer": 24
+}

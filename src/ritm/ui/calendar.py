@@ -103,6 +103,7 @@ def calendar_view(
     selected: date,
     today: date,
     zone: tzinfo | None = None,
+    sources: dict | None = None,
 ) -> dict:
     days = period_days(anchor, mode)
     by_id = {task.id: task for task in tasks}
@@ -123,6 +124,9 @@ def calendar_view(
             "kind": "block" if task is not None else "event",
             "isEvent": task is None,
             "eventTitle": block.title,
+            "sourceUrls": (sources or {}).get(
+                ("task", str(task.id)) if task else ("event", str(block.id)), []
+            ),
             "title": task.title if task is not None else block.title,
             "warning": " · ".join(messages),
             "duration": duration_text(block.duration),

@@ -16,6 +16,19 @@ from ritm.domain.calendar import from_instant_us
 from ritm.domain.weights import initialize_weights
 from ritm.storage.attachments import managed_attachment_path
 from ritm.storage.codec import decode_task
+from ritm.storage.profile_backup import (
+    GARDEN,
+    PAIR_FORMAT,
+    profile_operation,
+    restore_paired,
+    snapshot_databases,
+    validate_garden,
+    validate_pair,
+)
+from ritm.storage.profile_backup import (
+    recover_profile as recover_profile,
+)
+from ritm.storage.profile_guard import ensure_profile_available
 from ritm.storage.sqlite import APPLICATION_ID, SCHEMA_VERSION, TaskStore
 
 DATABASE = "tasks.sqlite3"
@@ -107,7 +120,7 @@ def _manifest(archive: ZipFile) -> tuple[dict, str]:
     record = json.loads(content)
     if (
         not isinstance(record, dict)
-        or record.get("format") != FORMAT
+        or record.get("format") not in (FORMAT, PAIR_FORMAT)
         or record.get("kind") not in ("auto", "manual")
         or not isinstance(record.get("files"), dict)
         or datetime.fromisoformat(record["created"]).utcoffset() is None
@@ -119,6 +132,11 @@ def _manifest(archive: ZipFile) -> tuple[dict, str]:
 def create_backup(
     profile: Path, folder: Path, now: datetime, *, automatic_id: str | None = None
 ) -> Path:
+    with profile_operation(profile):
+        return _create_backup(profile, folder, now, automatic_id=automatic_id)
+
+
+def _create_backup(profile, folder, now, *, automatic_id=None):
     folder.mkdir(parents=True, exist_ok=True)
     kind = "auto" if automatic_id is not None else "manual"
     stamp = (
@@ -128,10 +146,16 @@ def create_backup(
     )
     target = folder / f"ritm-{kind}-{stamp}.zip"
     with TemporaryDirectory(prefix="ritm-snapshot-") as folder_name:
-        snapshot = Path(folder_name) / DATABASE
-        _copy_database(profile / DATABASE, snapshot, create=True)
+        directory = Path(folder_name)
+        snapshot = directory / DATABASE
+        has_garden = snapshot_databases(profile, directory)
         files = _file_paths(profile, _validate_database(snapshot))
         files[DATABASE] = snapshot
+        pair = None
+        if has_garden:
+            validate_garden(directory / GARDEN)
+            pair = validate_pair(directory)
+            files[GARDEN] = directory / GARDEN
         with NamedTemporaryFile(dir=folder, delete=False) as stream:
             temporary = Path(stream.name)
         try:
@@ -158,16 +182,18 @@ def create_backup(
                     MANIFEST,
                     json.dumps(
                         {
-                            "format": FORMAT,
+                            "format": PAIR_FORMAT if has_garden else FORMAT,
                             "kind": kind,
                             "created": now.isoformat(),
                             "files": hashes,
+                            **({"pair": pair} if has_garden else {}),
                         }
                     ),
                 )
             with temporary.open("rb+") as stream:
                 os.fsync(stream.fileno())
             os.replace(temporary, target)
+            _sync_directory(folder)
         finally:
             temporary.unlink(missing_ok=True)
     return target
@@ -223,11 +249,21 @@ def _validate_database(path: Path) -> dict[UUID, str]:
     with TaskStore(Path(":memory:")) as reference, closing(_sqlite(path, "ro")) as db:
         version = db.execute("PRAGMA user_version").fetchone()[0]
         expected = [tuple(row) for row in schema(reference._db)]
+        if version < 13:
+            expected = [row for row in expected if row[0] not in ("garden_source", "garden_events")]
+        if version < 12:
+            expected = [
+                row
+                for row in expected
+                if row[0] not in ("source_links", "source_links_target", "mail_proposals")
+            ]
+        if version < 11:
+            expected = [row for row in expected if row[0] != "pomodoro"]
         if version == 9:
             expected = [row for row in expected if row[0] != "applied_proposals"]
         if (
             db.execute("PRAGMA application_id").fetchone()[0] != APPLICATION_ID
-            or version not in (9, SCHEMA_VERSION)
+            or version not in (9, 10, 11, 12, SCHEMA_VERSION)
             or schema(db) != expected
             or db.execute("PRAGMA integrity_check").fetchall() != [("ok",)]
             or db.execute("PRAGMA foreign_key_check").fetchone() is not None
@@ -237,6 +273,8 @@ def _validate_database(path: Path) -> dict[UUID, str]:
     with TaskStore(path) as store:
         for task in store.list_tasks():
             initialize_weights(task)
+        store.get_pomodoro()
+        store.list_source_links()
         store.list_categories()
         store.list_work_blocks()
         for session in store.list_focus_sessions():
@@ -264,8 +302,17 @@ def _read_archive(source: Path, staging: Path, expected: str | None = None) -> t
                 if _transfer(origin, dest) != hashes[DATABASE]:
                     raise ValueError("Контрольная сумма базы не совпадает")
             files = _validate_database(staging / DATABASE)
+            has_garden = record["format"] == PAIR_FORMAT
+            if has_garden:
+                with archive.open(GARDEN) as origin, (staging / GARDEN).open("xb") as dest:
+                    if _transfer(origin, dest) != hashes[GARDEN]:
+                        raise ValueError("Контрольная сумма сада не совпадает")
+                validate_garden(staging / GARDEN)
+                if validate_pair(staging) != record.get("pair"):
+                    raise ValueError("Описание пары задач и сада повреждено")
             paths = _file_paths(staging, files)
-            if set(hashes) != set(paths) | {DATABASE}:
+            databases = {DATABASE, GARDEN} if has_garden else {DATABASE}
+            if set(hashes) != set(paths) | databases:
                 raise ValueError("В архиве отсутствует вложение или материал")
             for name, path in paths.items():
                 with archive.open(name) as origin:
@@ -279,7 +326,7 @@ def _read_archive(source: Path, staging: Path, expected: str | None = None) -> t
                             os.fsync(dest.fileno())
                     if actual != hashes[name]:
                         raise ValueError("Контрольная сумма вложения не совпадает")
-            return {"created": record["created"], "token": token}, files
+            return {"created": record["created"], "token": token, "garden": has_garden}, files
     except (BadZipFile, KeyError, TypeError, RuntimeError, sqlite3.Error) as error:
         raise ValueError("Резервная копия повреждена или не поддерживается") from error
 
@@ -291,6 +338,19 @@ def inspect_backup(source: Path) -> dict:
 
 
 def restore_backup(profile: Path, source: Path, token: str):
+    with profile_operation(profile):
+        ensure_profile_available(profile)
+        try:
+            with ZipFile(source) as archive:
+                record, _ = _manifest(archive)
+        except (BadZipFile, KeyError, TypeError, RuntimeError) as error:
+            raise ValueError("Резервная копия повреждена или не поддерживается") from error
+        if (profile / GARDEN).exists() or record["format"] == PAIR_FORMAT:
+            return restore_paired(profile, source, token)
+        return _restore_legacy(profile, source, token)
+
+
+def _restore_legacy(profile: Path, source: Path, token: str):
     """Publish new files first, then atomically replace SQLite through its backup API."""
     with TemporaryDirectory(dir=profile, prefix=".restore-") as directory:
         staging = Path(directory)

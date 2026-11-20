@@ -1,0 +1,217 @@
+{
+  "status": "passed",
+  "scope": "artifact checks only, no application code or UI run",
+  "assets": [
+    {
+      "id": "grass",
+      "checks": [
+        "exact_canvas",
+        "alpha_binary",
+        "transparent_background",
+        "palette_max_16",
+        "sha256"
+      ],
+      "colours": 16,
+      "bounds": [
+        0,
+        0,
+        64,
+        40
+      ]
+    },
+    {
+      "id": "daisy_01",
+      "checks": [
+        "exact_canvas",
+        "alpha_binary",
+        "transparent_background",
+        "palette_max_16",
+        "sha256",
+        "unclipped",
+        "ground_baseline",
+        "foot_near_anchor"
+      ],
+      "colours": 16,
+      "bounds": [
+        26,
+        72,
+        12,
+        9
+      ]
+    },
+    {
+      "id": "daisy_02",
+      "checks": [
+        "exact_canvas",
+        "alpha_binary",
+        "transparent_background",
+        "palette_max_16",
+        "sha256",
+        "unclipped",
+        "ground_baseline",
+        "foot_near_anchor"
+      ],
+      "colours": 16,
+      "bounds": [
+        24,
+        55,
+        16,
+        26
+      ]
+    },
+    {
+      "id": "daisy_03",
+      "checks": [
+        "exact_canvas",
+        "alpha_binary",
+        "transparent_background",
+        "palette_max_16",
+        "sha256",
+        "unclipped",
+        "ground_baseline",
+        "foot_near_anchor"
+      ],
+      "colours": 16,
+      "bounds": [
+        18,
+        45,
+        28,
+        36
+      ]
+    },
+    {
+      "id": "daisy_04",
+      "checks": [
+        "exact_canvas",
+        "alpha_binary",
+        "transparent_background",
+        "palette_max_16",
+        "sha256",
+        "unclipped",
+        "ground_baseline",
+        "foot_near_anchor"
+      ],
+      "colours": 15,
+      "bounds": [
+        17,
+        34,
+        29,
+        47
+      ]
+    },
+    {
+      "id": "oak_01",
+      "checks": [
+        "exact_canvas",
+        "alpha_binary",
+        "transparent_background",
+        "palette_max_16",
+        "sha256",
+        "unclipped",
+        "ground_baseline",
+        "foot_near_anchor"
+      ],
+      "colours": 16,
+      "bounds": [
+        88,
+        213,
+        14,
+        12
+      ]
+    },
+    {
+      "id": "oak_02",
+      "checks": [
+        "exact_canvas",
+        "alpha_binary",
+        "transparent_background",
+        "palette_max_16",
+        "sha256",
+        "unclipped",
+        "ground_baseline",
+        "foot_near_anchor"
+      ],
+      "colours": 15,
+      "bounds": [
+        83,
+        180,
+        28,
+        45
+      ]
+    },
+    {
+      "id": "oak_03",
+      "checks": [
+        "exact_canvas",
+        "alpha_binary",
+        "transparent_background",
+        "palette_max_16",
+        "sha256",
+        "unclipped",
+        "ground_baseline",
+        "foot_near_anchor"
+      ],
+      "colours": 16,
+      "bounds": [
+        49,
+        136,
+        96,
+        90
+      ]
+    },
+    {
+      "id": "oak_04",
+      "checks": [
+        "exact_canvas",
+        "alpha_binary",
+        "transparent_background",
+        "palette_max_16",
+        "sha256",
+        "unclipped",
+        "ground_baseline",
+        "foot_near_anchor"
+      ],
+      "colours": 16,
+      "bounds": [
+        24,
+        44,
+        156,
+        184
+      ]
+    }
+  ],
+  "growth": "four stages per species; height/width strictly increase; shared canvas and anchor",
+  "nearest_2x": [
+    {
+      "file": "stages-2x.png",
+      "pixel_replication": "exact 2x2 blocks"
+    },
+    {
+      "file": "scene-2x.png",
+      "pixel_replication": "exact 2x2 blocks"
+    },
+    {
+      "file": "tiles-2x.png",
+      "pixel_replication": "exact 2x2 blocks"
+    }
+  ],
+  "tiling": {
+    "patch": [
+      3,
+      3
+    ],
+    "surface": [
+      192,
+      96
+    ],
+    "depth": 8,
+    "expected_pixels": 10944,
+    "transparent_holes": 0,
+    "unexpected_pixels": 0
+  },
+  "manual_review": "recorded separately in README.md",
+  "limitations": [
+    "No QML integration, Linux UI or Windows validation.",
+    "Only daylight sample; full catalogue and theme palettes are outside this export."
+  ]
+}

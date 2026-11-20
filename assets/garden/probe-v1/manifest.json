@@ -1,0 +1,588 @@
+{
+  "version": 1,
+  "status": "technical_probe",
+  "palette": "daylight",
+  "tile_surface": [
+    64,
+    32
+  ],
+  "tile_depth": 8,
+  "grid_vectors": [
+    [
+      32,
+      16
+    ],
+    [
+      -32,
+      16
+    ]
+  ],
+  "rotation": false,
+  "anchor_convention": "integer pixel coordinate from top-left; plant stem/root foot at ground anchor",
+  "notes": [
+    "Source artwork generated with image_gen; crop, nearest resize, binary alpha export, 16-colour non-dithered palette and transparent canvas placement. Original source alpha retained in sources.",
+    "Grass generated top/soil colours baked into exact 64x32 2:1 diamond with 8px sides for seamless tiling.",
+    "Not connected to application; no prices or game logic.",
+    "Review files are assembled from these exact sprite PNGs."
+  ],
+  "assets": [
+    {
+      "id": "grass",
+      "file": "sprites/grass.png",
+      "canvas": [
+        64,
+        40
+      ],
+      "anchor": [
+        32,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "terrain": "grass",
+      "stage": null,
+      "content_bounds": [
+        0,
+        0,
+        64,
+        40
+      ],
+      "alpha": {
+        "transparent_pixels": 960,
+        "opaque_pixels": 1600,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/grass.png",
+        "canvas": [
+          1536,
+          1024
+        ],
+        "crop": [
+          307,
+          282,
+          922,
+          526
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": "2:1 diamond 64x32 with 8px extrusion",
+        "content": [
+          64,
+          40
+        ],
+        "position": [
+          0,
+          0
+        ],
+        "source_foot": [
+          32,
+          39
+        ]
+      },
+      "sha256": "b05181f5f7b81b332ea78d45888e13343eb6c81cfca9ff3576a26e946bd484a4"
+    },
+    {
+      "id": "daisy_01",
+      "file": "sprites/daisy_01.png",
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "terrain": "grass",
+      "stage": 1,
+      "content_bounds": [
+        26,
+        72,
+        12,
+        9
+      ],
+      "alpha": {
+        "transparent_pixels": 6082,
+        "opaque_pixels": 62,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/daisy_01.png",
+        "canvas": [
+          1536,
+          1024
+        ],
+        "crop": [
+          576,
+          384,
+          385,
+          277
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          12,
+          9
+        ],
+        "position": [
+          26,
+          72
+        ],
+        "source_foot": [
+          6,
+          8
+        ]
+      },
+      "sha256": "bb02112cc83b6b2cbf340b3c75648f068dc05adb0b2b6b964ab26493bb5df618"
+    },
+    {
+      "id": "daisy_02",
+      "file": "sprites/daisy_02.png",
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "terrain": "grass",
+      "stage": 2,
+      "content_bounds": [
+        24,
+        55,
+        16,
+        26
+      ],
+      "alpha": {
+        "transparent_pixels": 5931,
+        "opaque_pixels": 213,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/daisy_02.png",
+        "canvas": [
+          1536,
+          1024
+        ],
+        "crop": [
+          581,
+          227,
+          374,
+          602
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          16,
+          26
+        ],
+        "position": [
+          24,
+          55
+        ],
+        "source_foot": [
+          8,
+          25
+        ]
+      },
+      "sha256": "23be7f92a33eecaa4d5285ebf51a5fa0d9b95e2db403a39ec615b7a438f919df"
+    },
+    {
+      "id": "daisy_03",
+      "file": "sprites/daisy_03.png",
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "terrain": "grass",
+      "stage": 3,
+      "content_bounds": [
+        18,
+        45,
+        28,
+        36
+      ],
+      "alpha": {
+        "transparent_pixels": 5654,
+        "opaque_pixels": 490,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/daisy_03.png",
+        "canvas": [
+          1071,
+          1469
+        ],
+        "crop": [
+          123,
+          234,
+          800,
+          1025
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          28,
+          36
+        ],
+        "position": [
+          18,
+          45
+        ],
+        "source_foot": [
+          14,
+          35
+        ]
+      },
+      "sha256": "74ae73d1ffb932b9dcb84f116d10df8b6b5b502ccfa05d67d1dc54208b7c1a09"
+    },
+    {
+      "id": "daisy_04",
+      "file": "sprites/daisy_04.png",
+      "canvas": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        80
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "terrain": "grass",
+      "stage": 4,
+      "content_bounds": [
+        17,
+        34,
+        29,
+        47
+      ],
+      "alpha": {
+        "transparent_pixels": 5233,
+        "opaque_pixels": 911,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/daisy_04.png",
+        "canvas": [
+          1536,
+          1024
+        ],
+        "crop": [
+          560,
+          168,
+          416,
+          696
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          29,
+          48
+        ],
+        "position": [
+          17,
+          33
+        ],
+        "source_foot": [
+          15,
+          47
+        ]
+      },
+      "sha256": "f0ea36670a7e93e6a0c0ab30aa257040dde3716b8dcffdf623a0df0557bb624a"
+    },
+    {
+      "id": "oak_01",
+      "file": "sprites/oak_01.png",
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "terrain": "grass",
+      "stage": 1,
+      "content_bounds": [
+        88,
+        213,
+        14,
+        12
+      ],
+      "alpha": {
+        "transparent_pixels": 49066,
+        "opaque_pixels": 86,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/oak_01.png",
+        "canvas": [
+          1312,
+          1199
+        ],
+        "crop": [
+          412,
+          410,
+          459,
+          388
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          14,
+          12
+        ],
+        "position": [
+          88,
+          213
+        ],
+        "source_foot": [
+          8,
+          11
+        ]
+      },
+      "sha256": "910a45b445cad779c713db706ed575342e1e35b048a8358f35107cffcb21384d"
+    },
+    {
+      "id": "oak_02",
+      "file": "sprites/oak_02.png",
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "terrain": "grass",
+      "stage": 2,
+      "content_bounds": [
+        83,
+        180,
+        28,
+        45
+      ],
+      "alpha": {
+        "transparent_pixels": 48604,
+        "opaque_pixels": 548,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/oak_02.png",
+        "canvas": [
+          922,
+          1706
+        ],
+        "crop": [
+          208,
+          407,
+          533,
+          860
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          28,
+          45
+        ],
+        "position": [
+          83,
+          180
+        ],
+        "source_foot": [
+          13,
+          44
+        ]
+      },
+      "sha256": "a9654e50e49459bccc43dac7bd8bf9af8eb60391a6d36ef64abf9f683c850d28"
+    },
+    {
+      "id": "oak_03",
+      "file": "sprites/oak_03.png",
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "terrain": "grass",
+      "stage": 3,
+      "content_bounds": [
+        49,
+        136,
+        96,
+        90
+      ],
+      "alpha": {
+        "transparent_pixels": 44711,
+        "opaque_pixels": 4441,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/oak_03.png",
+        "canvas": [
+          1219,
+          1290
+        ],
+        "crop": [
+          135,
+          179,
+          962,
+          905
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          96,
+          90
+        ],
+        "position": [
+          49,
+          136
+        ],
+        "source_foot": [
+          47,
+          88
+        ]
+      },
+      "sha256": "6912b772e13dd241718ab04f3f1f67df23b4318f033ef80e5a228b69d0e762dd"
+    },
+    {
+      "id": "oak_04",
+      "file": "sprites/oak_04.png",
+      "canvas": [
+        192,
+        256
+      ],
+      "anchor": [
+        96,
+        224
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "terrain": "grass",
+      "stage": 4,
+      "content_bounds": [
+        24,
+        44,
+        156,
+        184
+      ],
+      "alpha": {
+        "transparent_pixels": 33698,
+        "opaque_pixels": 15454,
+        "partial_pixels": 0
+      },
+      "source": {
+        "file": "sources/oak_04.png",
+        "canvas": [
+          1261,
+          1247
+        ],
+        "crop": [
+          154,
+          45,
+          983,
+          1161
+        ]
+      },
+      "export": {
+        "resampling": "nearest",
+        "alpha_threshold": 128,
+        "palette_colours_max": 16,
+        "dither": 0,
+        "tile_geometry_bake": null,
+        "content": [
+          156,
+          184
+        ],
+        "position": [
+          24,
+          44
+        ],
+        "source_foot": [
+          72,
+          180
+        ]
+      },
+      "sha256": "75c373037a1efb8ac5b34a4f56573b58a486ed8bada40602ebe5e1943c0d46a0"
+    }
+  ]
+}

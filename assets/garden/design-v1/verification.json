@@ -1,0 +1,122 @@
+{
+  "status": "passed",
+  "scope": "static mockups, not a running UI",
+  "mockups": [
+    {
+      "name": "garden-wide-light",
+      "result": "passed",
+      "size": [
+        1280,
+        900
+      ],
+      "svg_png_equal": true,
+      "regions_inside_artboard": true
+    },
+    {
+      "name": "garden-wide-dark",
+      "result": "passed",
+      "size": [
+        1280,
+        900
+      ],
+      "svg_png_equal": true,
+      "regions_inside_artboard": true
+    },
+    {
+      "name": "garden-wide-inventory",
+      "result": "passed",
+      "size": [
+        1280,
+        900
+      ],
+      "svg_png_equal": true,
+      "regions_inside_artboard": true
+    },
+    {
+      "name": "garden-empty-light",
+      "result": "passed",
+      "size": [
+        1280,
+        900
+      ],
+      "svg_png_equal": true,
+      "regions_inside_artboard": true
+    },
+    {
+      "name": "garden-fertilizer-shop",
+      "result": "passed",
+      "size": [
+        1280,
+        900
+      ],
+      "svg_png_equal": true,
+      "regions_inside_artboard": true
+    },
+    {
+      "name": "garden-compact-light",
+      "result": "passed",
+      "size": [
+        640,
+        480
+      ],
+      "svg_png_equal": true,
+      "regions_inside_artboard": true
+    },
+    {
+      "name": "garden-compact-shop",
+      "result": "passed",
+      "size": [
+        640,
+        480
+      ],
+      "svg_png_equal": true,
+      "regions_inside_artboard": true
+    },
+    {
+      "name": "garden-compact-dark",
+      "result": "passed",
+      "size": [
+        640,
+        480
+      ],
+      "svg_png_equal": true,
+      "regions_inside_artboard": true
+    },
+    {
+      "name": "garden-achievements",
+      "result": "passed",
+      "size": [
+        1280,
+        900
+      ],
+      "svg_png_equal": true,
+      "regions_inside_artboard": true
+    },
+    {
+      "name": "garden-archive",
+      "result": "passed",
+      "size": [
+        1280,
+        900
+      ],
+      "svg_png_equal": true,
+      "regions_inside_artboard": true
+    }
+  ],
+  "scene": {
+    "field": [
+      10,
+      10
+    ],
+    "occupied": 21,
+    "adult": 16,
+    "synthetic": true
+  },
+  "palette_source": "src/ritm/qml/Appearance.qml read only",
+  "manual_review": "See DESIGN.md",
+  "limitations": [
+    "Layout remains a proposal until user review.",
+    "No keyboard/mouse/runtime/Windows verification.",
+    "Daylight artwork reused in dark UI; other asset palettes and animations separate."
+  ]
+}

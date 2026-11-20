@@ -13,6 +13,8 @@ PHRASES = {
         "Готово! Можно порадоваться результату.",
         "Ещё одна задача выполнена. Отличная работа!",
     ),
+    "pomodoro_work": ("Рабочий интервал Pomodoro завершён. Можно начать перерыв.",),
+    "pomodoro_break": ("Перерыв завершён. Начнём следующий рабочий интервал?",),
     "break": (
         "Пора сделать небольшой перерыв и размяться.",
         "Предлагаю короткий перерыв. Ты хорошо поработал.",
@@ -33,8 +35,12 @@ class Reactions:
         self._break_minutes = None
         self._indices = dict.fromkeys(PHRASES, 0)
 
-    def _say(self, event, now, options, visible):
-        if not visible or options["muted"] or now - self._spoken < COOLDOWNS[options["frequency"]]:
+    def _say(self, event, now, options, visible, *, priority=False):
+        if (
+            not visible
+            or options["muted"]
+            or (not priority and now - self._spoken < COOLDOWNS[options["frequency"]])
+        ):
             return False
         phrases = PHRASES[event]
         self.text = phrases[self._indices[event] % len(phrases)]
@@ -47,7 +53,16 @@ class Reactions:
         self.mode = "happy"
         self._say("done", now, options, visible)
 
-    def update(self, focus, now, options, visible):
+    def pomodoro_end(self, phase, now, options, visible):
+        self._say(
+            "pomodoro_work" if phase == "work" else "pomodoro_break",
+            now,
+            options,
+            visible,
+            priority=True,
+        )
+
+    def update(self, focus, now, options, visible, *, pomodoro=False):
         session = focus.get("recoveryId")
         running = bool(focus) and not focus.get("paused") and not focus.get("recovery")
         elapsed = 0
@@ -62,7 +77,9 @@ class Reactions:
             self._baseline = elapsed
         self._break_minutes = options["break_minutes"]
         self._baseline = min(self._baseline, elapsed)
-        if running and elapsed - self._baseline >= options["break_minutes"] * 60:
+        if pomodoro:
+            self._baseline = elapsed
+        if running and not pomodoro and elapsed - self._baseline >= options["break_minutes"] * 60:
             if not visible or options["muted"] or self._say("break", now, options, visible):
                 self._baseline = elapsed
         self._session, self._running = session, running

@@ -1,0 +1,741 @@
+{
+  "status": "passed",
+  "scope": "graphic artefacts only; no app/runtime/UI tests",
+  "plant_sprites": 32,
+  "supporting_tiles": 1,
+  "new_sprites": 24,
+  "checks": [
+    {
+      "id": "carrot_01",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        26,
+        73,
+        12,
+        8
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "carrot_02",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        22,
+        57,
+        21,
+        24
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "carrot_03",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        18,
+        51,
+        30,
+        30
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "carrot_04",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        14,
+        36,
+        36,
+        45
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "daisy_01",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        26,
+        72,
+        12,
+        9
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "daisy_02",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        24,
+        55,
+        16,
+        26
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "daisy_03",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        18,
+        45,
+        28,
+        36
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "daisy_04",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        17,
+        34,
+        29,
+        47
+      ],
+      "colours": 15,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "fern_01",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        27,
+        69,
+        10,
+        12
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "fern_02",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        24,
+        58,
+        15,
+        23
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "fern_03",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        16,
+        48,
+        29,
+        33
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "fern_04",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        8,
+        37,
+        47,
+        44
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "grass",
+      "canvas": [
+        64,
+        40
+      ],
+      "bounds": [
+        0,
+        0,
+        64,
+        40
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "oak_01",
+      "canvas": [
+        192,
+        256
+      ],
+      "bounds": [
+        88,
+        213,
+        14,
+        12
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "oak_02",
+      "canvas": [
+        192,
+        256
+      ],
+      "bounds": [
+        83,
+        180,
+        28,
+        45
+      ],
+      "colours": 15,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "oak_03",
+      "canvas": [
+        192,
+        256
+      ],
+      "bounds": [
+        49,
+        136,
+        96,
+        90
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "oak_04",
+      "canvas": [
+        192,
+        256
+      ],
+      "bounds": [
+        24,
+        44,
+        156,
+        184
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "poppy_01",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        26,
+        72,
+        12,
+        9
+      ],
+      "colours": 15,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "poppy_02",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        25,
+        56,
+        14,
+        25
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "poppy_03",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        19,
+        43,
+        28,
+        38
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "poppy_04",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        16,
+        31,
+        30,
+        50
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "pumpkin_01",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        25,
+        72,
+        14,
+        9
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "pumpkin_02",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        21,
+        60,
+        22,
+        21
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "pumpkin_03",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        16,
+        51,
+        30,
+        30
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "pumpkin_04",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        12,
+        41,
+        43,
+        40
+      ],
+      "colours": 15,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "sakura_01",
+      "canvas": [
+        192,
+        256
+      ],
+      "bounds": [
+        89,
+        215,
+        14,
+        10
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "sakura_02",
+      "canvas": [
+        192,
+        256
+      ],
+      "bounds": [
+        82,
+        173,
+        28,
+        52
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "sakura_03",
+      "canvas": [
+        192,
+        256
+      ],
+      "bounds": [
+        47,
+        130,
+        104,
+        97
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "sakura_04",
+      "canvas": [
+        192,
+        256
+      ],
+      "bounds": [
+        27,
+        43,
+        146,
+        184
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "water_lily_01",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        25,
+        74,
+        14,
+        9
+      ],
+      "colours": 15,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "water_lily_02",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        22,
+        68,
+        20,
+        17
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "water_lily_03",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        21,
+        58,
+        23,
+        28
+      ],
+      "colours": 15,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    },
+    {
+      "id": "water_lily_04",
+      "canvas": [
+        64,
+        96
+      ],
+      "bounds": [
+        6,
+        52,
+        50,
+        41
+      ],
+      "colours": 16,
+      "partial_alpha_pixels": 0,
+      "result": "passed"
+    }
+  ],
+  "growth": [
+    {
+      "species": "daisy",
+      "sizes": [
+        [
+          12,
+          9
+        ],
+        [
+          16,
+          26
+        ],
+        [
+          28,
+          36
+        ],
+        [
+          29,
+          47
+        ]
+      ],
+      "result": "passed"
+    },
+    {
+      "species": "poppy",
+      "sizes": [
+        [
+          12,
+          9
+        ],
+        [
+          14,
+          25
+        ],
+        [
+          28,
+          38
+        ],
+        [
+          30,
+          50
+        ]
+      ],
+      "result": "passed"
+    },
+    {
+      "species": "fern",
+      "sizes": [
+        [
+          10,
+          12
+        ],
+        [
+          15,
+          23
+        ],
+        [
+          29,
+          33
+        ],
+        [
+          47,
+          44
+        ]
+      ],
+      "result": "passed"
+    },
+    {
+      "species": "carrot",
+      "sizes": [
+        [
+          12,
+          8
+        ],
+        [
+          21,
+          24
+        ],
+        [
+          30,
+          30
+        ],
+        [
+          36,
+          45
+        ]
+      ],
+      "result": "passed"
+    },
+    {
+      "species": "pumpkin",
+      "sizes": [
+        [
+          14,
+          9
+        ],
+        [
+          22,
+          21
+        ],
+        [
+          30,
+          30
+        ],
+        [
+          43,
+          40
+        ]
+      ],
+      "result": "passed"
+    },
+    {
+      "species": "water_lily",
+      "sizes": [
+        [
+          14,
+          9
+        ],
+        [
+          20,
+          17
+        ],
+        [
+          23,
+          28
+        ],
+        [
+          50,
+          41
+        ]
+      ],
+      "result": "passed"
+    },
+    {
+      "species": "oak",
+      "sizes": [
+        [
+          14,
+          12
+        ],
+        [
+          28,
+          45
+        ],
+        [
+          96,
+          90
+        ],
+        [
+          156,
+          184
+        ]
+      ],
+      "result": "passed"
+    },
+    {
+      "species": "sakura",
+      "sizes": [
+        [
+          14,
+          10
+        ],
+        [
+          28,
+          52
+        ],
+        [
+          104,
+          97
+        ],
+        [
+          146,
+          184
+        ]
+      ],
+      "result": "passed"
+    }
+  ],
+  "nearest_2x": [
+    {
+      "name": "plants",
+      "replication": "exact 2x2 blocks",
+      "result": "passed"
+    },
+    {
+      "name": "trees",
+      "replication": "exact 2x2 blocks",
+      "result": "passed"
+    },
+    {
+      "name": "adults",
+      "replication": "exact 2x2 blocks",
+      "result": "passed"
+    }
+  ],
+  "prior_probe": {
+    "sprites_unchanged": 9,
+    "sources_unchanged": 9
+  },
+  "limitations": [
+    "No tilled-soil/water tiles, transitions, decor or theme palette variants.",
+    "Actual user review and application integration are separate from file checks."
+  ],
+  "manual_review": "See README.md"
+}

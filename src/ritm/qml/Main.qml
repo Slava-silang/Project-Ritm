@@ -50,6 +50,8 @@ ApplicationWindow {
     property bool narrow: width < window.appearance.dp(850)
     property bool detailOpen: true
     property string page: "tasks"
+    onPageChanged: backend.setGardenVisible(window.visible && page === "garden")
+    onVisibleChanged: backend.setGardenVisible(window.visible && page === "garden")
     property bool closeWhenIdle: false
 
     property bool exiting: false
@@ -90,7 +92,7 @@ ApplicationWindow {
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
-    ].some(dialog => dialog.visible)
+    ].some(dialog => dialog.visible) || pomodoroPane.dialogsOpen || gardenPane.dialogsOpen
     property bool shortcutsEnabled: !window.backend.busy && !window.modalOpen
 
     function openAppearance() {
@@ -357,6 +359,7 @@ ApplicationWindow {
         anchors.margins: window.appearance.dp(window.narrow ? 16 : 24)
         spacing: window.appearance.dp(16)
         RowLayout {
+            visible: window.page !== "garden" || !window.narrow
             Layout.fillWidth: true
             Rectangle {
                 implicitWidth: window.appearance.dp(44)
@@ -378,7 +381,7 @@ ApplicationWindow {
                     elide: Text.ElideRight
                     text: window.page === "tasks" ? qsTr("Мои задачи")
                         : window.page === "calendar" ? qsTr("Календарь")
-                        : window.page === "statistics" ? qsTr("Статистика") : qsTr("Материалы")
+                        : window.page === "statistics" ? qsTr("Статистика") : window.page === "garden" ? qsTr("Сад") : qsTr("Материалы")
                     font.pixelSize: window.appearance.dp(25)
                     font.weight: Font.DemiBold
                     color: window.appearance.colors.text
@@ -452,6 +455,7 @@ ApplicationWindow {
                 text: qsTr("Приложение")
                 visible: !!window.desktop
                 onClicked: {
+                    pauseOnSystem.checked = window.backend.pauseOnSystem;
                     autoStart.checked = window.desktop.settings.enabled;
                     hiddenStart.checked = window.desktop.settings.hidden;
                     systemDialog.open();
@@ -472,6 +476,13 @@ ApplicationWindow {
                     petFullscreen.checked = window.companion.state.hide_fullscreen;
                     companionDialog.open();
                 }
+            }
+            Button {
+                objectName: "gardenButton"
+                text: qsTr("Сад")
+                enabled: !window.backend.busy
+                highlighted: window.page === "garden"
+                onClicked: window.page = "garden"
             }
             Button {
                 objectName: "appearanceButton"
@@ -509,9 +520,17 @@ ApplicationWindow {
                 }
             }
         }
+        PomodoroPane {
+            id: pomodoroPane
+            visible: window.page !== "garden"
+            Layout.fillWidth: true
+            Layout.maximumWidth: Infinity
+            backend: window.backend
+            appearance: window.appearance
+        }
         ColumnLayout {
             Layout.fillWidth: true
-            visible: !!window.activeFocus.elapsed
+            visible: !!window.activeFocus.elapsed && window.page !== "garden"
             spacing: window.appearance.dp(4)
             RowLayout {
                 Layout.fillWidth: true
@@ -654,6 +673,17 @@ ApplicationWindow {
                     }
                 }
             }
+        }
+        GardenPane {
+            id: gardenPane
+            objectName: "gardenPane"
+            backend: window.backend
+            appearance: window.appearance
+            visible: window.page === "garden"
+            active: window.visible && visible
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            onLeave: window.page = "tasks"
         }
         StatisticsPane {
             appearance: window.appearance
@@ -905,6 +935,16 @@ ApplicationWindow {
                             color: window.current.description ? window.appearance.colors.secondary : window.appearance.colors.muted
                             font.pixelSize: window.appearance.dp(15)
                         }
+                        Repeater {
+                            model: window.current.sourceUrls || []
+                            delegate: Button {
+                                required property string modelData
+                                required property int index
+                                objectName: "taskSourceLink_" + index
+                                text: qsTr("Источник — письмо Gmail")
+                                onClicked: Qt.openUrlExternally(modelData)
+                            }
+                        }
                         Flow {
                             Layout.fillWidth: true
                             spacing: window.appearance.dp(12)
@@ -950,6 +990,7 @@ ApplicationWindow {
                             Button {
                                 objectName: "startFocusButton"
                                 enabled: !window.activeFocus.recovery
+                                    && ["idle", "work"].includes(window.backend.pomodoro.phase)
                                 text: qsTr("Начать фокус")
                                 onClicked: {
                                     focusEditor.taskId = window.current.id;
@@ -1223,6 +1264,19 @@ ApplicationWindow {
                     model: [qsTr("Космос"), qsTr("Джунгли"), qsTr("Светлая"), qsTr("Тёмная"), qsTr("Как в системе")]
                 }
                 Caption {
+                    objectName: "themeUnlockHint"
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: {
+                        const key = appearanceDialog.themeKeys[appearanceTheme.currentIndex];
+                        if (window.backend.garden.themes.indexOf(key) >= 0 || key === "system")
+                            return qsTr("Тема доступна.");
+                        if (key === window.backend.appearance.theme)
+                            return qsTr("Ранее выбранная тема сохранена. После смены повторный выбор потребует достижения.");
+                        return key === "space" ? qsTr("Откроется за 30 оплаченных часов в саду.") : qsTr("Откроется за 15 выполненных главных задач в саду.");
+                    }
+                }
+                Caption {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     text: qsTr("Пока все темы используют временное оформление. Финальный вид появится после общего дизайна.")
@@ -1259,7 +1313,7 @@ ApplicationWindow {
             AccentButton {
                 objectName: "saveAppearance"
                 text: qsTr("Применить")
-                enabled: !window.backend.busy
+                enabled: !window.backend.busy && (window.backend.garden.themes.indexOf(appearanceDialog.themeKeys[appearanceTheme.currentIndex]) >= 0 || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === "system" || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === window.backend.appearance.theme)
                 onClicked: {
                     appearanceDialog.attempted = true;
                     window.backend.saveAppearance(
@@ -1386,7 +1440,10 @@ ApplicationWindow {
             Caption {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
-                text: qsTr("Данные из копии заменят текущие задачи, расписание, историю фокуса, вложения и материалы.")
+                objectName: "backupScope"
+                text: (window.backend.backups.preview || {}).garden
+                    ? qsTr("Данные из копии заменят текущие задачи, расписание, историю фокуса, вложения, материалы и сад, включая монеты и достижения.")
+                    : qsTr("Данные из копии заменят текущие задачи, расписание, историю фокуса, вложения и материалы. В этой копии сада нет.")
             }
             Label {
                 Layout.fillWidth: true
@@ -1690,7 +1747,7 @@ ApplicationWindow {
     EditorDialog {
         id: systemDialog
         objectName: "systemDialog"
-        title: qsTr("Запуск и завершение")
+        title: qsTr("Настройки приложения")
         anchors.centerIn: parent
         width: Math.min(window.appearance.dp(480), window.width - 32)
         height: Math.min(window.appearance.dp(480), window.height - 32)
@@ -1707,6 +1764,37 @@ ApplicationWindow {
                     text: window.desktop && window.desktop.trayAvailable
                         ? qsTr("Крестик скрывает окно в трей. Фокусировка продолжает работать. Открыть окно и выйти можно через значок Ритма.")
                         : qsTr("Системный трей недоступен. Крестик завершает приложение; активную сессию потребуется подтвердить.")
+                }
+                CheckBox {
+                    id: pauseOnSystem
+                    objectName: "pauseOnSystem"
+                    Layout.fillWidth: true
+                    contentItem: Label {
+                        text: pauseOnSystem.text
+                        leftPadding: pauseOnSystem.indicator.width + pauseOnSystem.spacing
+                        verticalAlignment: Text.AlignVCenter
+                        wrapMode: Text.Wrap
+                    }
+                    text: qsTr("Приостанавливать таймер при сне и блокировке")
+                    enabled: !window.backend.busy
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("По умолчанию выключено: работа вне компьютера учитывается. Фокусировка и Pomodoro продолжат отсчёт; переходы Pomodoro остаются ручными. Выключение приложения всё равно останавливает таймер.")
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    visible: !!window.backend.focusSettingsError
+                    text: window.backend.focusSettingsError
+                    wrapMode: Text.Wrap
+                    color: window.appearance.colors.warning
+                }
+                Button {
+                    objectName: "saveFocusSettings"
+                    text: qsTr("Применить настройку таймера")
+                    enabled: !window.backend.busy
+                    onClicked: window.backend.saveFocusSettings(pauseOnSystem.checked)
                 }
                 CheckBox {
                     id: autoStart
@@ -1920,11 +2008,14 @@ ApplicationWindow {
             Caption {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
-                text: qsTr("Оставь поле пустым для секундомера или укажи плановую длительность.")
+                text: window.backend.pomodoro.active
+                    ? qsTr("Цикл Pomodoro продолжится на выбранной задаче.")
+                    : qsTr("Оставь поле пустым для секундомера или укажи плановую длительность.")
             }
             TextField {
                 id: focusMinutes
                 objectName: "focusMinutesInput"
+                enabled: !window.backend.pomodoro.active
                 Layout.fillWidth: true
                 placeholderText: qsTr("Плановая длительность, мин")
                 inputMethodHints: Qt.ImhDigitsOnly

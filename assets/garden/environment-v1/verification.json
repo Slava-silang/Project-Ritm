@@ -1,0 +1,756 @@
+{
+  "status": "passed",
+  "scope": "graphic files only; no application code or UI run",
+  "counts": {
+    "decor": 4,
+    "item_icon": 2,
+    "terrain": 3,
+    "edge_overlay": 45,
+    "inner_corner_overlay": 12
+  },
+  "checks": [
+    {
+      "id": "rock",
+      "result": "passed",
+      "canvas": [
+        64,
+        96
+      ],
+      "palette": 16,
+      "transparent": 5312,
+      "opaque": 832
+    },
+    {
+      "id": "lantern",
+      "result": "passed",
+      "canvas": [
+        64,
+        128
+      ],
+      "palette": 16,
+      "transparent": 7142,
+      "opaque": 1050
+    },
+    {
+      "id": "bench",
+      "result": "passed",
+      "canvas": [
+        128,
+        128
+      ],
+      "palette": 16,
+      "transparent": 12341,
+      "opaque": 4043
+    },
+    {
+      "id": "fence",
+      "result": "passed",
+      "canvas": [
+        80,
+        96
+      ],
+      "palette": 16,
+      "transparent": 6883,
+      "opaque": 797
+    },
+    {
+      "id": "fertilizer",
+      "result": "passed",
+      "canvas": [
+        64,
+        64
+      ],
+      "palette": 16,
+      "transparent": 2906,
+      "opaque": 1190
+    },
+    {
+      "id": "fertilizer_32",
+      "result": "passed",
+      "canvas": [
+        32,
+        32
+      ],
+      "palette": 15,
+      "transparent": 728,
+      "opaque": 296
+    },
+    {
+      "id": "grass",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 960,
+      "opaque": 1600
+    },
+    {
+      "id": "tilled_soil",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 960,
+      "opaque": 1600
+    },
+    {
+      "id": "water",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 960,
+      "opaque": 1600
+    },
+    {
+      "id": "soil_grass_1",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 6,
+      "transparent": 2485,
+      "opaque": 75
+    },
+    {
+      "id": "soil_grass_2",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 7,
+      "transparent": 2484,
+      "opaque": 76
+    },
+    {
+      "id": "soil_grass_3",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 7,
+      "transparent": 2415,
+      "opaque": 145
+    },
+    {
+      "id": "soil_grass_4",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 6,
+      "transparent": 2485,
+      "opaque": 75
+    },
+    {
+      "id": "soil_grass_5",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 7,
+      "transparent": 2410,
+      "opaque": 150
+    },
+    {
+      "id": "soil_grass_6",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 7,
+      "transparent": 2415,
+      "opaque": 145
+    },
+    {
+      "id": "soil_grass_7",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 7,
+      "transparent": 2346,
+      "opaque": 214
+    },
+    {
+      "id": "soil_grass_8",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 6,
+      "transparent": 2484,
+      "opaque": 76
+    },
+    {
+      "id": "soil_grass_9",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 6,
+      "transparent": 2414,
+      "opaque": 146
+    },
+    {
+      "id": "soil_grass_10",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 7,
+      "transparent": 2408,
+      "opaque": 152
+    },
+    {
+      "id": "soil_grass_11",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 7,
+      "transparent": 2344,
+      "opaque": 216
+    },
+    {
+      "id": "soil_grass_12",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 7,
+      "transparent": 2414,
+      "opaque": 146
+    },
+    {
+      "id": "soil_grass_13",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 7,
+      "transparent": 2344,
+      "opaque": 216
+    },
+    {
+      "id": "soil_grass_14",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 7,
+      "transparent": 2344,
+      "opaque": 216
+    },
+    {
+      "id": "soil_grass_15",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 7,
+      "transparent": 2280,
+      "opaque": 280
+    },
+    {
+      "id": "soil_grass_corner_0",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 4,
+      "transparent": 2551,
+      "opaque": 9
+    },
+    {
+      "id": "soil_grass_corner_1",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 5,
+      "transparent": 2549,
+      "opaque": 11
+    },
+    {
+      "id": "soil_grass_corner_2",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 4,
+      "transparent": 2549,
+      "opaque": 11
+    },
+    {
+      "id": "soil_grass_corner_3",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 5,
+      "transparent": 2550,
+      "opaque": 10
+    },
+    {
+      "id": "water_soil_1",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2402,
+      "opaque": 158
+    },
+    {
+      "id": "water_soil_2",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 15,
+      "transparent": 2403,
+      "opaque": 157
+    },
+    {
+      "id": "water_soil_3",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2268,
+      "opaque": 292
+    },
+    {
+      "id": "water_soil_4",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 15,
+      "transparent": 2403,
+      "opaque": 157
+    },
+    {
+      "id": "water_soil_5",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2245,
+      "opaque": 315
+    },
+    {
+      "id": "water_soil_6",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2268,
+      "opaque": 292
+    },
+    {
+      "id": "water_soil_7",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2133,
+      "opaque": 427
+    },
+    {
+      "id": "water_soil_8",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 14,
+      "transparent": 2403,
+      "opaque": 157
+    },
+    {
+      "id": "water_soil_9",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2268,
+      "opaque": 292
+    },
+    {
+      "id": "water_soil_10",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2246,
+      "opaque": 314
+    },
+    {
+      "id": "water_soil_11",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2134,
+      "opaque": 426
+    },
+    {
+      "id": "water_soil_12",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 15,
+      "transparent": 2268,
+      "opaque": 292
+    },
+    {
+      "id": "water_soil_13",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2133,
+      "opaque": 427
+    },
+    {
+      "id": "water_soil_14",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2133,
+      "opaque": 427
+    },
+    {
+      "id": "water_soil_15",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2021,
+      "opaque": 539
+    },
+    {
+      "id": "water_soil_corner_0",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 14,
+      "transparent": 2511,
+      "opaque": 49
+    },
+    {
+      "id": "water_soil_corner_1",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 11,
+      "transparent": 2516,
+      "opaque": 44
+    },
+    {
+      "id": "water_soil_corner_2",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 12,
+      "transparent": 2516,
+      "opaque": 44
+    },
+    {
+      "id": "water_soil_corner_3",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 12,
+      "transparent": 2513,
+      "opaque": 47
+    },
+    {
+      "id": "water_grass_1",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 15,
+      "transparent": 2402,
+      "opaque": 158
+    },
+    {
+      "id": "water_grass_2",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2403,
+      "opaque": 157
+    },
+    {
+      "id": "water_grass_3",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2268,
+      "opaque": 292
+    },
+    {
+      "id": "water_grass_4",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 14,
+      "transparent": 2403,
+      "opaque": 157
+    },
+    {
+      "id": "water_grass_5",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 15,
+      "transparent": 2245,
+      "opaque": 315
+    },
+    {
+      "id": "water_grass_6",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2268,
+      "opaque": 292
+    },
+    {
+      "id": "water_grass_7",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2133,
+      "opaque": 427
+    },
+    {
+      "id": "water_grass_8",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2403,
+      "opaque": 157
+    },
+    {
+      "id": "water_grass_9",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 15,
+      "transparent": 2268,
+      "opaque": 292
+    },
+    {
+      "id": "water_grass_10",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2246,
+      "opaque": 314
+    },
+    {
+      "id": "water_grass_11",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2134,
+      "opaque": 426
+    },
+    {
+      "id": "water_grass_12",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2268,
+      "opaque": 292
+    },
+    {
+      "id": "water_grass_13",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2133,
+      "opaque": 427
+    },
+    {
+      "id": "water_grass_14",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2133,
+      "opaque": 427
+    },
+    {
+      "id": "water_grass_15",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 16,
+      "transparent": 2021,
+      "opaque": 539
+    },
+    {
+      "id": "water_grass_corner_0",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 14,
+      "transparent": 2511,
+      "opaque": 49
+    },
+    {
+      "id": "water_grass_corner_1",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 12,
+      "transparent": 2516,
+      "opaque": 44
+    },
+    {
+      "id": "water_grass_corner_2",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 14,
+      "transparent": 2516,
+      "opaque": 44
+    },
+    {
+      "id": "water_grass_corner_3",
+      "result": "passed",
+      "canvas": [
+        64,
+        40
+      ],
+      "palette": 13,
+      "transparent": 2513,
+      "opaque": 47
+    }
+  ],
+  "overlay_top_and_silhouette_checks": 57,
+  "fence_connections": "exact shared endpoints, step32,-16",
+  "nearest_2x": [
+    "garden-scene",
+    "components",
+    "transitions"
+  ],
+  "mixed_tiling": {
+    "patch": [
+      3,
+      3
+    ],
+    "holes": 0,
+    "extra_pixels": 0
+  },
+  "prior_plant_pngs_unchanged": 33,
+  "manual_review": "See README.md"
+}

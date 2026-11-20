@@ -121,7 +121,12 @@ def test_cleanup_queue_survives_failure_and_migrates_v8(tmp_path, monkeypatch):
         archive = UUID(TaskService(store).delete_node(task.id, task.id))
     with sqlite3.connect(path) as db:
         db.execute("DROP TABLE applied_proposals")
+        db.execute("DROP TABLE mail_proposals")
+        db.execute("DROP TABLE source_links")
+        db.execute("DROP TABLE pomodoro")
         db.execute("DROP TABLE attachment_cleanup")
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=8")
     with TaskStore(path) as store:
         with sqlite3.connect(path) as db:

@@ -86,10 +86,15 @@ def test_v6_profile_migrates_without_rewriting_task_or_focus(tmp_path):
         completed = store.list_completion_dates()
     with sqlite3.connect(path) as db:
         db.execute("DROP TABLE applied_proposals")
+        db.execute("DROP TABLE mail_proposals")
+        db.execute("DROP TABLE source_links")
+        db.execute("DROP TABLE pomodoro")
         db.execute("DROP TABLE attachment_cleanup")
         db.execute("DROP TABLE material_links")
         db.execute("DROP TABLE materials")
         db.execute("DROP TABLE attachments")
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=6")
     with TaskStore(path) as store:
         assert store.get_task(task.id) == task
@@ -136,9 +141,14 @@ def test_library_links_survive_restart_and_trash_without_copying(tmp_path):
         direct = attachments.copy_attachment(store, tmp_path, second.id, second.id, source)
     with sqlite3.connect(path) as db:
         db.execute("DROP TABLE applied_proposals")
+        db.execute("DROP TABLE mail_proposals")
+        db.execute("DROP TABLE source_links")
+        db.execute("DROP TABLE pomodoro")
         db.execute("DROP TABLE attachment_cleanup")
         db.execute("DROP TABLE material_links")
         db.execute("DROP TABLE materials")
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=7")
     with TaskStore(path) as store:
         assert store.list_attachments() == (direct,)

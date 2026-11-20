@@ -3,6 +3,7 @@
 import sys
 from pathlib import Path
 
+from garden_support import unlock_themes
 from gui_support import GuiHarness
 from PySide6.QtCore import QObject, Qt
 from PySide6.QtGui import QGuiApplication
@@ -15,6 +16,8 @@ from ritm.ui.tasks import TaskController
 profile = Path(sys.argv[1])
 QQuickStyle.setStyle("Basic")
 app = QGuiApplication([])
+if sys.argv[2] == "run":
+    unlock_themes(profile)
 controller = TaskController(profile)
 engine = load_window(controller)
 window = engine.rootObjects()[0]

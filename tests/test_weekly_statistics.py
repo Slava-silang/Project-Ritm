@@ -88,10 +88,15 @@ def test_v5_migration_and_completion_transition_dates(tmp_path):
     with sqlite3.connect(path) as db:
         db.execute("DROP TABLE task_completion_dates")
         db.execute("DROP TABLE applied_proposals")
+        db.execute("DROP TABLE mail_proposals")
+        db.execute("DROP TABLE source_links")
+        db.execute("DROP TABLE pomodoro")
         db.execute("DROP TABLE attachment_cleanup")
         db.execute("DROP TABLE material_links")
         db.execute("DROP TABLE materials")
         db.execute("DROP TABLE attachments")
+        db.execute("DROP TABLE garden_events")
+        db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=5")
     with TaskStore(path, clock=lambda: now) as store:
         service = TaskService(store)

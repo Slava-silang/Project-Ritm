@@ -35,6 +35,7 @@ class LinuxPowerMonitor(QObject):
             CINNAMON, CINNAMON_PATH, CINNAMON, "ActiveChanged", self, SLOT("lockChanged(bool)")
         )
         controller.focusChanged.connect(self._sync_inhibitor)
+        controller.focusSettingsChanged.connect(self._sync_inhibitor)
         controller.systemPauseDone.connect(self._release_after_sleep)
         self._sync_inhibitor()
 
@@ -42,6 +43,7 @@ class LinuxPowerMonitor(QObject):
         focus = self._controller.focus
         return (
             self._sleep_subscription
+            and self._controller.pauseOnSystem
             and not self._closed
             and not self._sleeping
             and focus

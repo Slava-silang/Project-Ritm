@@ -32,6 +32,13 @@ packages = ["src/ritm"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "assets/pets" = "ritm/assets/pets"
+"assets/garden/plants-v1/manifest.json" = "ritm/assets/garden/plants-v1/manifest.json"
+"assets/garden/plants-v1/sprites" = "ritm/assets/garden/plants-v1/sprites"
+"assets/garden/environment-v1/manifest.json" = "ritm/assets/garden/environment-v1/manifest.json"
+"assets/garden/environment-v1/terrain" = "ritm/assets/garden/environment-v1/terrain"
+"assets/garden/environment-v1/transitions" = "ritm/assets/garden/environment-v1/transitions"
+"assets/garden/environment-v1/decor" = "ritm/assets/garden/environment-v1/decor"
+"assets/garden/environment-v1/icons" = "ritm/assets/garden/environment-v1/icons"
 
 [tool.hatch.version]
 path = "src/ritm/__init__.py"
