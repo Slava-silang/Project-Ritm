@@ -330,6 +330,8 @@ class TaskController(QObject):
         self._ticker.start(1000)
         self._selected = ""
         self._busy = False
+        self._background = False
+        self._pending_action = None
         self._error = ""
         self._closing = False
         self._ready.connect(self._finish)
@@ -409,7 +411,7 @@ class TaskController(QObject):
 
     @Slot("QVariantMap")
     def gardenCommand(self, command):
-        if self._busy or self._closing or self._garden_pending is not None:
+        if self.busy or self._closing or self._garden_pending is not None:
             return
         if not self._garden_board["ready"]:
             return
@@ -893,7 +895,8 @@ class TaskController(QObject):
 
     @Property(bool, notify=stateChanged)
     def busy(self):
-        return self._busy
+        # Worker serialization is separate from blocking user-facing controls.
+        return self._pending_action is not None or (self._busy and not self._background)
 
     @Property(str, notify=stateChanged)
     def error(self):
@@ -901,7 +904,7 @@ class TaskController(QObject):
 
     @Slot(str)
     def selectTask(self, identifier):
-        if not self._busy:
+        if not self.busy:
             self._selected = identifier
             self._update_listing()
             self.changed.emit()
@@ -1019,12 +1022,23 @@ class TaskController(QObject):
         self._submit("refresh", {})
 
     def _submit(self, action, data):
-        if self._busy or self._closing:
+        if self._closing:
+            return
+        background = action in ("pomodoro_tick", "garden_tick")
+        if self._busy:
+            if self._background and not background and self._pending_action is None:
+                self._pending_action = (action, data)
+                self._error, self._notice = "", ""
+                self.stateChanged.emit()
             return
         self._busy = True
-        if action not in ("pomodoro_tick", "garden_tick"):
+        self._background = background
+        if not background:
             self._error, self._notice = "", ""
-        self.stateChanged.emit()
+            self.stateChanged.emit()
+        self._enqueue(action, data)
+
+    def _enqueue(self, action, data):
         self._pool.submit(
             self._run,
             action,
@@ -1501,6 +1515,25 @@ class TaskController(QObject):
         completed_before = {task.id for task in self._source if task.completed}
         if self._closing:
             return
+        if action in ("pomodoro_tick", "garden_tick"):
+            if action == "pomodoro_tick" and result is not None:
+                self._pomodoro = result
+                self._update_pomodoro()
+            self._busy = False
+            self._background = False
+            if error:
+                self._error = error
+            pending, self._pending_action = self._pending_action, None
+            if pending is not None:
+                # No intermediate idle notification: queued work must finish before exit.
+                self._submit(*pending)
+            elif error:
+                self.stateChanged.emit()
+            self._update_garden_timer()
+            self._drain_system_pause()
+            if not self._busy and self._garden_wants_view != self._garden_visible:
+                self._submit("garden_view", {})
+            return
         if action == "garden_command" and result is not None:
             if result["resolved"]:
                 self._garden_pending = None
@@ -1610,6 +1643,9 @@ class TaskController(QObject):
         self._closing = True
         self._ticker.stop()
         self._garden_timer.stop()
+        if self._pending_action is not None:
+            pending, self._pending_action = self._pending_action, None
+            self._enqueue(*pending)
         # The final break checkpoint is queued behind any outstanding DB command.
         self._pool.submit(self._close_pomodoro).result()
         self._pool.shutdown(wait=True)

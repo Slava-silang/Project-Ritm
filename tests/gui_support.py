@@ -21,7 +21,8 @@ class GuiHarness:
         QTest.qWait(50)
 
     def idle(self):
-        self.wait_for(lambda: not self.controller.busy, "storage idle")
+        # Background checkpoints keep UI controls available, but tests need their result.
+        self.wait_for(lambda: not self.controller._busy, "storage idle")
 
     def item(self, name):
         candidates = self.window.findChildren(QObject, name)
