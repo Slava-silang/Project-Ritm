@@ -4,6 +4,7 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from ritm.application.garden_events import GardenEventService
+from ritm.application.garden_progress import achievement_view
 from ritm.domain.garden_achievements import HOUR, AchievementState
 from ritm.storage.garden import GardenStore
 
@@ -26,6 +27,7 @@ def empty_view():
         "months": [],
         "welcomed": False,
         "firstTask": False,
+        "progress": {"currentMonth": "", "periods": [], "permanent": []},
     }
 
 
@@ -73,6 +75,9 @@ def sync_garden(source, profile, now, *, zone, enabled=None, checkpoint=False, w
             ],
             "welcomed": achievements.welcomed,
             "firstTask": achievements.first_task,
+            "progress": achievement_view(
+                achievements, now.astimezone(ZoneInfo(zone)).strftime("%Y-%m")
+            ),
         }
         if with_state:
             view["_state"] = state

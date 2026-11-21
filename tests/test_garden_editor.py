@@ -81,7 +81,7 @@ def test_old_editor_generation_is_rejected_inside_transaction_even_for_receipt(
         assert garden.snapshot() == before
 
 
-@pytest.mark.parametrize("mode", ["edit", "failures", "restore", "resources"])
+@pytest.mark.parametrize("mode", ["edit", "keyboard", "failures", "restore", "resources"])
 def test_garden_editor_gui(tmp_path, mode):
     env = {
         **os.environ,

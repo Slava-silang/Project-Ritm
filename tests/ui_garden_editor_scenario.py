@@ -242,6 +242,37 @@ try:
         assert all(item.placed for item in saved.items) and saved.fertilizer == 0
         assert controller.gardenBoard["plantedCells"] == 5
         assert gui.item("gardenWorld").property("active")
+    elif mode == "keyboard":
+        opened()
+        item = buy("daisy")
+        choose(item)
+        gui.click("gardenMove")
+        viewport = gui.item("gardenViewport")
+        viewport.forceActiveFocus()
+        QTest.keyClick(window, Qt.Key.Key_Right, Qt.KeyboardModifier.ShiftModifier)
+        app.processEvents()
+        target = pane.property("hover")
+        assert target["valid"]
+        before = snapshot()
+        QTest.keyClick(window, Qt.Key.Key_Return)
+        idle()
+        planted = snapshot().garden.item(item)
+        assert (planted.x, planted.y) == (target["x"], target["y"])
+        assert snapshot().balance == before.balance
+        choose(item)
+        gui.click("gardenMove")
+        QTest.keyClick(window, Qt.Key.Key_Escape)
+        app.processEvents()
+        assert not pane.property("placingId")
+        assert snapshot().garden.item(item) == planted
+        # Buttons are activated through the keyboard too; sale still needs confirmation.
+        gui.item("gardenSell").forceActiveFocus()
+        QTest.keyClick(window, Qt.Key.Key_Space)
+        app.processEvents()
+        gui.item("gardenCancelSale").forceActiveFocus()
+        QTest.keyClick(window, Qt.Key.Key_Space)
+        idle()
+        assert snapshot().garden.item(item) == planted
     elif mode == "failures":
         opened()
         original = GardenStore.execute
