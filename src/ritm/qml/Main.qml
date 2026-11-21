@@ -1184,6 +1184,9 @@ ApplicationWindow {
                     visible: window.hasTask
                     clip: true
                     contentWidth: availableWidth
+                    rightPadding: window.appearance.graphite ? window.appearance.dp(16) : 0
+                    ScrollBar.vertical.objectName: "detailScrollBar"
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                     ColumnLayout {
                         width: detailScroll.availableWidth
                         spacing: window.appearance.dp(window.appearance.graphite ? 12 : 16)
@@ -2047,8 +2050,10 @@ ApplicationWindow {
         taskBackend: window.backend
         uiAppearance: window.appearance
         parent: Overlay.overlay
-        anchors.centerIn: parent
-        width: Math.min(window.appearance.dp(760), parent.width - 2 * window.workspaceDialogMargin)
+        readonly property real workspaceWidth: parent.width - window.sidebarWidth
+        x: Math.round(window.sidebarWidth + (workspaceWidth - width) / 2)
+        y: Math.round((parent.height - height) / 2)
+        width: Math.min(window.appearance.dp(760), workspaceWidth - 2 * window.workspaceDialogMargin)
         height: Math.min(window.appearance.dp(680), parent.height - 2 * window.workspaceDialogMargin)
     }
 
