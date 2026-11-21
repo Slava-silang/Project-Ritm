@@ -9,6 +9,9 @@ Dialog {
     required property var planner
     required property var taskBackend
     required property var appearance
+
+    component UiButton: RitmButton { appearance: dialog.appearance }
+    component UiCombo: RitmComboBox { appearance: dialog.appearance }
     property var state: planner ? planner.state : ({busy: false, tasks: [], hours: [], blocks: []})
     property bool hoursDirty: false
     property bool savingHours: false
@@ -27,7 +30,7 @@ Dialog {
     background: Rectangle {
         color: dialog.appearance.colors.surface
         border.color: dialog.appearance.colors.border
-        radius: dialog.appearance.dp(14)
+        radius: dialog.appearance.dialogRadius(14)
     }
     Connections {
         target: dialog.planner
@@ -107,7 +110,7 @@ Dialog {
                     }
                 }
             }
-            Button {
+            UiButton {
                 objectName: "saveWorkingHours"
                 text: qsTr("Сохранить рабочие часы")
                 enabled: !dialog.state.busy
@@ -123,7 +126,7 @@ Dialog {
                     ? qsTr("Тестовый помощник без сети: заполняет свободные интервалы по порядку.")
                     : qsTr("Используется выбранное подключение ChatGPT. Запрос, выбранная задача, занятость периода без названий других задач и рабочие часы отправятся при нажатии «Предложить». Подключение меняется в окне помощника.")
             }
-            ComboBox {
+            UiCombo {
                 id: task
                 objectName: "planningTask"
                 Layout.fillWidth: true
@@ -178,7 +181,7 @@ Dialog {
                 enabled: !dialog.state.busy
                 onTextEdited: if (dialog.state.hasDraft) dialog.planner.cancel()
             }
-            Button {
+            UiButton {
                 objectName: "planningGenerate"
                 text: qsTr("Предложить расписание")
                 enabled: !dialog.state.busy && !dialog.hoursDirty && task.currentIndex >= 0
@@ -237,7 +240,7 @@ Dialog {
                     }
                     Flow {
                         Layout.fillWidth: true
-                        Button {
+                        UiButton {
                             objectName: "planningCheckBlock_" + blockRow.index
                             text: qsTr("Проверить все правки")
                             onClicked: {
@@ -246,7 +249,7 @@ Dialog {
                                 if (!dialog.blocksDirty) dialog.blockRows = JSON.parse(JSON.stringify(dialog.state.blocks));
                             }
                         }
-                        Button {
+                        UiButton {
                             objectName: "planningRemoveBlock_" + blockRow.index
                             text: qsTr("Убрать блок")
                             enabled: !dialog.blocksDirty
@@ -260,13 +263,13 @@ Dialog {
     footer: Flow {
         padding: dialog.appearance.dp(10)
         spacing: dialog.appearance.dp(8)
-        Button {
+        UiButton {
             objectName: "planningApply"
             text: qsTr("Подтвердить и добавить блоки")
             enabled: !!dialog.state.canApply && !dialog.blocksDirty && !dialog.hoursDirty
             onClicked: dialog.planner.apply()
         }
-        Button {
+        UiButton {
             objectName: "planningClose"
             text: dialog.state.busy ? qsTr("Отменить запрос и закрыть") : qsTr("Закрыть")
             enabled: !dialog.state.saving

@@ -3,9 +3,12 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-TextField {
+RitmTextField {
     id: field
-    required property var appearance
+
+    component UiButton: RitmButton { appearance: field.appearance }
+    component UiField: RitmTextField { appearance: field.appearance }
+    component UiCombo: RitmComboBox { appearance: field.appearance }
     property bool dateOnly: false
     property bool timeOnly: false
     property bool isoDate: false
@@ -100,7 +103,7 @@ TextField {
         background: Rectangle {
             color: field.appearance.colors.surface
             border.color: field.appearance.colors.border
-            radius: field.appearance.dp(12)
+            radius: field.appearance.dialogRadius(12)
         }
         contentItem: ScrollView {
             id: scroll
@@ -118,7 +121,7 @@ TextField {
                         Accessible.name: qsTr("Предыдущий месяц")
                         onClicked: picker.changeMonth(-1)
                     }
-                    ComboBox {
+                    UiCombo {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         model: [qsTr("Январь"), qsTr("Февраль"), qsTr("Март"), qsTr("Апрель"), qsTr("Май"), qsTr("Июнь"), qsTr("Июль"), qsTr("Август"), qsTr("Сентябрь"), qsTr("Октябрь"), qsTr("Ноябрь"), qsTr("Декабрь")]
@@ -162,7 +165,7 @@ TextField {
                     }
                     Repeater {
                         model: picker.visible && !field.timeOnly ? picker.days : []
-                        Button {
+                        UiButton {
                             required property date modelData
                             objectName: field.objectName + "Day_" + field.iso(modelData)
                             Layout.preferredWidth: (grid.width - 6 * grid.columnSpacing) / 7
@@ -218,7 +221,7 @@ TextField {
                         valueFromText: value => parseInt(value, 10)
                     }
                 }
-                TextField {
+                UiField {
                     id: offsetInput
                     objectName: field.objectName + "Offset"
                     Layout.fillWidth: true
@@ -232,7 +235,7 @@ TextField {
             width: picker.availableWidth
             padding: field.appearance.dp(8)
             spacing: field.appearance.dp(6)
-            Button {
+            UiButton {
                 objectName: field.objectName + "PickerApply"
                 text: qsTr("Выбрать")
                 onClicked: {
@@ -243,7 +246,7 @@ TextField {
                     picker.commit(value);
                 }
             }
-            Button {
+            UiButton {
                 objectName: field.objectName + "PickerNow"
                 text: field.timeOnly ? qsTr("Текущее время") : qsTr("Сегодня")
                 onClicked: {
@@ -254,13 +257,13 @@ TextField {
                     if (field.timeOnly) { hours.value = now.getHours(); minutes.value = now.getMinutes(); }
                 }
             }
-            Button {
+            UiButton {
                 objectName: field.objectName + "PickerClear"
                 visible: field.allowEmpty
                 text: qsTr("Очистить")
                 onClicked: picker.commit("")
             }
-            Button {
+            UiButton {
                 objectName: field.objectName + "PickerCancel"
                 text: qsTr("Отмена")
                 onClicked: picker.close()

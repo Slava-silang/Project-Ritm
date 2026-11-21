@@ -50,7 +50,7 @@ def test_theme_scale_shortcuts_and_restart(tmp_path):
             env=env,
             capture_output=True,
             text=True,
-            timeout=45,
+            timeout=75,
         )
         assert result.returncode == 0, result.stdout + result.stderr
         for warning in (

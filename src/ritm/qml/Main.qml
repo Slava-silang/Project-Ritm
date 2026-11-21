@@ -18,6 +18,7 @@ ApplicationWindow {
         objectName: "uiAppearance"
         themeKey: window.backend.appearance.theme
         scale: window.backend.appearance.scale / 100
+        graphiteEnabled: window.page !== "garden"
     }
     objectName: "mainWindow"
     width: 1120
@@ -47,12 +48,95 @@ ApplicationWindow {
     property var current: window.backend.detail
     property var activeFocus: window.backend.focus
     property bool hasTask: !!current.id
-    property bool narrow: width < window.appearance.dp(850)
+    readonly property bool sidebarVisible: appearance.graphite && width >= appearance.dp(1040) && height >= appearance.dp(510)
+    readonly property real sidebarWidth: sidebarVisible ? appearance.dp(184) : 0
+    property bool narrow: width - sidebarWidth < appearance.dp(850)
+    readonly property bool compactGraphite: appearance.graphite && narrow
+    readonly property bool inlinePomodoro: compactGraphite && width - appearance.dp(24) < appearance.dp(700)
     property bool detailOpen: true
     property string page: "tasks"
     onPageChanged: backend.setGardenVisible(window.visible && page === "garden")
     onVisibleChanged: backend.setGardenVisible(window.visible && page === "garden")
     property bool closeWhenIdle: false
+
+    component UiButton: RitmButton { appearance: window.appearance }
+    component UiField: RitmTextField { appearance: window.appearance }
+    component UiCombo: RitmComboBox { appearance: window.appearance }
+
+    component NavIcon: Canvas {
+        id: drawing
+        required property string symbol
+        property color ink: window.appearance.colors.muted
+        implicitWidth: window.appearance.dp(19)
+        implicitHeight: implicitWidth
+        onInkChanged: requestPaint()
+        onPaint: {
+            const ctx = getContext("2d");
+            ctx.reset();
+            ctx.scale(drawing.width / 24, drawing.height / 24);
+            ctx.strokeStyle = drawing.ink;
+            ctx.lineWidth = 1.65;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.beginPath();
+            switch (drawing.symbol) {
+            case "logo":
+                ctx.moveTo(2, 13); ctx.lineTo(7, 13); ctx.lineTo(10, 5);
+                ctx.lineTo(14, 19); ctx.lineTo(17, 11); ctx.lineTo(22, 11);
+                break;
+            case "tasks":
+                ctx.roundedRect(4, 4, 16, 16, 3, 3);
+                ctx.moveTo(8, 12); ctx.lineTo(11, 15); ctx.lineTo(16, 9);
+                break;
+            case "calendar":
+                ctx.roundedRect(4, 6, 16, 14, 3, 3);
+                ctx.moveTo(8, 4); ctx.lineTo(8, 8);
+                ctx.moveTo(16, 4); ctx.lineTo(16, 8);
+                ctx.moveTo(4, 11); ctx.lineTo(20, 11);
+                break;
+            case "chart":
+                ctx.moveTo(5, 19); ctx.lineTo(19, 19);
+                ctx.moveTo(7, 15); ctx.lineTo(7, 11);
+                ctx.moveTo(12, 15); ctx.lineTo(12, 6);
+                ctx.moveTo(17, 15); ctx.lineTo(17, 9);
+                break;
+            case "book":
+                ctx.roundedRect(5, 4, 14, 16, 2, 2);
+                ctx.moveTo(9, 4); ctx.lineTo(9, 20);
+                ctx.moveTo(12, 9); ctx.lineTo(16, 9);
+                break;
+            }
+            ctx.stroke();
+        }
+    }
+
+    component NavButton: UiButton {
+        id: navButton
+        property string symbol: ""
+        quiet: window.sidebarVisible
+        width: window.sidebarVisible ? window.sidebarWidth - window.appearance.dp(24) : implicitWidth
+        implicitHeight: window.compactGraphite ? window.appearance.dp(26)
+            : Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding)
+        horizontalPadding: window.sidebarVisible ? window.appearance.dp(12) : 8
+        contentItem: RowLayout {
+            spacing: window.appearance.dp(7)
+            NavIcon {
+                visible: window.sidebarVisible && !!navButton.symbol
+                symbol: navButton.symbol
+                ink: navButton.highlighted ? window.appearance.colors.accent : window.appearance.colors.muted
+            }
+            Label {
+                Layout.fillWidth: true
+                text: navButton.text
+                font: navButton.font
+                elide: Text.ElideRight
+                horizontalAlignment: window.sidebarVisible ? Text.AlignLeft : Text.AlignHCenter
+                color: !navButton.enabled ? window.appearance.colors.muted
+                    : navButton.highlighted && window.appearance.graphite
+                        ? window.appearance.colors.accent : window.appearance.colors.text
+            }
+        }
+    }
 
     property bool exiting: false
     function requestExit() {
@@ -186,7 +270,7 @@ ApplicationWindow {
     component AccentButton: Button {
         id: actionButton
         horizontalPadding: window.appearance.dp(18)
-        verticalPadding: window.appearance.dp(11)
+        verticalPadding: window.appearance.dp(window.compactGraphite ? 7 : 11)
         contentItem: Label {
             text: actionButton.text
             color: window.appearance.colors.onAccent
@@ -194,10 +278,10 @@ ApplicationWindow {
             verticalAlignment: Text.AlignVCenter
         }
         background: Rectangle {
-            radius: window.appearance.dp(9)
+            radius: window.appearance.controlRadius(9)
             color: !actionButton.enabled ? window.appearance.colors.disabled : actionButton.down ? window.appearance.colors.accentDown : actionButton.hovered ? window.appearance.colors.accentHover : window.appearance.colors.accentFill
             border.width: actionButton.visualFocus ? 2 : 0
-            border.color: window.appearance.colors.border
+            border.color: window.appearance.graphite ? window.appearance.colors.controlBorder : window.appearance.colors.border
         }
     }
     component TaskProgress: ProgressBar {
@@ -220,11 +304,12 @@ ApplicationWindow {
             }
         }
     }
-    component EditorDialog: Dialog {
-        padding: window.appearance.dp(16)
+    component EditorDialog: RitmDialog {
+        appearance: window.appearance
+        padding: window.appearance.dp(window.appearance.graphite ? 20 : 16)
         background: Rectangle {
             color: window.appearance.colors.surface
-            radius: window.appearance.dp(14)
+            radius: window.appearance.dialogRadius(14)
             border.color: window.appearance.colors.border
         }
     }
@@ -245,7 +330,7 @@ ApplicationWindow {
             text: weightRow.modelData.title
             wrapMode: Text.Wrap
         }
-        TextField {
+        UiField {
             id: weightInput
             objectName: "weightInput_" + weightRow.index
             Layout.preferredWidth: window.appearance.dp(85)
@@ -354,23 +439,184 @@ ApplicationWindow {
         }
     }
 
+    PomodoroPane {
+        id: pomodoroPane
+        parent: window.inlinePomodoro ? compactPomodoroSlot : fullPomodoroSlot
+        width: parent.width
+        height: implicitHeight
+        forceCompact: window.inlinePomodoro
+        visible: window.page !== "garden"
+        backend: window.backend
+        appearance: window.appearance
+    }
+
+    Flow {
+        id: navigation
+        parent: window.sidebarVisible ? sidebarNavSlot : horizontalNavSlot
+        width: parent.width
+        spacing: window.appearance.dp(4)
+        NavButton {
+            objectName: "tasksPageButton"
+            symbol: "tasks"
+            text: qsTr("Задачи")
+            highlighted: window.page === "tasks"
+            onClicked: window.page = "tasks"
+        }
+        NavButton {
+            objectName: "calendarPageButton"
+            symbol: "calendar"
+            text: qsTr("Календарь")
+            highlighted: window.page === "calendar"
+            onClicked: window.page = "calendar"
+        }
+        NavButton {
+            objectName: "statisticsPageButton"
+            symbol: "chart"
+            text: qsTr("Статистика")
+            highlighted: window.page === "statistics"
+            onClicked: window.page = "statistics"
+        }
+        NavButton {
+            objectName: "materialsPageButton"
+            symbol: "book"
+            text: qsTr("Материалы")
+            highlighted: window.page === "materials"
+            onClicked: window.page = "materials"
+        }
+        Rectangle {
+            visible: window.sidebarVisible
+            width: window.appearance.dp(160)
+            height: 1
+            color: window.appearance.colors.border
+        }
+        NavButton {
+            objectName: "backupsButton"
+            text: qsTr("Копии")
+            enabled: !window.backend.busy
+            onClicked: {
+                backupDialog.attempted = false;
+                backupDialog.open();
+            }
+        }
+        NavButton {
+            objectName: "assistantButton"
+            text: window.assistant && window.assistant.state.provider !== "mock" ? qsTr("Помощник") : qsTr("Помощник (тест)")
+            visible: !!window.assistant
+            enabled: !window.backend.busy
+            onClicked: assistantDialog.open()
+        }
+        NavButton {
+            objectName: "systemButton"
+            text: qsTr("Приложение")
+            visible: !!window.desktop
+            onClicked: {
+                pauseOnSystem.checked = window.backend.pauseOnSystem;
+                autoStart.checked = window.desktop.settings.enabled;
+                hiddenStart.checked = window.desktop.settings.hidden;
+                systemDialog.open();
+            }
+        }
+        NavButton {
+            objectName: "companionButton"
+            text: qsTr("Компаньон")
+            visible: !!window.companion
+            onClicked: {
+                petEnabled.checked = window.companion.state.enabled;
+                petChoice.currentIndex = companionDialog.keys.indexOf(window.companion.state.pet);
+                petSize.currentIndex = companionDialog.sizes.indexOf(window.companion.state.size);
+                petMuted.checked = window.companion.state.muted;
+                petFrequency.currentIndex = companionDialog.frequencies.indexOf(window.companion.state.frequency);
+                petBreak.value = window.companion.state.break_minutes;
+                petReducedMotion.checked = window.companion.state.reduce_motion;
+                petFullscreen.checked = window.companion.state.hide_fullscreen;
+                companionDialog.open();
+            }
+        }
+        NavButton {
+            objectName: "gardenButton"
+            text: qsTr("Сад")
+            enabled: !window.backend.busy
+            highlighted: window.page === "garden"
+            onClicked: window.page = "garden"
+        }
+        NavButton {
+            objectName: "appearanceButton"
+            text: qsTr("Вид")
+            enabled: !window.backend.busy
+            onClicked: window.openAppearance()
+        }
+    }
+
+    Rectangle {
+        objectName: "graphiteSidebar"
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: window.sidebarWidth
+        visible: window.sidebarVisible
+        color: window.appearance.graphite ? window.appearance.colors.sidebar : "transparent"
+        Rectangle {
+            anchors.right: parent.right
+            height: parent.height
+            width: 1
+            color: window.appearance.colors.border
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: window.appearance.dp(12)
+            spacing: window.appearance.dp(14)
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: window.appearance.dp(8)
+                Layout.topMargin: window.appearance.dp(6)
+                spacing: window.appearance.dp(10)
+                Rectangle {
+                    implicitWidth: window.appearance.dp(32)
+                    implicitHeight: implicitWidth
+                    radius: window.appearance.dp(9)
+                    color: window.appearance.colors.selection
+                    NavIcon {
+                        anchors.centerIn: parent
+                        width: implicitWidth
+                        height: implicitHeight
+                        symbol: "logo"
+                        ink: window.appearance.colors.accent
+                    }
+                }
+                Label {
+                    text: qsTr("Ритм")
+                    font.pixelSize: window.appearance.dp(19)
+                    font.weight: Font.DemiBold
+                }
+            }
+            Item {
+                id: sidebarNavSlot
+                Layout.fillWidth: true
+                implicitHeight: navigation.implicitHeight
+            }
+            Item { Layout.fillHeight: true }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: window.appearance.dp(window.narrow ? 16 : 24)
-        spacing: window.appearance.dp(16)
+        anchors.margins: window.appearance.dp(window.compactGraphite ? 12 : window.narrow ? 16 : 24)
+        anchors.leftMargin: window.sidebarWidth + anchors.margins
+        spacing: window.appearance.dp(window.compactGraphite ? 7 : window.appearance.graphite ? 12 : 16)
         RowLayout {
             visible: window.page !== "garden" || !window.narrow
             Layout.fillWidth: true
             Rectangle {
-                implicitWidth: window.appearance.dp(44)
-                implicitHeight: window.appearance.dp(44)
+                visible: !window.sidebarVisible
+                implicitWidth: window.appearance.dp(window.compactGraphite ? 26 : 44)
+                implicitHeight: implicitWidth
                 radius: window.appearance.dp(14)
                 color: window.appearance.colors.accentFill
                 Label {
                     anchors.centerIn: parent
                     text: "Р"
                     color: window.appearance.colors.onAccent
-                    font.pixelSize: window.appearance.dp(26)
+                    font.pixelSize: window.appearance.dp(window.compactGraphite ? 17 : 26)
                 }
             }
             ColumnLayout {
@@ -382,23 +628,30 @@ ApplicationWindow {
                     text: window.page === "tasks" ? qsTr("Мои задачи")
                         : window.page === "calendar" ? qsTr("Календарь")
                         : window.page === "statistics" ? qsTr("Статистика") : window.page === "garden" ? qsTr("Сад") : qsTr("Материалы")
-                    font.pixelSize: window.appearance.dp(25)
+                    font.pixelSize: window.appearance.dp(window.compactGraphite ? 22 : window.appearance.graphite ? 30 : 25)
                     font.weight: Font.DemiBold
                     color: window.appearance.colors.text
                 }
                 Caption {
-                    visible: !window.narrow
+                    visible: window.appearance.graphite && window.page === "tasks" && !window.narrow
+                    text: new Date().toLocaleDateString(Qt.locale("ru_RU"), "dddd, d MMMM")
+                }
+                Caption {
+                    visible: !window.narrow && !window.appearance.graphite
                     text: qsTr("Большая работа начинается с маленького шага")
                 }
-            }
-            Item {
-                Layout.fillWidth: true
             }
             BusyIndicator {
                 running: window.backend.busy
                 visible: running
                 implicitWidth: window.appearance.dp(30)
                 implicitHeight: window.appearance.dp(30)
+            }
+            Item {
+                id: compactPomodoroSlot
+                visible: window.inlinePomodoro
+                implicitWidth: visible ? pomodoroPane.implicitWidth : 0
+                implicitHeight: visible ? pomodoroPane.implicitHeight : 0
             }
             AccentButton {
                 objectName: "newTaskButton"
@@ -407,89 +660,11 @@ ApplicationWindow {
                 onClicked: window.editTask({})
             }
         }
-        Flow {
+        Item {
+            id: horizontalNavSlot
+            visible: !window.sidebarVisible
             Layout.fillWidth: true
-            spacing: window.appearance.dp(4)
-            Button {
-                objectName: "tasksPageButton"
-                text: qsTr("Задачи")
-                highlighted: window.page === "tasks"
-                onClicked: window.page = "tasks"
-            }
-            Button {
-                objectName: "calendarPageButton"
-                text: qsTr("Календарь")
-                highlighted: window.page === "calendar"
-                onClicked: window.page = "calendar"
-            }
-            Button {
-                objectName: "statisticsPageButton"
-                text: qsTr("Статистика")
-                highlighted: window.page === "statistics"
-                onClicked: window.page = "statistics"
-            }
-            Button {
-                objectName: "materialsPageButton"
-                text: qsTr("Материалы")
-                highlighted: window.page === "materials"
-                onClicked: window.page = "materials"
-            }
-            Button {
-                objectName: "backupsButton"
-                text: qsTr("Копии")
-                enabled: !window.backend.busy
-                onClicked: {
-                    backupDialog.attempted = false;
-                    backupDialog.open();
-                }
-            }
-            Button {
-                objectName: "assistantButton"
-                text: window.assistant && window.assistant.state.provider !== "mock" ? qsTr("Помощник") : qsTr("Помощник (тест)")
-                visible: !!window.assistant
-                enabled: !window.backend.busy
-                onClicked: assistantDialog.open()
-            }
-            Button {
-                objectName: "systemButton"
-                text: qsTr("Приложение")
-                visible: !!window.desktop
-                onClicked: {
-                    pauseOnSystem.checked = window.backend.pauseOnSystem;
-                    autoStart.checked = window.desktop.settings.enabled;
-                    hiddenStart.checked = window.desktop.settings.hidden;
-                    systemDialog.open();
-                }
-            }
-            Button {
-                objectName: "companionButton"
-                text: qsTr("Компаньон")
-                visible: !!window.companion
-                onClicked: {
-                    petEnabled.checked = window.companion.state.enabled;
-                    petChoice.currentIndex = companionDialog.keys.indexOf(window.companion.state.pet);
-                    petSize.currentIndex = companionDialog.sizes.indexOf(window.companion.state.size);
-                    petMuted.checked = window.companion.state.muted;
-                    petFrequency.currentIndex = companionDialog.frequencies.indexOf(window.companion.state.frequency);
-                    petBreak.value = window.companion.state.break_minutes;
-                    petReducedMotion.checked = window.companion.state.reduce_motion;
-                    petFullscreen.checked = window.companion.state.hide_fullscreen;
-                    companionDialog.open();
-                }
-            }
-            Button {
-                objectName: "gardenButton"
-                text: qsTr("Сад")
-                enabled: !window.backend.busy
-                highlighted: window.page === "garden"
-                onClicked: window.page = "garden"
-            }
-            Button {
-                objectName: "appearanceButton"
-                text: qsTr("Вид")
-                enabled: !window.backend.busy
-                onClicked: window.openAppearance()
-            }
+            implicitHeight: navigation.implicitHeight
         }
         Caption {
             Layout.fillWidth: true
@@ -502,7 +677,7 @@ ApplicationWindow {
             implicitHeight: errorRow.implicitHeight + window.appearance.dp(20)
             radius: window.appearance.dp(10)
             color: window.appearance.colors.warningSurface
-            visible: window.backend.error.length > 0
+            visible: window.backend.error.length > 0 && !(window.appearance.graphite && taskEditor.visible)
             RowLayout {
                 id: errorRow
                 anchors.fill: parent
@@ -513,20 +688,19 @@ ApplicationWindow {
                     wrapMode: Text.Wrap
                     color: window.appearance.colors.warning
                 }
-                Button {
+                UiButton {
                     text: qsTr("Обновить")
                     enabled: !window.backend.busy
                     onClicked: window.backend.reload()
                 }
             }
         }
-        PomodoroPane {
-            id: pomodoroPane
-            visible: window.page !== "garden"
+        Item {
+            id: fullPomodoroSlot
+            visible: window.page !== "garden" && !window.inlinePomodoro
             Layout.fillWidth: true
             Layout.maximumWidth: Infinity
-            backend: window.backend
-            appearance: window.appearance
+            implicitHeight: pomodoroPane.implicitHeight
         }
         ColumnLayout {
             Layout.fillWidth: true
@@ -547,21 +721,21 @@ ApplicationWindow {
                         ? " / " + window.activeFocus.target : "")
                     font.weight: Font.DemiBold
                 }
-                Button {
+                UiButton {
                     visible: !window.activeFocus.recovery
                     objectName: "focusPauseResume"
                     text: window.activeFocus.paused ? qsTr("Продолжить") : qsTr("Пауза")
                     enabled: !window.backend.busy
                     onClicked: window.backend.changeFocus(window.activeFocus.paused ? "resume" : "pause")
                 }
-                Button {
+                UiButton {
                     visible: !window.activeFocus.recovery
                     objectName: "finishFocusButton"
                     text: qsTr("Завершить")
                     enabled: !window.backend.busy
                     onClicked: window.backend.changeFocus("finish")
                 }
-                Button {
+                UiButton {
                     objectName: "reviewFocusButton"
                     visible: !!window.activeFocus.recovery
                     enabled: !window.backend.busy
@@ -577,7 +751,7 @@ ApplicationWindow {
                     wrapMode: Text.Wrap
                     text: qsTr("Плановое время вышло. Можно завершить сессию или продолжить.")
                 }
-                Button {
+                UiButton {
                     objectName: "focusOvertimeButton"
                     text: qsTr("Продолжить сверх плана")
                     enabled: !window.backend.busy
@@ -585,12 +759,61 @@ ApplicationWindow {
                 }
             }
         }
-        ColumnLayout {
+        Rectangle {
+            id: taskWeek
+            objectName: "taskWeekSummary"
+            readonly property var week: window.backend.statistics.currentWeek || ({})
+            visible: window.appearance.graphite && window.page === "tasks"
+                && !window.narrow && window.height >= window.appearance.dp(620)
+            Layout.fillWidth: true
+            implicitHeight: weekRow.implicitHeight + window.appearance.dp(20)
+            color: window.appearance.colors.surface
+            radius: window.appearance.controlRadius(12)
+            border.color: window.appearance.colors.border
+            RowLayout {
+                id: weekRow
+                anchors.fill: parent
+                anchors.margins: window.appearance.dp(12)
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: window.appearance.dp(3)
+                    Label {
+                        text: qsTr("Прогресс недели")
+                        font.weight: Font.DemiBold
+                    }
+                    Caption {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        text: (taskWeek.week.period || "") + " · "
+                            + (taskWeek.week.taskCount ? qsTr("Задач со сроком: %1").arg(taskWeek.week.taskCount)
+                                : qsTr("Нет задач со сроком"))
+                    }
+                }
+                ColumnLayout {
+                    Layout.preferredWidth: window.appearance.dp(180)
+                    spacing: window.appearance.dp(4)
+                    visible: !!taskWeek.week.taskCount
+                    Label {
+                        Layout.alignment: Qt.AlignRight
+                        text: (taskWeek.week.percentText || "") + "%"
+                        color: window.appearance.colors.accent
+                        font.weight: Font.DemiBold
+                    }
+                    TaskProgress {
+                        Layout.fillWidth: true
+                        value: taskWeek.week.percent || 0
+                    }
+                }
+            }
+        }
+        GridLayout {
             Layout.fillWidth: true
             visible: window.page === "tasks" && (!window.narrow || !window.hasTask || !window.detailOpen)
             enabled: !window.backend.busy
-            spacing: window.appearance.dp(8)
-            TextField {
+            columns: window.appearance.graphite && !window.narrow ? 2 : 1
+            columnSpacing: window.appearance.dp(8)
+            rowSpacing: window.appearance.dp(8)
+            UiField {
                 id: searchInput
                 objectName: "searchInput"
                 Layout.fillWidth: true
@@ -599,14 +822,14 @@ ApplicationWindow {
             }
             RowLayout {
                 Layout.fillWidth: true
-                ComboBox {
+                UiCombo {
                     id: statusFilter
                     objectName: "statusFilter"
                     Layout.preferredWidth: window.appearance.dp(155)
                     model: [qsTr("Активные"), qsTr("Выполненные"), qsTr("Все задачи")]
                     onActivated: window.filterList()
                 }
-                ComboBox {
+                UiCombo {
                     id: categoryFilter
                     objectName: "categoryFilter"
                     Layout.fillWidth: true
@@ -615,7 +838,7 @@ ApplicationWindow {
                     currentIndex: Math.max(0, window.categoryOptions.findIndex(x => x.id === window.backend.categoryFilter))
                     onActivated: index => window.backend.setFilters(searchInput.text, ["active", "completed", "all"][statusFilter.currentIndex], window.categoryOptions[index].id)
                 }
-                Button {
+                UiButton {
                     objectName: "trashButton"
                     text: qsTr("Корзина") + " (" + window.backend.trash.length + ")"
                     enabled: !window.backend.busy
@@ -644,9 +867,28 @@ ApplicationWindow {
                     }
                 }
             }
-            Caption {
+            Pane {
                 visible: window.backend.materials.length === 0
-                text: qsTr("Материалов пока нет")
+                Layout.fillWidth: true
+                padding: window.appearance.graphite ? window.appearance.dp(14) : 0
+                background: Rectangle {
+                    visible: window.appearance.graphite
+                    color: window.appearance.colors.surface
+                    border.color: window.appearance.colors.border
+                    radius: window.appearance.controlRadius(12)
+                }
+                contentItem: RowLayout {
+                    spacing: window.appearance.dp(9)
+                    NavIcon {
+                        visible: window.appearance.graphite
+                        symbol: "book"
+                        ink: window.appearance.colors.accent
+                    }
+                    Caption {
+                        Layout.fillWidth: true
+                        text: qsTr("Материалов пока нет")
+                    }
+                }
             }
             ListView {
                 Layout.fillWidth: true
@@ -655,21 +897,30 @@ ApplicationWindow {
                 spacing: window.appearance.dp(6)
                 model: window.backend.materials
                 ScrollBar.vertical: ScrollBar {}
-                delegate: RowLayout {
+                delegate: Pane {
                     id: materialRow
                     required property var modelData
                     width: ListView.view.width - window.appearance.dp(12)
-                    Label {
-                        Layout.fillWidth: true
-                        textFormat: Text.PlainText
-                        text: materialRow.modelData.name
-                        elide: Text.ElideMiddle
+                    padding: window.appearance.graphite ? window.appearance.dp(10) : 0
+                    background: Rectangle {
+                        visible: window.appearance.graphite
+                        color: window.appearance.colors.surface
+                        radius: window.appearance.controlRadius(12)
+                        border.color: window.appearance.colors.border
                     }
-                    Button {
-                        objectName: "openMaterial_" + materialRow.modelData.id
-                        text: qsTr("Открыть")
-                        enabled: !window.backend.busy
-                        onClicked: window.backend.openAttachment(materialRow.modelData.id)
+                    contentItem: RowLayout {
+                        Label {
+                            Layout.fillWidth: true
+                            textFormat: Text.PlainText
+                            text: materialRow.modelData.name
+                            elide: Text.ElideMiddle
+                        }
+                        UiButton {
+                            objectName: "openMaterial_" + materialRow.modelData.id
+                            text: qsTr("Открыть")
+                            enabled: !window.backend.busy
+                            onClicked: window.backend.openAttachment(materialRow.modelData.id)
+                        }
                     }
                 }
             }
@@ -723,21 +974,21 @@ ApplicationWindow {
             enabled: !window.backend.busy
             Rectangle {
                 objectName: "listPanel"
-                Layout.preferredWidth: window.appearance.dp(310)
-                Layout.fillWidth: window.narrow
+                Layout.preferredWidth: window.appearance.dp(window.appearance.graphite && !window.narrow ? 520 : 310)
+                Layout.fillWidth: window.narrow || window.appearance.graphite
                 Layout.fillHeight: true
                 visible: !window.narrow || !window.hasTask || !window.detailOpen
-                color: window.appearance.colors.panel
+                color: window.appearance.graphite ? "transparent" : window.appearance.colors.panel
                 radius: window.appearance.dp(16)
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: window.appearance.dp(12)
-                    spacing: window.appearance.dp(12)
+                    anchors.margins: window.appearance.dp(window.appearance.graphite ? 0 : 12)
+                    spacing: window.appearance.dp(window.appearance.graphite ? 8 : 12)
                     RowLayout {
                         Layout.fillWidth: true
                         Caption {
-                            text: qsTr("ЗАДАЧИ")
-                            font.letterSpacing: 1
+                            text: window.appearance.graphite ? qsTr("Задачи") : qsTr("ЗАДАЧИ")
+                            font.letterSpacing: window.appearance.graphite ? 0 : 1
                         }
                         Item {
                             Layout.fillWidth: true
@@ -769,6 +1020,7 @@ ApplicationWindow {
                             required property int index
                             objectName: "taskRow_" + index
                             width: ListView.view.width
+                            readonly property bool selected: modelData.id === window.current.id
                             height: taskRowContent.implicitHeight + window.appearance.dp(24)
                             onClicked: {
                                 window.backend.selectTask(modelData.id);
@@ -776,8 +1028,14 @@ ApplicationWindow {
                             }
                             background: Rectangle {
                                 radius: window.appearance.dp(12)
-                                color: taskRow.modelData.overdue ? window.appearance.colors.warningSurface : taskRow.modelData.id === window.current.id ? window.appearance.colors.surface : taskRow.hovered ? window.appearance.colors.raised : "transparent"
-                                border.color: taskRow.modelData.id === window.current.id ? window.appearance.colors.border : "transparent"
+                                color: window.appearance.graphite
+                                    ? (taskRow.selected ? window.appearance.colors.selection : taskRow.hovered
+                                        ? window.appearance.colors.raised : window.appearance.colors.surface)
+                                    : taskRow.modelData.overdue ? window.appearance.colors.warningSurface
+                                        : taskRow.selected ? window.appearance.colors.surface
+                                        : taskRow.hovered ? window.appearance.colors.raised : "transparent"
+                                border.color: taskRow.visualFocus && window.appearance.graphite ? window.appearance.colors.accent
+                                    : taskRow.selected ? window.appearance.colors.border : "transparent"
                             }
                             contentItem: ColumnLayout {
                                 id: taskRowContent
@@ -797,24 +1055,58 @@ ApplicationWindow {
                                     wrapMode: Text.Wrap
                                     color: window.appearance.colors.text
                                 }
+                                GridLayout {
+                                    visible: window.appearance.graphite
+                                    Layout.fillWidth: true
+                                    columns: 2
+                                    columnSpacing: window.appearance.dp(10)
+                                    rowSpacing: window.appearance.dp(4)
+                                    Caption {
+                                        Layout.fillWidth: true
+                                        color: taskRow.modelData.overdue ? window.appearance.colors.warning : window.appearance.colors.muted
+                                        textFormat: Text.PlainText
+                                        text: (taskRow.modelData.category ? taskRow.modelData.category + " · " : "")
+                                            + (taskRow.modelData.overdue ? qsTr("Просрочено · ")
+                                                : taskRow.modelData.deadline ? qsTr("До ") : "")
+                                            + (taskRow.modelData.deadline || qsTr("Без дедлайна"))
+                                        wrapMode: Text.Wrap
+                                    }
+                                    ColumnLayout {
+                                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                        spacing: window.appearance.dp(3)
+                                        Caption {
+                                            Layout.alignment: Qt.AlignRight
+                                            text: taskRow.modelData.completed ? qsTr("Выполнено") : taskRow.modelData.progressText + "%"
+                                            color: taskRow.selected && window.appearance.graphite ? window.appearance.colors.accent : window.appearance.colors.muted
+                                        }
+                                        TaskProgress {
+                                            Layout.fillWidth: true
+                                            Layout.preferredWidth: window.appearance.dp(62)
+                                            value: taskRow.modelData.progress
+                                        }
+                                    }
+                                }
                                 Caption {
+                                    visible: !window.appearance.graphite
                                     Layout.fillWidth: true
                                     text: (taskRow.modelData.overdue ? qsTr("Просрочено · ") : taskRow.modelData.deadline ? qsTr("До ") : "") + (taskRow.modelData.deadline || qsTr("Без дедлайна"))
                                     wrapMode: Text.Wrap
                                 }
                                 Caption {
-                                    visible: !!taskRow.modelData.category
+                                    visible: !window.appearance.graphite && !!taskRow.modelData.category
                                     textFormat: Text.PlainText
                                     text: taskRow.modelData.category
                                 }
                                 TaskProgress {
+                                    visible: !window.appearance.graphite
                                     Layout.fillWidth: true
                                     value: taskRow.modelData.progress
                                 }
                                 Caption {
+                                    visible: !window.appearance.graphite
                                     text: taskRow.modelData.completed ? qsTr("Выполнено") : taskRow.modelData.progressText + qsTr("% · В работе")
                                 }
-                                Button {
+                                UiButton {
                                     objectName: "expandTask_" + taskRow.index
                                     visible: taskRow.modelData.subtasks.length > 0
                                     text: taskRow.modelData.expanded ? qsTr("Скрыть шаги") : qsTr("Показать шаги")
@@ -854,11 +1146,13 @@ ApplicationWindow {
             }
             Rectangle {
                 Layout.fillWidth: true
+                Layout.preferredWidth: window.appearance.graphite ? window.appearance.dp(342) : -1
                 Layout.fillHeight: true
                 objectName: "detailPanel"
                 visible: !window.narrow || (window.hasTask && window.detailOpen)
                 color: window.appearance.colors.surface
-                radius: window.appearance.dp(18)
+                radius: window.appearance.controlRadius(18)
+                border.color: window.appearance.graphite ? window.appearance.colors.border : "transparent"
                 Label {
                     anchors.centerIn: parent
                     width: parent.width - window.appearance.dp(40)
@@ -882,7 +1176,7 @@ ApplicationWindow {
                         spacing: window.appearance.dp(16)
                         RowLayout {
                             Layout.fillWidth: true
-                            Button {
+                            UiButton {
                                 objectName: "backToListButton"
                                 visible: window.narrow
                                 text: qsTr("← К списку")
@@ -890,8 +1184,10 @@ ApplicationWindow {
                             }
                             Caption {
                                 color: window.backend.selectedOverdue ? window.appearance.colors.warning : window.appearance.colors.muted
-                                text: window.backend.selectedOverdue ? qsTr("ПРОСРОЧЕНО") : window.current.completed ? qsTr("ВЫПОЛНЕНО") : qsTr("В РАБОТЕ")
-                                font.letterSpacing: 1
+                                text: window.appearance.graphite
+                                    ? (window.backend.selectedOverdue ? qsTr("Просрочено") : window.current.completed ? qsTr("Выполнено") : qsTr("В работе"))
+                                    : (window.backend.selectedOverdue ? qsTr("ПРОСРОЧЕНО") : window.current.completed ? qsTr("ВЫПОЛНЕНО") : qsTr("В РАБОТЕ"))
+                                font.letterSpacing: window.appearance.graphite ? 0 : 1
                             }
                             Item {
                                 Layout.fillWidth: true
@@ -901,7 +1197,7 @@ ApplicationWindow {
                                 text: qsTr("Удалить")
                                 onClicked: window.askDelete(window.current)
                             }
-                            Button {
+                            UiButton {
                                 objectName: "editTaskButton"
                                 text: qsTr("Изменить")
                                 onClicked: window.editTask(window.current)
@@ -917,12 +1213,12 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             textFormat: Text.PlainText
                             text: window.current.title || ""
-                            font.pixelSize: window.appearance.dp(27)
+                            font.pixelSize: window.appearance.dp(window.appearance.graphite ? 22 : 27)
                             font.weight: Font.DemiBold
                             wrapMode: Text.Wrap
                             color: window.appearance.colors.text
                         }
-                        Button {
+                        UiButton {
                             objectName: "taskAttachments"
                             text: qsTr("Вложения (%1)").arg((window.backend.attachments[window.current.id] || []).length)
                             onClicked: window.showAttachments(window.current)
@@ -937,7 +1233,7 @@ ApplicationWindow {
                         }
                         Repeater {
                             model: window.current.sourceUrls || []
-                            delegate: Button {
+                            delegate: UiButton {
                                 required property string modelData
                                 required property int index
                                 objectName: "taskSourceLink_" + index
@@ -970,7 +1266,7 @@ ApplicationWindow {
                                 text: qsTr("Запланировано: ") + (window.current.plannedText || "0 мин")
                                 wrapMode: Text.Wrap
                             }
-                            Button {
+                            UiButton {
                                 objectName: "planTaskButton"
                                 text: qsTr("+ Блок")
                                 enabled: !window.current.completed
@@ -987,7 +1283,7 @@ ApplicationWindow {
                                 wrapMode: Text.Wrap
                                 text: qsTr("Затрачено: ") + (window.current.focusTotal || "00:00:00")
                             }
-                            Button {
+                            UiButton {
                                 objectName: "startFocusButton"
                                 enabled: !window.activeFocus.recovery
                                     && ["idle", "work"].includes(window.backend.pomodoro.phase)
@@ -1001,7 +1297,7 @@ ApplicationWindow {
                                 }
                             }
                         }
-                        Button {
+                        UiButton {
                             id: focusHistoryToggle
                             objectName: "focusHistoryButton"
                             checkable: true
@@ -1010,7 +1306,7 @@ ApplicationWindow {
                         ColumnLayout {
                             Layout.fillWidth: true
                             visible: focusHistoryToggle.checked
-                            Button {
+                            UiButton {
                                 objectName: "addFocusRecordButton"
                                 text: qsTr("+ Запись вручную")
                                 onClicked: focusRecordEditor.prepare("manual", {})
@@ -1076,7 +1372,7 @@ ApplicationWindow {
                             Item {
                                 Layout.fillWidth: true
                             }
-                            Button {
+                            UiButton {
                                 objectName: "weightsButton"
                                 text: qsTr("Веса")
                                 enabled: window.hasTask && window.current.subtasks.length > 0
@@ -1188,7 +1484,7 @@ ApplicationWindow {
                                     RowLayout {
                                         Layout.fillWidth: true
                                         Layout.leftMargin: window.appearance.dp(23)
-                                        TextField {
+                                        UiField {
                                             id: newItem
                                             objectName: "newItem_" + branch.index
                                             Layout.fillWidth: true
@@ -1196,7 +1492,7 @@ ApplicationWindow {
                                             onAccepted: if (text.trim())
                                                 window.backend.addItem(branch.modelData.id, text)
                                         }
-                                        Button {
+                                        UiButton {
                                             objectName: "addItem_" + branch.index
                                             text: "+"
                                             Accessible.name: qsTr("Добавить пункт")
@@ -1209,7 +1505,7 @@ ApplicationWindow {
                         }
                         RowLayout {
                             Layout.fillWidth: true
-                            TextField {
+                            UiField {
                                 id: newSubtask
                                 objectName: "newSubtask"
                                 Layout.fillWidth: true
@@ -1217,7 +1513,7 @@ ApplicationWindow {
                                 onAccepted: if (text.trim())
                                     window.backend.addSubtask(text)
                             }
-                            Button {
+                            UiButton {
                                 objectName: "addSubtaskButton"
                                 text: qsTr("Добавить")
                                 enabled: newSubtask.text.trim().length > 0
@@ -1233,6 +1529,7 @@ ApplicationWindow {
         }
         Caption {
             Layout.fillWidth: true
+            visible: !window.appearance.graphite
             text: qsTr("В своём темпе. Шаг за шагом.")
             horizontalAlignment: Text.AlignHCenter
         }
@@ -1257,7 +1554,7 @@ ApplicationWindow {
                 width: appearanceScroll.availableWidth
                 spacing: window.appearance.dp(12)
                 Caption { text: qsTr("Тема") }
-                ComboBox {
+                UiCombo {
                     id: appearanceTheme
                     objectName: "appearanceTheme"
                     Layout.fillWidth: true
@@ -1282,7 +1579,7 @@ ApplicationWindow {
                     text: qsTr("Пока все темы используют временное оформление. Финальный вид появится после общего дизайна.")
                 }
                 Caption { text: qsTr("Масштаб интерфейса") }
-                ComboBox {
+                UiCombo {
                     id: appearanceScale
                     objectName: "appearanceScale"
                     Layout.fillWidth: true
@@ -1304,7 +1601,7 @@ ApplicationWindow {
         }
         footer: RowLayout {
             Item { Layout.fillWidth: true }
-            Button {
+            UiButton {
                 objectName: "cancelAppearance"
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy
@@ -1366,7 +1663,7 @@ ApplicationWindow {
                     text: window.backend.backups.folder || ""
                     wrapMode: Text.WrapAnywhere
                 }
-                Button {
+                UiButton {
                     text: qsTr("Выбрать папку")
                     enabled: !window.backend.busy
                     onClicked: backupFolderPicker.open()
@@ -1395,13 +1692,13 @@ ApplicationWindow {
         }
         footer: RowLayout {
             Item { Layout.fillWidth: true }
-            Button {
+            UiButton {
                 objectName: "closeBackups"
                 text: qsTr("Закрыть")
                 enabled: !window.backend.busy
                 onClicked: backupDialog.close()
             }
-            Button {
+            UiButton {
                 objectName: "chooseBackupArchive"
                 text: qsTr("Восстановить…")
                 enabled: !window.backend.busy
@@ -1455,7 +1752,7 @@ ApplicationWindow {
         }
         footer: RowLayout {
             Item { Layout.fillWidth: true }
-            Button {
+            UiButton {
                 objectName: "cancelBackupRestore"
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy
@@ -1536,7 +1833,7 @@ ApplicationWindow {
                         visible: attachmentRow.modelData.shared
                         text: qsTr("Из материалов")
                     }
-                    Button {
+                    UiButton {
                         objectName: "openAttachment_" + attachmentRow.modelData.id
                         text: qsTr("Открыть")
                         enabled: !window.backend.busy
@@ -1558,7 +1855,7 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 visible: attachmentDialog.choosingMaterial && attachmentDialog.availableMaterials.length > 0
-                ComboBox {
+                UiCombo {
                     id: materialChoice
                     objectName: "materialChoice"
                     Layout.fillWidth: true
@@ -1567,7 +1864,7 @@ ApplicationWindow {
                     textRole: "name"
                     valueRole: "id"
                 }
-                Button {
+                UiButton {
                     objectName: "linkMaterialButton"
                     text: qsTr("Прикрепить")
                     enabled: !window.backend.busy && materialChoice.currentIndex >= 0
@@ -1587,13 +1884,13 @@ ApplicationWindow {
         }
         footer: RowLayout {
             Item { Layout.fillWidth: true }
-            Button {
+            UiButton {
                 objectName: "closeAttachments"
                 text: qsTr("Закрыть")
                 enabled: !window.backend.busy
                 onClicked: attachmentDialog.close()
             }
-            Button {
+            UiButton {
                 objectName: "chooseFromMaterials"
                 text: qsTr("Из материалов")
                 enabled: !window.backend.busy
@@ -1629,13 +1926,13 @@ ApplicationWindow {
             ColumnLayout {
                 width: petScroll.availableWidth
                 CheckBox { id: petEnabled; objectName: "petEnabled"; text: qsTr("Показывать компаньона") }
-                ComboBox {
+                UiCombo {
                     id: petChoice
                     objectName: "petChoice"
                     Layout.fillWidth: true
                     model: [qsTr("Китайский дракончик"), qsTr("Котёнок"), qsTr("Щенок")]
                 }
-                ComboBox {
+                UiCombo {
                     id: petSize
                     objectName: "petSize"
                     Layout.fillWidth: true
@@ -1653,7 +1950,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                 }
                 Label { text: qsTr("Частота реплик") }
-                ComboBox {
+                UiCombo {
                     id: petFrequency
                     objectName: "petFrequency"
                     Layout.fillWidth: true
@@ -1705,19 +2002,19 @@ ApplicationWindow {
         footer: Flow {
             width: companionDialog.availableWidth
             padding: window.appearance.dp(8)
-            Button {
+            UiButton {
                 objectName: "applyCompanion"
                 text: qsTr("Применить")
                 enabled: !!window.companion && !window.companion.state.busy
                 onClicked: window.companion.configure(petEnabled.checked, companionDialog.keys[petChoice.currentIndex], companionDialog.sizes[petSize.currentIndex], petMuted.checked, companionDialog.frequencies[petFrequency.currentIndex], petBreak.value, petReducedMotion.checked, petFullscreen.checked)
             }
-            Button {
+            UiButton {
                 objectName: "showCompanionAgain"
                 text: qsTr("Вернуть после скрытия")
                 enabled: !!window.companion && window.companion.state.enabled
                 onClicked: window.companion.showAgain()
             }
-            Button { text: qsTr("Закрыть"); objectName: "closeCompanionSettings"; onClicked: companionDialog.close() }
+            UiButton { text: qsTr("Закрыть"); objectName: "closeCompanionSettings"; onClicked: companionDialog.close() }
         }
     }
 
@@ -1790,7 +2087,7 @@ ApplicationWindow {
                     wrapMode: Text.Wrap
                     color: window.appearance.colors.warning
                 }
-                Button {
+                UiButton {
                     objectName: "saveFocusSettings"
                     text: qsTr("Применить настройку таймера")
                     enabled: !window.backend.busy
@@ -1822,13 +2119,13 @@ ApplicationWindow {
             }
         }
         footer: ColumnLayout {
-            Button {
+            UiButton {
                 objectName: "saveAutostart"
                 text: qsTr("Применить автозапуск")
                 enabled: autoStart.enabled
                 onClicked: window.desktop.save(autoStart.checked, hiddenStart.checked)
             }
-            Button {
+            UiButton {
                 objectName: "exitApplication"
                 text: qsTr("Выйти из приложения")
                 onClicked: {
@@ -1836,7 +2133,7 @@ ApplicationWindow {
                     window.requestExit();
                 }
             }
-            Button {
+            UiButton {
                 objectName: "closeSystemDialog"
                 text: qsTr("Закрыть настройки")
                 onClicked: systemDialog.close()
@@ -1869,7 +2166,7 @@ ApplicationWindow {
         }
         footer: RowLayout {
             Item { Layout.fillWidth: true }
-            Button {
+            UiButton {
                 objectName: "cancelFocusExit"
                 text: qsTr("Остаться")
                 enabled: !window.backend.busy
@@ -1945,14 +2242,14 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 placeholderText: qsTr("Окончание · ДД.ММ.ГГГГ ЧЧ:ММ")
             }
-            TextField {
+            UiField {
                 id: recordDuration
                 objectName: "focusRecordDuration"
                 visible: focusRecordEditor.mode === "edit"
                 Layout.fillWidth: true
                 placeholderText: qsTr("Длительность · ЧЧ:ММ:СС")
             }
-            Button {
+            UiButton {
                 objectName: "recoverKnownFocusButton"
                 visible: focusRecordEditor.mode === "recover"
                 enabled: !window.backend.busy
@@ -1972,7 +2269,7 @@ ApplicationWindow {
         }
         footer: RowLayout {
             Item { Layout.fillWidth: true }
-            Button {
+            UiButton {
                 text: focusRecordEditor.mode === "recover" ? qsTr("Позже") : qsTr("Отмена")
                 enabled: !window.backend.busy
                 onClicked: focusRecordEditor.close()
@@ -2012,7 +2309,7 @@ ApplicationWindow {
                     ? qsTr("Цикл Pomodoro продолжится на выбранной задаче.")
                     : qsTr("Оставь поле пустым для секундомера или укажи плановую длительность.")
             }
-            TextField {
+            UiField {
                 id: focusMinutes
                 objectName: "focusMinutesInput"
                 enabled: !window.backend.pomodoro.active
@@ -2036,7 +2333,7 @@ ApplicationWindow {
         }
         footer: RowLayout {
             Item { Layout.fillWidth: true }
-            Button {
+            UiButton {
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy
                 onClicked: focusEditor.close()
@@ -2059,7 +2356,7 @@ ApplicationWindow {
         title: taskId ? qsTr("Изменить задачу") : qsTr("Новая задача")
         anchors.centerIn: parent
         width: Math.min(window.appearance.dp(550), window.width - 32)
-        height: Math.min(window.appearance.dp(680), window.height - 32)
+        height: Math.min(window.appearance.dp(window.appearance.graphite ? 595 : 680), window.height - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ScrollView {
@@ -2073,16 +2370,23 @@ ApplicationWindow {
                 Caption {
                     text: qsTr("Название *")
                 }
-                TextField {
+                UiField {
                     id: titleInput
                     objectName: "titleInput"
                     Layout.fillWidth: true
                     placeholderText: qsTr("Например, лабораторная по физике")
                 }
+                Label {
+                    Layout.fillWidth: true
+                    visible: window.appearance.graphite && window.backend.error.length > 0
+                    text: window.backend.error
+                    color: window.appearance.colors.warning
+                    wrapMode: Text.Wrap
+                }
                 Caption {
                     text: qsTr("Категория · выберите или введите новую")
                 }
-                ComboBox {
+                UiCombo {
                     id: formCategory
                     objectName: "formCategory"
                     Layout.fillWidth: true
@@ -2105,8 +2409,12 @@ ApplicationWindow {
                     Layout.preferredHeight: window.appearance.dp(95)
                     wrapMode: TextEdit.Wrap
                     background: Rectangle {
-                        color: window.appearance.colors.raised
-                        radius: window.appearance.dp(6)
+                        color: window.appearance.graphite ? window.appearance.colors.field : window.appearance.colors.raised
+                        radius: window.appearance.controlRadius(6)
+                        border.width: window.appearance.graphite ? (descriptionInput.activeFocus ? 2 : 1) : 0
+                        border.color: window.appearance.graphite && descriptionInput.activeFocus
+                            ? window.appearance.colors.accent
+                            : window.appearance.graphite ? window.appearance.colors.controlBorder : "transparent"
                     }
                 }
                 RowLayout {
@@ -2116,7 +2424,7 @@ ApplicationWindow {
                         Caption {
                             text: qsTr("Сложность · 1–10")
                         }
-                        TextField {
+                        UiField {
                             id: difficultyInput
                             objectName: "difficultyInput"
                             Layout.fillWidth: true
@@ -2129,7 +2437,7 @@ ApplicationWindow {
                         Caption {
                             text: qsTr("Время · минуты")
                         }
-                        TextField {
+                        UiField {
                             id: minutesInput
                             objectName: "minutesInput"
                             Layout.fillWidth: true
@@ -2156,7 +2464,7 @@ ApplicationWindow {
                 }
                 Label {
                     Layout.fillWidth: true
-                    visible: window.backend.error.length > 0
+                    visible: !window.appearance.graphite && window.backend.error.length > 0
                     text: window.backend.error
                     color: window.appearance.colors.warning
                     wrapMode: Text.Wrap
@@ -2168,13 +2476,16 @@ ApplicationWindow {
             Item {
                 Layout.fillWidth: true
             }
-            Button {
+            UiButton {
+                Layout.bottomMargin: window.appearance.graphite ? window.appearance.dp(16) : 0
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy
                 onClicked: taskEditor.close()
             }
             AccentButton {
                 objectName: "saveTaskButton"
+                Layout.rightMargin: window.appearance.graphite ? window.appearance.dp(20) : 0
+                Layout.bottomMargin: window.appearance.graphite ? window.appearance.dp(16) : 0
                 text: qsTr("Сохранить")
                 enabled: !window.backend.busy
                 onClicked: window.backend.saveTask(taskEditor.taskId, {
@@ -2198,7 +2509,7 @@ ApplicationWindow {
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ColumnLayout {
-            TextField {
+            UiField {
                 id: renameInput
                 objectName: "renameInput"
                 Layout.fillWidth: true
@@ -2216,7 +2527,7 @@ ApplicationWindow {
             Item {
                 Layout.fillWidth: true
             }
-            Button {
+            UiButton {
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy
                 onClicked: renameEditor.close()
@@ -2268,7 +2579,7 @@ ApplicationWindow {
                     color: window.appearance.colors.warning
                     wrapMode: Text.Wrap
                 }
-                Button {
+                UiButton {
                     text: qsTr("Распределить поровну")
                     onClicked: window.backend.equalWeights()
                 }
@@ -2278,7 +2589,7 @@ ApplicationWindow {
             Item {
                 Layout.fillWidth: true
             }
-            Button {
+            UiButton {
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy
                 onClicked: weightEditor.close()
@@ -2325,7 +2636,7 @@ ApplicationWindow {
             Item {
                 Layout.fillWidth: true
             }
-            Button {
+            UiButton {
                 objectName: "cancelDeleteButton"
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy
@@ -2373,7 +2684,7 @@ ApplicationWindow {
                     text: qsTr("Осталось удалить копий файлов: %1. Повтори очистку, когда файлы будут доступны.")
                         .arg(window.backend.pendingCleanup)
                 }
-                Button {
+                UiButton {
                     visible: window.backend.pendingCleanup > 0
                     enabled: !window.backend.busy
                     text: qsTr("Повторить очистку файлов")
@@ -2412,7 +2723,7 @@ ApplicationWindow {
                                 text: [qsTr("Задача"), qsTr("Подзадача"), qsTr("Пункт")][trashRow.modelData.kind] + " · " + trashRow.modelData.deletedText
                             }
                         }
-                        Button {
+                        UiButton {
                             objectName: "restore_" + trashRow.index
                             text: qsTr("Восстановить")
                             enabled: !window.backend.busy
@@ -2431,13 +2742,13 @@ ApplicationWindow {
         }
         footer: RowLayout {
             Item { Layout.fillWidth: true }
-            Button {
+            UiButton {
                 objectName: "closeTrashButton"
                 text: qsTr("Закрыть")
                 enabled: !window.backend.busy
                 onClicked: trashEditor.close()
             }
-            Button {
+            UiButton {
                 objectName: "purgeSelectedButton"
                 text: qsTr("Удалить выбранное (%1)").arg(trashEditor.selectedRows.length)
                 enabled: !window.backend.busy && trashEditor.selectedRows.length > 0
@@ -2488,7 +2799,7 @@ ApplicationWindow {
         }
         footer: RowLayout {
             Item { Layout.fillWidth: true }
-            Button {
+            UiButton {
                 objectName: "cancelPurgeButton"
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy

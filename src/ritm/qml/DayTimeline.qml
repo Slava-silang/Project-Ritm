@@ -61,7 +61,7 @@ Rectangle {
                 width: (chart.width - timeline.appearance.dp(88)) / timeline.view.timelineLanes - timeline.appearance.dp(4)
                 height: Math.max(timeline.appearance.dp(44), modelData.segmentMinutes * timeline.minuteHeight + (gesture === "resize" ? previewDelta * timeline.minuteHeight : 0))
                 z: previewDelta !== 0 ? 3 : 1
-                radius: timeline.appearance.dp(8)
+                radius: timeline.appearance.controlRadius(8)
                 color: previewDelta !== 0 ? timeline.appearance.colors.selection : modelData.isEvent ? timeline.appearance.colors.event : timeline.appearance.colors.work
                 border.color: modelData.warning ? timeline.appearance.colors.warning : timeline.appearance.colors.border
                 border.width: pending || previewDelta !== 0 ? 2 : 1

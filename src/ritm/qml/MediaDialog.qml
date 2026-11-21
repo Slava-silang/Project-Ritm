@@ -3,10 +3,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Dialog {
+RitmDialog {
     id: dialog
+    appearance: dialog.uiAppearance
     required property var media
     required property var uiAppearance
+
+    component UiButton: RitmButton { appearance: dialog.uiAppearance }
     property string context: ""
     property string fileId: ""
     property int turns: 0
@@ -58,7 +61,7 @@ Dialog {
                 text: dialog.snapshot.busy ? qsTr("Подготовка…")
                     : dialog.snapshot.error || ((dialog.snapshot.width || 0) + " × " + (dialog.snapshot.height || 0))
             }
-            Button {
+            UiButton {
                 objectName: "mediaRotate"
                 text: qsTr("Повернуть на 90°")
                 enabled: !dialog.snapshot.busy
@@ -81,7 +84,7 @@ Dialog {
                 Label { text: qsTr("Высота, %") }
                 SpinBox { id: cropH; objectName: "mediaCropHeight"; from: 1; to: 100; editable: true; onValueModified: dialog.dirty = true }
             }
-            Button {
+            UiButton {
                 objectName: "mediaRefreshPreview"
                 text: qsTr("Обновить предпросмотр")
                 enabled: !dialog.snapshot.busy
@@ -95,13 +98,13 @@ Dialog {
         }
     }
     footer: DialogButtonBox {
-        Button {
+        UiButton {
             objectName: "mediaClose"
             text: qsTr("Закрыть")
             enabled: !dialog.snapshot.busy
             onClicked: dialog.close()
         }
-        Button {
+        UiButton {
             objectName: "mediaSaveCopy"
             text: qsTr("Сохранить копию")
             enabled: !dialog.snapshot.busy && !dialog.dirty && !!dialog.snapshot.url && !dialog.snapshot.error

@@ -190,8 +190,13 @@ def focus_history_view(session, intervals, zone):
 
 
 def statistics_view(tasks, rows, completed, focus, anchor, now, zone):
-    week = weekly_statistics(tasks, completed, focus, anchor or now.astimezone(zone).date(), zone)
+    today = now.astimezone(zone).date()
+    week = weekly_statistics(tasks, completed, focus, anchor or today, zone)
+    current = (
+        week if week.start == week_start(today) else weekly_statistics(tasks, {}, {}, today, zone)
+    )
     last = week.end - timedelta(days=1)
+    current_last = current.end - timedelta(days=1)
     maximum = max(week.daily_focus, default=0)
     return {
         "start": week.start.isoformat(),
@@ -199,6 +204,12 @@ def statistics_view(tasks, rows, completed, focus, anchor, now, zone):
         "taskCount": week.task_count,
         "percent": float(week.progress or 0),
         "percentText": str(week.progress).replace(".", ",") if week.task_count else "",
+        "currentWeek": {
+            "period": f"{current.start:%d.%m} — {current_last:%d.%m}",
+            "taskCount": current.task_count,
+            "percent": float(current.progress or 0),
+            "percentText": str(current.progress).replace(".", ",") if current.task_count else "",
+        },
         "completedCount": week.completed_count,
         "undatedCount": week.undated_count,
         "overdueCount": sum(is_overdue(task, now) for task in tasks),

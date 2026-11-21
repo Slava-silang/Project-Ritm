@@ -11,6 +11,11 @@ Dialog {
     required property var agent
     required property var taskBackend
     required property var uiAppearance
+
+    component UiButton: RitmButton { appearance: dialog.uiAppearance }
+    component UiField: RitmTextField { appearance: dialog.uiAppearance }
+    component UiCombo: RitmComboBox { appearance: dialog.uiAppearance }
+    component UiDialog: RitmDialog { appearance: dialog.uiAppearance }
     property var state: agent ? agent.state : ({busy: false, hasDraft: false, saving: false})
     property var form: ({})
     property var selectedFiles: []
@@ -41,9 +46,9 @@ Dialog {
     background: Rectangle {
         color: dialog.uiAppearance.colors.surface
         border.color: dialog.uiAppearance.colors.border
-        radius: dialog.uiAppearance.dp(14)
+        radius: dialog.uiAppearance.dialogRadius(14)
     }
-    Dialog {
+    UiDialog {
         id: clearHistoryDialog
         objectName: "clearChatHistoryDialog"
         title: qsTr("Удалить всю историю помощника?")
@@ -56,12 +61,12 @@ Dialog {
             wrapMode: Text.Wrap
         }
         footer: Flow {
-            Button {
+            UiButton {
                 objectName: "confirmChatHistoryClear"
                 text: qsTr("Удалить историю")
                 onClicked: { dialog.agent.clearHistory(); clearHistoryDialog.close(); }
             }
-            Button {
+            UiButton {
                 objectName: "cancelChatHistoryClear"
                 text: qsTr("Отмена")
                 onClicked: clearHistoryDialog.close()
@@ -80,7 +85,7 @@ Dialog {
         uiAppearance: dialog.uiAppearance
         context: dialog.fileContext
     }
-    Dialog {
+    UiDialog {
         id: resendDialog
         objectName: "assistantResendDialog"
         parent: Overlay.overlay
@@ -94,8 +99,8 @@ Dialog {
             wrapMode: Text.Wrap
         }
         footer: DialogButtonBox {
-            Button { objectName: "assistantCancelResend"; text: qsTr("Отмена"); onClicked: resendDialog.close() }
-            Button {
+            UiButton { objectName: "assistantCancelResend"; text: qsTr("Отмена"); onClicked: resendDialog.close() }
+            UiButton {
                 objectName: "assistantConfirmResend"
                 text: qsTr("Передать и отправить")
                 onClicked: { resendDialog.close(); dialog.send(true); }
@@ -238,13 +243,13 @@ Dialog {
             Flow {
                 Layout.fillWidth: true
                 spacing: dialog.uiAppearance.dp(8)
-                Button {
+                UiButton {
                     objectName: "chatNew"
                     text: qsTr("Новый диалог")
                     enabled: !dialog.state.busy
                     onClicked: { dialog.agent.newChat(); prompt.text = ""; }
                 }
-                Button {
+                UiButton {
                     objectName: "chatClearHistory"
                     text: qsTr("Удалить историю…")
                     enabled: !dialog.state.saving && !dialog.state.historyBusy
@@ -292,7 +297,7 @@ Dialog {
                             ? chatEntry.modelData.text : chatEntry.modelData.text.slice(0, 300) + "…"
                         selectByMouse: true
                     }
-                    Button {
+                    UiButton {
                         objectName: "chatResume_" + chatEntry.index
                         visible: chatEntry.modelData.role === "assistant" && !!chatEntry.modelData.scope && chatEntry.modelData.chat !== dialog.state.chatId
                         enabled: !dialog.state.busy && !dialog.state.hasDraft
@@ -301,14 +306,14 @@ Dialog {
                             operation.currentIndex === 1 ? (dialog.taskBackend.detail.id || "") : "",
                             operation.currentIndex === 2 ? "update" : operation.currentIndex === 1 ? "split" : "create")
                     }
-                    Button {
+                    UiButton {
                         visible: chatEntry.modelData.text.length > 300
                         text: chatEntry.expanded ? qsTr("Свернуть сообщение") : qsTr("Показать полностью")
                         onClicked: chatEntry.expanded = !chatEntry.expanded
                     }
                 }
             }
-            ComboBox {
+            UiCombo {
                 id: operation
                 objectName: "assistantOperation"
                 Layout.fillWidth: true
@@ -334,7 +339,7 @@ Dialog {
                 wrapMode: Text.Wrap
                 text: qsTr("Отметьте файлы для текущего сообщения: до 5 файлов, до 8 МиБ каждый и до 20 МиБ суммарно. Изображения и документы передаются целиком, если это поддерживает выбранная модель. Иначе доступен прежний текстовый режим TXT/MD/PDF (60 000 символов). Выбранные материалы прикрепятся к задаче после подтверждения предложения.")
             }
-            Button {
+            UiButton {
                 objectName: "assistantAddFile"
                 text: qsTr("Добавить файл…")
                 enabled: !dialog.state.busy && !dialog.state.hasDraft && (!dialog.agent || !dialog.agent.media.state.busy)
@@ -346,7 +351,7 @@ Dialog {
                 text: dialog.agent ? dialog.agent.media.state.error || "" : ""
                 visible: text.length > 0
             }
-            Button {
+            UiButton {
                 objectName: "assistantRefreshFiles"
                 text: dialog.state.filesLoading ? qsTr("Загрузка файлов…") : qsTr("Обновить список файлов")
                 enabled: !dialog.state.busy && !dialog.state.filesLoading
@@ -386,7 +391,7 @@ Dialog {
                                 : dialog.selectedFiles.filter(x => x !== fileRow.modelData.id);
                         }
                     }
-                    Button {
+                    UiButton {
                         objectName: "assistantPreview_" + fileRow.index
                         visible: !!fileRow.modelData.image
                         text: qsTr("Посмотреть / обрезать")
@@ -410,7 +415,7 @@ Dialog {
                 wrapMode: TextEdit.Wrap
                 enabled: !dialog.state.busy
             }
-            Button {
+            UiButton {
                 objectName: "assistantGenerate"
                 text: dialog.state.busy ? qsTr("Подготовка…") : (dialog.state.provider === "chatgpt" ? qsTr("Отправить сообщение") : qsTr("Отправить в тестовый чат"))
                 enabled: !dialog.state.busy && !dialog.state.hasDraft && !dialog.taskBackend.busy
@@ -444,7 +449,7 @@ Dialog {
                 visible: dialog.state.hasDraft && dialog.editing
                 enabled: !dialog.state.busy
                 Label { text: qsTr("Название"); visible: !dialog.state.split }
-                TextField {
+                UiField {
                     id: titleInput
                     objectName: "draftTitle"
                     Layout.fillWidth: true
@@ -460,7 +465,7 @@ Dialog {
                     onTextChanged: if (activeFocus) dialog.dirty = true
                 }
                 Label { text: qsTr("Сложность 1–10 (необязательно)"); visible: !dialog.state.split }
-                TextField {
+                UiField {
                     id: difficultyInput
                     objectName: "draftDifficulty"
                     Layout.fillWidth: true
@@ -468,7 +473,7 @@ Dialog {
                     onTextEdited: dialog.dirty = true
                 }
                 Label { text: qsTr("Ожидаемое время, минуты"); visible: !dialog.state.split }
-                TextField {
+                UiField {
                     id: minutesInput
                     objectName: "draftMinutes"
                     Layout.fillWidth: true
@@ -490,7 +495,7 @@ Dialog {
                     text: qsTr("Веса всех подзадач первого уровня (%) через точку с запятой. Пусто — автоматическое распределение.")
                     wrapMode: Text.Wrap
                 }
-                TextField {
+                UiField {
                     id: weightsInput
                     objectName: "draftWeights"
                     Layout.fillWidth: true
@@ -515,7 +520,7 @@ Dialog {
                             wrapMode: Text.Wrap
                             text: qsTr("Правка существующего пункта ") + (nodeEdit.index + 1)
                         }
-                        TextField {
+                        UiField {
                             objectName: "draftNodeTitle_" + nodeEdit.index
                             Layout.fillWidth: true
                             visible: Object.prototype.hasOwnProperty.call(nodeEdit.modelData, "title")
@@ -539,7 +544,7 @@ Dialog {
                         required property int index
                         Layout.fillWidth: true
                         Label { text: qsTr("Новая подзадача ") + (branch.index + 1) }
-                        TextField {
+                        UiField {
                             objectName: "draftSubtask_" + branch.index
                             Layout.fillWidth: true
                             text: branch.modelData.title
@@ -556,7 +561,7 @@ Dialog {
                                 dialog.dirty = true;
                             }
                         }
-                        Button {
+                        UiButton {
                             text: qsTr("Убрать из предложения")
                             onClicked: {
                                 let updated = dialog.form.subtasks.slice();
@@ -568,7 +573,7 @@ Dialog {
                         }
                     }
                 }
-                Button {
+                UiButton {
                     objectName: "draftAddSubtask"
                     text: qsTr("+ Подзадача")
                     onClicked: {
@@ -583,7 +588,7 @@ Dialog {
     footer: Flow {
         width: dialog.availableWidth
         padding: dialog.uiAppearance.dp(10)
-        Button {
+        UiButton {
             objectName: "chatRefine"
             text: qsTr("Уточнить предложение")
             visible: dialog.state.hasDraft && !dialog.editing
@@ -591,27 +596,27 @@ Dialog {
             onClicked: { dialog.agent.refine(); prompt.text = ""; prompt.forceActiveFocus(); }
         }
         spacing: dialog.uiAppearance.dp(8)
-        Button {
+        UiButton {
             objectName: "assistantEdit"
             text: qsTr("Изменить черновик")
             visible: dialog.state.hasDraft && !dialog.editing
             enabled: !dialog.state.busy
             onClicked: dialog.loadDraft()
         }
-        Button {
+        UiButton {
             objectName: "assistantCheck"
             text: qsTr("Проверить изменения")
             visible: dialog.state.hasDraft && dialog.editing
             enabled: !dialog.state.busy
             onClicked: dialog.checkDraft()
         }
-        Button {
+        UiButton {
             objectName: "assistantApply"
             text: qsTr("Подтвердить и сохранить")
             enabled: !!dialog.state.canApply && !dialog.editing && !dialog.dirty && !dialog.taskBackend.busy
             onClicked: dialog.agent.apply()
         }
-        Button {
+        UiButton {
             objectName: "assistantCancel"
             text: dialog.state.hasDraft ? qsTr("Отбросить черновик") : qsTr("Отмена")
             enabled: !dialog.state.saving

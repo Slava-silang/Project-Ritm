@@ -15,6 +15,10 @@ ColumnLayout {
     property bool planningAvailable: false
     property bool dragging: false
     property var dragEntry: ({})
+
+    component UiButton: RitmButton { appearance: pane.appearance }
+    component UiField: RitmTextField { appearance: pane.appearance }
+    component UiCombo: RitmComboBox { appearance: pane.appearance }
     property point dragOrigin: Qt.point(0, 0)
 
     function beginDrag(entry, point) {
@@ -54,7 +58,7 @@ ColumnLayout {
         width: pane.appearance.dp(160)
         height: pane.appearance.dp(36)
         z: 1000
-        radius: pane.appearance.dp(8)
+        radius: pane.appearance.controlRadius(8)
         color: pane.appearance.colors.selection
         border.color: pane.appearance.colors.accent
         Drag.active: pane.dragging
@@ -71,7 +75,7 @@ ColumnLayout {
             elide: Text.ElideRight
         }
     }
-    spacing: pane.appearance.dp(12)
+    spacing: pane.appearance.dp(pane.appearance.graphite && pane.narrow ? 7 : 12)
 
     function beginCreate(taskId) {
         blockEditor.entry = null;
@@ -185,7 +189,7 @@ ColumnLayout {
             }
         }
         background: Rectangle {
-            radius: pane.appearance.dp(8)
+            radius: pane.appearance.controlRadius(8)
             color: eventButton.entry.kind === "deadline" ? pane.appearance.colors.warningSurface : eventButton.entry.isEvent ? (eventButton.hovered ? pane.appearance.colors.eventHover : pane.appearance.colors.event) : eventButton.hovered ? pane.appearance.colors.selection : pane.appearance.colors.work
             border.color: eventButton.visualFocus ? pane.appearance.colors.accent : "transparent"
         }
@@ -200,18 +204,18 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         enabled: !pane.backend.busy
-        Button {
+        UiButton {
             objectName: "calendarPrevButton"
             text: "←"
             Accessible.name: qsTr("Предыдущий период")
             onClicked: pane.backend.navigateCalendar(-1)
         }
-        Button {
+        UiButton {
             objectName: "calendarTodayButton"
             text: qsTr("Сегодня")
             onClicked: pane.backend.calendarToday()
         }
-        Button {
+        UiButton {
             objectName: "calendarNextButton"
             text: "→"
             Accessible.name: qsTr("Следующий период")
@@ -220,13 +224,13 @@ ColumnLayout {
         Item {
             Layout.fillWidth: true
         }
-        Button {
+        UiButton {
             objectName: "calendarWeekButton"
             text: qsTr("Неделя")
             highlighted: pane.view.mode === "week"
             onClicked: pane.backend.setCalendarMode("week")
         }
-        Button {
+        UiButton {
             objectName: "calendarMonthButton"
             text: qsTr("Месяц")
             highlighted: pane.view.mode === "month"
@@ -243,14 +247,15 @@ ColumnLayout {
             color: pane.appearance.colors.text
             wrapMode: Text.Wrap
         }
-        Button {
+        UiButton {
             objectName: "newBlockButton"
+            primary: pane.appearance.graphite
             text: qsTr("+ В расписание")
             enabled: !pane.backend.busy
             onClicked: pane.beginCreate("")
         }
     }
-    Button {
+    UiButton {
         objectName: "planningButton"
         text: qsTr("Рабочие часы и помощник расписания")
         visible: pane.planningAvailable
@@ -260,17 +265,19 @@ ColumnLayout {
     }
     Label {
         Layout.fillWidth: true
-        text: qsTr("Зелёный — работа над задачей · Фиолетовый — событие · ◆ — дедлайн. ↔ переносит запись между днями.")
+        text: pane.appearance.graphite && pane.narrow
+            ? qsTr("Блоки и события отмечены счётчиками. ◆ — дедлайн.")
+            : qsTr("Зелёный — работа над задачей · Фиолетовый — событие · ◆ — дедлайн. ↔ переносит запись между днями.")
         wrapMode: Text.Wrap
         color: pane.appearance.colors.muted
-        font.pixelSize: pane.appearance.dp(13)
+        font.pixelSize: pane.appearance.dp(pane.appearance.graphite && pane.narrow ? 11 : 13)
     }
     Rectangle {
         Layout.fillWidth: true
         implicitHeight: message.implicitHeight + pane.appearance.dp(20)
         visible: !!pane.backend.notice
         color: pane.appearance.colors.work
-        radius: pane.appearance.dp(10)
+        radius: pane.appearance.controlRadius(10)
         Label {
             id: message
             anchors.fill: parent
@@ -331,7 +338,7 @@ ColumnLayout {
                         Layout.preferredWidth: pane.appearance.dp(0)
                         Layout.alignment: Qt.AlignTop
                         implicitHeight: (pane.view.mode === "month" || pane.narrow) ? pane.appearance.dp(pane.narrow ? 95 : 120) : Math.max(pane.appearance.dp(230), dayContent.implicitHeight + pane.appearance.dp(16))
-                        radius: pane.appearance.dp(10)
+                        radius: pane.appearance.controlRadius(10)
                         color: dayCell.modelData.today ? pane.appearance.colors.selection : dayCell.modelData.inMonth || pane.view.mode === "week" ? pane.appearance.colors.surface : pane.appearance.colors.panel
                         border.color: dayCell.modelData.selected ? pane.appearance.colors.accent : pane.appearance.colors.border
                         border.width: dayCell.modelData.selected ? 2 : 1
@@ -363,7 +370,7 @@ ColumnLayout {
                             anchors.top: parent.top
                             anchors.margins: pane.appearance.dp(pane.narrow ? 4 : 8)
                             spacing: pane.appearance.dp(5)
-                            Button {
+                            UiButton {
                                 objectName: "calendarDay_" + dayCell.index
                                 Layout.fillWidth: true
                                 text: dayCell.modelData.number + (dayCell.modelData.today ? " •" : "")
@@ -467,7 +474,7 @@ ColumnLayout {
         closePolicy: pane.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         background: Rectangle {
             color: pane.appearance.colors.surface
-            radius: pane.appearance.dp(14)
+            radius: pane.appearance.dialogRadius(14)
             border.color: pane.appearance.colors.border
         }
         contentItem: ScrollView {
@@ -480,7 +487,7 @@ ColumnLayout {
                 enabled: !pane.backend.busy
                 Repeater {
                     model: blockEditor.entry ? blockEditor.entry.sourceUrls || [] : []
-                    delegate: Button {
+                    delegate: UiButton {
                         required property string modelData
                         text: qsTr("Источник — письмо Gmail")
                         onClicked: Qt.openUrlExternally(modelData)
@@ -490,7 +497,7 @@ ColumnLayout {
                     text: qsTr("Тип записи")
                     color: pane.appearance.colors.muted
                 }
-                ComboBox {
+                UiCombo {
                     id: blockKind
                     objectName: "blockKindInput"
                     Layout.fillWidth: true
@@ -502,7 +509,7 @@ ColumnLayout {
                     color: pane.appearance.colors.muted
                     visible: blockKind.currentIndex === 1
                 }
-                TextField {
+                UiField {
                     id: eventTitle
                     objectName: "eventTitleInput"
                     Layout.fillWidth: true
@@ -514,7 +521,7 @@ ColumnLayout {
                     text: qsTr("Задача")
                     color: pane.appearance.colors.muted
                 }
-                ComboBox {
+                UiCombo {
                     id: blockTask
                     visible: blockKind.currentIndex === 0
                     objectName: "blockTaskInput"
@@ -569,13 +576,13 @@ ColumnLayout {
             Item {
                 Layout.fillWidth: true
             }
-            Button {
+            UiButton {
                 objectName: "cancelBlockButton"
                 text: qsTr("Отмена")
                 enabled: !pane.backend.busy
                 onClicked: blockEditor.close()
             }
-            Button {
+            UiButton {
                 objectName: "saveBlockButton"
                 text: qsTr("Сохранить")
                 enabled: !pane.backend.busy && (blockKind.currentIndex === 1 || (blockTask.currentIndex >= 0 && blockTask.currentIndex < blockEditor.taskChoices.length))

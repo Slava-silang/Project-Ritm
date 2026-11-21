@@ -8,14 +8,19 @@ ColumnLayout {
     objectName: "pomodoroPane"
     required property var backend
     required property var appearance
+    property bool forceCompact: false
+
+    component UiButton: RitmButton { appearance: pane.appearance }
+    component UiCombo: RitmComboBox { appearance: pane.appearance }
+    component UiDialog: RitmDialog { appearance: pane.appearance }
     readonly property var snapshot: backend.pomodoro
-    readonly property bool compact: width < appearance.dp(700)
+    readonly property bool compact: forceCompact || width < appearance.dp(700)
     readonly property bool dialogsOpen: editor.visible || stopDialog.visible
     spacing: appearance.dp(3)
 
     RowLayout {
         Layout.fillWidth: true
-        Button {
+        UiButton {
             objectName: "pomodoroOpenButton"
             text: qsTr("Pomodoro") + (pane.compact && pane.snapshot.active ? " · "
                 + (pane.snapshot.reached ? qsTr("Интервал завершён") : pane.snapshot.remaining) : "")
@@ -32,7 +37,7 @@ ColumnLayout {
                 + (!pane.snapshot.running && !pane.snapshot.reached ? qsTr(" · на паузе") : "")
             wrapMode: Text.WordWrap
         }
-        Button {
+        UiButton {
             objectName: "pomodoroStopButton"
             visible: !!pane.snapshot.active && !pane.compact
             enabled: !pane.backend.busy && !pane.backend.focus.recovery
@@ -53,14 +58,14 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: !!pane.snapshot.active && !pane.compact
         spacing: pane.appearance.dp(5)
-        Button {
+        UiButton {
             objectName: "pomodoroBreakButton"
             visible: pane.snapshot.phase === "work" && !!pane.snapshot.reached
             text: qsTr("Начать перерыв")
             enabled: !pane.backend.busy && !pane.backend.focus.recovery
             onClicked: pane.backend.changePomodoro("break")
         }
-        Button {
+        UiButton {
             objectName: "pomodoroWorkButton"
             visible: pane.snapshot.phase !== "work" && !!pane.snapshot.reached
                 || pane.snapshot.phase === "work" && !pane.backend.focus.elapsed
@@ -68,7 +73,7 @@ ColumnLayout {
             enabled: !pane.backend.busy && !pane.backend.focus.recovery
             onClicked: editor.begin()
         }
-        Button {
+        UiButton {
             objectName: "pomodoroBreakPause"
             visible: pane.snapshot.phase === "short" || pane.snapshot.phase === "long"
             text: pane.snapshot.running ? qsTr("Пауза перерыва") : qsTr("Продолжить перерыв")
@@ -77,7 +82,7 @@ ColumnLayout {
         }
     }
 
-    Dialog {
+    UiDialog {
         id: editor
         objectName: "pomodoroDialog"
         property string selectedTask: ""
@@ -119,21 +124,21 @@ ColumnLayout {
                     Layout.fillWidth: true
                     visible: pane.compact && !!pane.snapshot.active
                     spacing: pane.appearance.dp(4)
-                    Button {
+                    UiButton {
                         objectName: "pomodoroDialogBreakButton"
                         visible: pane.snapshot.phase === "work" && !!pane.snapshot.reached
                         text: qsTr("Начать перерыв")
                         enabled: !pane.backend.busy && !pane.backend.focus.recovery
                         onClicked: pane.backend.changePomodoro("break")
                     }
-                    Button {
+                    UiButton {
                         objectName: "pomodoroDialogPauseButton"
                         visible: pane.snapshot.phase === "short" || pane.snapshot.phase === "long"
                         text: pane.snapshot.running ? qsTr("Пауза перерыва") : qsTr("Продолжить перерыв")
                         enabled: !pane.backend.busy && !pane.snapshot.reached
                         onClicked: pane.backend.changePomodoro(pane.snapshot.running ? "pause" : "resume")
                     }
-                    Button {
+                    UiButton {
                         text: qsTr("Завершить цикл")
                         enabled: !pane.backend.busy && !pane.backend.focus.recovery
                         onClicked: { editor.close(); stopDialog.open(); }
@@ -144,7 +149,7 @@ ColumnLayout {
                     text: qsTr("Задача для рабочего интервала")
                     wrapMode: Text.Wrap
                 }
-                ComboBox {
+                UiCombo {
                     id: taskChoice
                     objectName: "pomodoroTaskChoice"
                     Layout.fillWidth: true
@@ -190,12 +195,12 @@ ColumnLayout {
             }
         }
         footer: DialogButtonBox {
-            Button {
+            UiButton {
                 text: qsTr("Отмена")
                 enabled: !pane.backend.busy
                 onClicked: editor.close()
             }
-            Button {
+            UiButton {
                 objectName: "pomodoroConfirmButton"
                 text: qsTr("Начать работу")
                 enabled: !pane.backend.busy && taskChoice.currentIndex >= 0
@@ -208,7 +213,7 @@ ColumnLayout {
             }
         }
     }
-    Dialog {
+    UiDialog {
         id: stopDialog
         parent: Overlay.overlay
         anchors.centerIn: parent
@@ -224,8 +229,8 @@ ColumnLayout {
             }
         }
         footer: DialogButtonBox {
-            Button { text: qsTr("Отмена"); enabled: !pane.backend.busy; onClicked: stopDialog.close() }
-            Button {
+            UiButton { text: qsTr("Отмена"); enabled: !pane.backend.busy; onClicked: stopDialog.close() }
+            UiButton {
                 objectName: "pomodoroConfirmStop"
                 text: qsTr("Завершить цикл")
                 enabled: !pane.backend.busy

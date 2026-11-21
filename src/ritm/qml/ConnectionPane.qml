@@ -8,9 +8,12 @@ ColumnLayout {
     required property var connection
     required property var agent
     required property var uiAppearance
+
+    component UiButton: RitmButton { appearance: pane.uiAppearance }
+    component UiCombo: RitmComboBox { appearance: pane.uiAppearance }
     property var accountState: connection ? connection.state : ({busy: false})
     property bool available: !!connection && !accountState.busy && !agent.state.busy
-    Button {
+    UiButton {
         objectName: "connectionExpand"
         text: controls.visible ? qsTr("Скрыть подключение") : qsTr("Подключение ChatGPT")
         onClicked: controls.visible = !controls.visible
@@ -42,26 +45,26 @@ ColumnLayout {
         Flow {
             Layout.fillWidth: true
             spacing: pane.uiAppearance.dp(8)
-            Button {
+            UiButton {
                 objectName: "chatgptLogin"
                 text: qsTr("Continue with ChatGPT")
                 enabled: pane.available
                 onClicked: pane.connection.login()
             }
-            Button {
+            UiButton {
                 objectName: "chatgptRestore"
                 text: qsTr("Восстановить сохранённый вход")
                 enabled: pane.available
                 onClicked: pane.connection.restore()
             }
-            Button {
+            UiButton {
                 objectName: "chatgptModels"
                 text: qsTr("Загрузить доступные модели")
                 enabled: pane.available && !!pane.accountState.sharing
                 onClicked: pane.connection.models()
             }
         }
-        ComboBox {
+        UiCombo {
             objectName: "chatgptModel"
             Layout.fillWidth: true
             model: pane.accountState.models || []
@@ -74,30 +77,30 @@ ColumnLayout {
         Flow {
             Layout.fillWidth: true
             spacing: pane.uiAppearance.dp(8)
-            Button {
+            UiButton {
                 objectName: "chatgptUse"
                 text: qsTr("Использовать ChatGPT")
                 enabled: pane.available && !!pane.accountState.model && !!pane.accountState.sharing
                 onClicked: pane.connection.useChatGPT()
             }
-            Button {
+            UiButton {
                 objectName: "chatgptMock"
                 text: qsTr("Локальный тест без сети")
                 enabled: pane.available
                 onClicked: pane.connection.useMock()
             }
-            Button {
+            UiButton {
                 objectName: "chatgptLogout"
                 text: qsTr("Выйти из аккаунта")
                 enabled: pane.available
                 onClicked: pane.connection.logout()
             }
-            Button {
+            UiButton {
                 text: qsTr("Отменить подключение")
                 enabled: !!pane.accountState.busy
                 onClicked: pane.connection.cancel()
             }
-            Button {
+            UiButton {
                 text: qsTr("Открыть ChatGPT для проверки лимитов")
                 onClicked: Qt.openUrlExternally("https://chatgpt.com/")
             }
@@ -114,7 +117,7 @@ ColumnLayout {
                 wrapMode: Text.Wrap
             }
         }
-        Button {
+        UiButton {
             objectName: "chatgptProbe"
             text: qsTr("Проверить запрос по подписке")
             enabled: consent.enabled && consent.checked

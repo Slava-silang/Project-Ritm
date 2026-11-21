@@ -8,6 +8,9 @@ ColumnLayout {
     id: pane
     required property var source
     required property var appearance
+
+    component UiButton: RitmButton { appearance: pane.appearance }
+    component UiField: RitmTextField { appearance: pane.appearance }
     property var mailState: source ? source.state : ({busy: false, messages: [], selected: -1})
     property bool writing: !!source && source.proposals.state.saving
     function closeSource() { viewer.close(); }
@@ -18,7 +21,7 @@ ColumnLayout {
                 consent.checked = false;
         }
     }
-    Button {
+    UiButton {
         objectName: "gmailSourceButton"
         text: qsTr("Источники — Gmail")
         enabled: !!pane.source
@@ -45,7 +48,7 @@ ColumnLayout {
         background: Rectangle {
             color: pane.appearance.colors.surface
             border.color: pane.appearance.colors.border
-            radius: pane.appearance.dp(12)
+            radius: pane.appearance.dialogRadius(12)
         }
         contentItem: ScrollView {
             id: scroll
@@ -67,28 +70,28 @@ ColumnLayout {
                 Flow {
                     Layout.fillWidth: true
                     spacing: pane.appearance.dp(6)
-                    Button {
+                    UiButton {
                         objectName: "gmailImportConfig"
                         width: Math.min(implicitWidth, parent.width)
                         text: qsTr("Загрузить конфигурацию Google")
                         enabled: !pane.mailState.busy && !pane.writing && !pane.mailState.connected
                         onClicked: configPicker.open()
                     }
-                    Button {
+                    UiButton {
                         objectName: "gmailRestore"
                         width: Math.min(implicitWidth, parent.width)
                         text: qsTr("Открыть сохранённое подключение")
                         enabled: !pane.mailState.busy && !pane.writing
                         onClicked: pane.source.restore()
                     }
-                    Button {
+                    UiButton {
                         objectName: "gmailLogin"
                         width: Math.min(implicitWidth, parent.width)
                         text: qsTr("Войти через Google")
                         enabled: !pane.mailState.busy && !pane.writing && !!pane.mailState.configured
                         onClicked: pane.source.login()
                     }
-                    Button {
+                    UiButton {
                         objectName: "gmailLogout"
                         width: Math.min(implicitWidth, parent.width)
                         text: qsTr("Удалить подключение с устройства")
@@ -120,7 +123,7 @@ ColumnLayout {
                     wrapMode: Text.Wrap
                     text: qsTr("Дополнительный фильтр Gmail (пусто — все непрочитанные)")
                 }
-                TextField {
+                UiField {
                     id: query
                     objectName: "gmailQuery"
                     Layout.fillWidth: true
@@ -149,7 +152,7 @@ ColumnLayout {
                         wrapMode: Text.Wrap
                     }
                 }
-                Button {
+                UiButton {
                     objectName: "gmailRead"
                     text: qsTr("Прочитать письма")
                     enabled: consent.enabled && consent.checked
@@ -177,7 +180,7 @@ ColumnLayout {
                 }
                 Repeater {
                     model: pane.mailState.messages || []
-                    delegate: Button {
+                    delegate: UiButton {
                         id: messageButton
                         required property var modelData
                         required property int index
@@ -201,7 +204,7 @@ ColumnLayout {
                     text: pane.mailState.bodyAvailable ? pane.mailState.body
                         : qsTr("Текст недоступен. Вложения автоматически не загружаются.")
                 }
-                Button {
+                UiButton {
                     text: qsTr("Открыть выбранное письмо в Gmail")
                     visible: !!pane.mailState.sourceUrl
                     onClicked: Qt.openUrlExternally(pane.mailState.sourceUrl)
@@ -216,13 +219,13 @@ ColumnLayout {
             }
         }
         footer: DialogButtonBox {
-            Button {
+            UiButton {
                 objectName: "gmailCancel"
                 text: qsTr("Отменить")
                 enabled: (!!pane.mailState.busy || (!!pane.source && pane.source.proposals.state.busy)) && !pane.writing && !pane.writing
                 onClicked: pane.source.cancel()
             }
-            Button {
+            UiButton {
                 objectName: "gmailClose"
                 text: qsTr("Закрыть")
                 enabled: !pane.source || !pane.source.proposals.state.saving

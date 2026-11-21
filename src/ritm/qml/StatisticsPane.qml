@@ -7,6 +7,8 @@ ScrollView {
     id: pane
     required property var backend
     required property var appearance
+
+    component UiButton: RitmButton { appearance: pane.appearance }
     property var week: backend ? backend.statistics : ({})
     signal openTask(string identifier)
     contentWidth: availableWidth
@@ -18,20 +20,20 @@ ScrollView {
 
         RowLayout {
             Layout.fillWidth: true
-            Button {
+            UiButton {
                 objectName: "previousStatsWeek"
                 text: "←"
                 Accessible.name: qsTr("Предыдущая неделя")
                 enabled: !pane.backend.busy && !!pane.week.start
                 onClicked: pane.backend.navigateStatistics(-1)
             }
-            Button {
+            UiButton {
                 objectName: "currentStatsWeek"
                 text: qsTr("Эта неделя")
                 enabled: !pane.backend.busy && !!pane.week.start
                 onClicked: pane.backend.navigateStatistics(0)
             }
-            Button {
+            UiButton {
                 objectName: "nextStatsWeek"
                 text: "→"
                 Accessible.name: qsTr("Следующая неделя")
@@ -41,60 +43,73 @@ ScrollView {
             Item { Layout.fillWidth: true }
         }
 
-        Label {
+        Pane {
             Layout.fillWidth: true
-            text: pane.week.period || ""
-            font.pixelSize: pane.appearance.dp(22)
-            font.weight: Font.DemiBold
-        }
-        Label {
-            objectName: "weeklyProgressLabel"
-            Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            text: pane.week.taskCount
-                ? qsTr("Прогресс недели — %1% · задач в расчёте: %2")
-                    .arg(pane.week.percentText).arg(pane.week.taskCount)
-                : qsTr("На этой неделе нет задач с дедлайном")
-            font.weight: Font.DemiBold
-        }
-        ProgressBar {
-            id: weeklyProgress
-            Layout.fillWidth: true
-            visible: !!pane.week.taskCount
-            from: 0
-            to: 100
-            value: pane.week.percent || 0
-            background: null
-            contentItem: Rectangle {
-                implicitHeight: pane.appearance.dp(8)
-                radius: pane.appearance.dp(4)
-                color: pane.appearance.colors.track
-                Rectangle {
-                    width: parent.width * weeklyProgress.position
-                    height: parent.height
-                    radius: pane.appearance.dp(4)
-                    color: pane.appearance.colors.accent
+            padding: pane.appearance.graphite ? pane.appearance.dp(16) : 0
+            background: Rectangle {
+                visible: pane.appearance.graphite
+                color: pane.appearance.colors.surface
+                border.color: pane.appearance.colors.border
+                radius: pane.appearance.controlRadius(12)
+            }
+            contentItem: ColumnLayout {
+                spacing: pane.appearance.dp(12)
+                Label {
+                    Layout.fillWidth: true
+                    text: pane.week.period || ""
+                    font.pixelSize: pane.appearance.dp(22)
+                    font.weight: Font.DemiBold
+                }
+                Label {
+                    objectName: "weeklyProgressLabel"
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: pane.week.taskCount
+                        ? qsTr("Прогресс недели — %1% · задач в расчёте: %2")
+                            .arg(pane.week.percentText).arg(pane.week.taskCount)
+                        : qsTr("На этой неделе нет задач с дедлайном")
+                    font.weight: Font.DemiBold
+                }
+                ProgressBar {
+                    id: weeklyProgress
+                    Layout.fillWidth: true
+                    visible: !!pane.week.taskCount
+                    from: 0
+                    to: 100
+                    value: pane.week.percent || 0
+                    background: null
+                    contentItem: Rectangle {
+                        implicitHeight: pane.appearance.dp(8)
+                        radius: pane.appearance.dp(4)
+                        color: pane.appearance.colors.track
+                        Rectangle {
+                            width: parent.width * weeklyProgress.position
+                            height: parent.height
+                            radius: pane.appearance.dp(4)
+                            color: pane.appearance.colors.accent
+                        }
+                    }
+                }
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: pane.appearance.dp(16)
+                    Label {
+                        text: qsTr("Завершено за выбранную неделю: %1").arg(pane.week.completedCount || 0)
+                    }
+                    Label {
+                        text: qsTr("Просрочено сейчас: %1").arg(pane.week.overdueCount || 0)
+                        color: pane.week.overdueCount ? pane.appearance.colors.warning : pane.appearance.colors.muted
+                    }
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    visible: !!pane.week.undatedCount
+                    text: qsTr("Завершённых задач без даты: %1. Они не входят в недельный счётчик.")
+                        .arg(pane.week.undatedCount || 0)
+                    color: pane.appearance.colors.muted
                 }
             }
-        }
-        Flow {
-            Layout.fillWidth: true
-            spacing: pane.appearance.dp(16)
-            Label {
-                text: qsTr("Завершено за выбранную неделю: %1").arg(pane.week.completedCount || 0)
-            }
-            Label {
-                text: qsTr("Просрочено сейчас: %1").arg(pane.week.overdueCount || 0)
-                color: pane.week.overdueCount ? pane.appearance.colors.warning : pane.appearance.colors.muted
-            }
-        }
-        Label {
-            Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            visible: !!pane.week.undatedCount
-            text: qsTr("Завершённых задач без даты: %1. Они не входят в недельный счётчик.")
-                .arg(pane.week.undatedCount || 0)
-            color: pane.appearance.colors.muted
         }
 
         Label {
@@ -167,7 +182,7 @@ ScrollView {
                         color: pane.appearance.colors.muted
                     }
                 }
-                Button {
+                UiButton {
                     text: qsTr("Открыть")
                     enabled: !pane.backend.busy
                     onClicked: pane.openTask(taskRow.modelData.id)
