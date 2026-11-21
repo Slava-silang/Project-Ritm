@@ -5,6 +5,14 @@ import QtQuick.Layouts
 
 Item {
     id: pane
+
+    component UiCheck: RitmCheckBox { appearance: pane.appearance }
+    component UiTool: RitmButton { appearance: pane.appearance; compact: true; quiet: true }
+    component UiButton: RitmButton { appearance: pane.appearance }
+    component UiCombo: RitmComboBox { appearance: pane.appearance }
+    component UiField: RitmTextField { appearance: pane.appearance }
+    component UiDialog: RitmDialog { appearance: pane.appearance }
+    component UiFooter: RitmDialogFooter { appearance: pane.appearance }
     required property var backend
     required property var appearance
     property bool active: visible
@@ -109,21 +117,9 @@ Item {
             clampView();
         });
     }
-    function keyboardCell(dx, dy) {
-        const x = Math.max(0, Math.min(9, (hover.valid ? hover.x : 5) + dx));
-        const y = Math.max(0, Math.min(9, (hover.valid ? hover.y : 5) + dy));
-        const cell = (scene.cells || []).find(c => c.x === x && c.y === y);
-        if (!cell)
-            return;
-        hover = backend.gardenCellAt(cell.centerX, cell.centerY);
-        viewport.contentX = cell.centerX * zoom - viewport.width / 2;
-        viewport.contentY = cell.centerY * zoom - viewport.height / 2;
-        clampView();
-    }
     onVisibleChanged: if (!visible) {
                           tools.close();
                           sale.close();
-                          progress.close();
                           cancelPlacement();
                       }
     onPreviewChanged: if (worldLoader.item)
@@ -206,8 +202,7 @@ Item {
             }
             Button {
                 objectName: "gardenProgressWhenOff"
-                visible: pane.backend.garden.subscribed && (!pane.backend.garden.enabled ||
-                                                            !pane.board.ready || pane.narrow)
+                visible: !pane.backend.garden.enabled && pane.backend.garden.subscribed
                 text: qsTr("Прогресс")
                 onClicked: progress.open()
             }
@@ -354,31 +349,6 @@ Item {
                     ScrollBar.horizontal: ScrollBar {}
                     ScrollBar.vertical: ScrollBar {}
                     Keys.onPressed: event => {
-                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            if (!pane.hover.valid)
-                                pane.keyboardCell(0, 0);
-                            const cell = (pane.scene.cells || []).find(c => c.x === pane.hover.x
-                                                                            && c.y
-                                                                            === pane.hover.y);
-                            if (cell)
-                                pane.clickCell(cell.centerX, cell.centerY);
-                            event.accepted = true;
-                            return;
-                        }
-                        if (event.modifiers & Qt.ShiftModifier) {
-                            if (event.key === Qt.Key_Left)
-                                pane.keyboardCell(-1, 0);
-                            else if (event.key === Qt.Key_Right)
-                                pane.keyboardCell(1, 0);
-                            else if (event.key === Qt.Key_Up)
-                                pane.keyboardCell(0, -1);
-                            else if (event.key === Qt.Key_Down)
-                                pane.keyboardCell(0, 1);
-                            else
-                                return;
-                            event.accepted = true;
-                            return;
-                        }
                         if (event.key === Qt.Key_Left)
                             contentX -= 32;
                         else if (event.key === Qt.Key_Right)
@@ -392,8 +362,6 @@ Item {
                         pane.clampView();
                         event.accepted = true;
                     }
-                    Accessible.name: qsTr(
-                                         "Поле сада. Стрелки — прокрутка, Shift и стрелки — выбор клетки, Enter — действие, Escape — отмена.")
                     Loader {
                         id: worldLoader
                         objectName: "gardenWorld"
@@ -743,10 +711,55 @@ Item {
             }
         }
     }
-    GardenProgress {
+    Dialog {
         id: progress
-        backend: pane.backend
-        appearance: pane.appearance
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        title: qsTr("Прогресс сада")
+        width: Math.min(pane.appearance.dp(460), parent.width - 32)
+        height: Math.min(pane.appearance.dp(420), parent.height - 32)
+        modal: true
+        contentItem: ScrollView {
+            id: progressScroll
+            contentWidth: availableWidth
+            clip: true
+            ColumnLayout {
+                width: progressScroll.availableWidth
+                spacing: pane.appearance.dp(12)
+                Label {
+                    objectName: "gardenWorkProgress"
+                    Layout.fillWidth: true
+                    text: qsTr("Выполнено главных задач: %1. Оплачено часов: %2.").arg(
+                              pane.backend.garden.roots).arg(pane.backend.garden.paidHours)
+                    wrapMode: Text.Wrap
+                }
+                Label {
+                    Layout.fillWidth: true
+                    text: pane.backend.garden.welcomed ? qsTr(
+                                                             "Знакомство с садом: получено 100 монет.") :
+                                                         qsTr("Первое включение: 100 монет.")
+                    wrapMode: Text.Wrap
+                }
+                Label {
+                    Layout.fillWidth: true
+                    text: pane.backend.garden.firstTask ? qsTr(
+                                                              "Первая новая задача: получено 300 монет.") :
+                                                          qsTr("Первая новая задача после включения: 300 монет.")
+                    wrapMode: Text.Wrap
+                }
+                Label {
+                    Layout.fillWidth: true
+                    text: qsTr(
+                              "Космос — 30 оплаченных часов. Джунгли — 15 выполненных главных задач. Открытые темы сохраняются при выключении сада.")
+                    wrapMode: Text.Wrap
+                }
+            }
+        }
+        footer: Button {
+            objectName: "closeGardenProgress"
+            text: qsTr("Закрыть")
+            onClicked: progress.close()
+        }
     }
     Dialog {
         id: sale

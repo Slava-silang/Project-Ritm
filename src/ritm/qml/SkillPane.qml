@@ -5,8 +5,14 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: pane
+
+    component UiArea: RitmTextArea { appearance: pane.appearance }
     required property var library
     required property var appearance
+
+    component UiButton: RitmButton { appearance: pane.appearance }
+    component UiField: RitmTextField { appearance: pane.appearance }
+    component UiCombo: RitmComboBox { appearance: pane.appearance }
     required property string prefix
     property bool blocked: false
     property bool editing: false
@@ -36,7 +42,7 @@ ColumnLayout {
         font.bold: true
         wrapMode: Text.Wrap
     }
-    ComboBox {
+    UiCombo {
         objectName: pane.prefix + "SkillPick"
         Layout.fillWidth: true
         Layout.minimumWidth: 0
@@ -62,18 +68,18 @@ ColumnLayout {
     Flow {
         Layout.fillWidth: true
         spacing: pane.appearance.dp(6)
-        Button {
+        UiButton {
             objectName: pane.prefix + "SkillNew"
             text: qsTr("+ Навык")
             onClicked: pane.beginEdit({})
         }
-        Button {
+        UiButton {
             objectName: pane.prefix + "SkillEdit"
             text: qsTr("Редактировать выбранный")
             enabled: !!pane.modelState.selectedId
             onClicked: pane.beginEdit(pane.modelState.selected)
         }
-        Button {
+        UiButton {
             objectName: pane.prefix + "SkillsReload"
             text: qsTr("Обновить навыки")
             onClicked: pane.library.load()
@@ -95,7 +101,7 @@ ColumnLayout {
             text: pane.editId ? qsTr("Редактор сохранённого навыка") : qsTr("Новый навык")
             wrapMode: Text.Wrap
         }
-        TextField {
+        UiField {
             id: skillName
             objectName: pane.prefix + "SkillName"
             Layout.fillWidth: true
@@ -104,7 +110,7 @@ ColumnLayout {
             Accessible.name: qsTr("Название навыка")
             maximumLength: 120
         }
-        TextArea {
+        UiArea {
             id: description
             objectName: pane.prefix + "SkillDescription"
             Layout.fillWidth: true
@@ -114,7 +120,7 @@ ColumnLayout {
             textFormat: TextEdit.PlainText
             wrapMode: TextEdit.Wrap
         }
-        TextArea {
+        UiArea {
             id: instruction
             objectName: pane.prefix + "SkillInstruction"
             Layout.fillWidth: true
@@ -128,12 +134,12 @@ ColumnLayout {
         Flow {
             Layout.fillWidth: true
             spacing: pane.appearance.dp(6)
-            Button {
+            UiButton {
                 objectName: pane.prefix + "SkillSave"
                 text: qsTr("Сохранить навык")
                 onClicked: pane.library.save(pane.editId, skillName.text, description.text, instruction.text)
             }
-            Button {
+            UiButton {
                 objectName: pane.prefix + "SkillEditorClose"
                 text: qsTr("Закрыть редактор")
                 onClicked: pane.editing = false

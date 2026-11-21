@@ -4,6 +4,8 @@ import QtQuick.Controls
 
 Rectangle {
     id: timeline
+
+    component UiTool: RitmButton { appearance: timeline.appearance; compact: true; quiet: true }
     required property var backend
     required property var appearance
     required property var view
@@ -61,7 +63,7 @@ Rectangle {
                 width: (chart.width - timeline.appearance.dp(88)) / timeline.view.timelineLanes - timeline.appearance.dp(4)
                 height: Math.max(timeline.appearance.dp(44), modelData.segmentMinutes * timeline.minuteHeight + (gesture === "resize" ? previewDelta * timeline.minuteHeight : 0))
                 z: previewDelta !== 0 ? 3 : 1
-                radius: timeline.appearance.dp(8)
+                radius: timeline.appearance.controlRadius(8)
                 color: previewDelta !== 0 ? timeline.appearance.colors.selection : modelData.isEvent ? timeline.appearance.colors.event : timeline.appearance.colors.work
                 border.color: modelData.warning ? timeline.appearance.colors.warning : timeline.appearance.colors.border
                 border.width: pending || previewDelta !== 0 ? 2 : 1
@@ -157,7 +159,7 @@ Rectangle {
                 }
                 ToolTip.visible: mover.containsMouse && !mover.pressed && !!modelData.warning
                 ToolTip.text: modelData.warning
-                ToolButton {
+                UiTool {
                     objectName: "timelineEdit_" + blockItem.modelData.id
                     anchors.right: parent.right
                     anchors.top: parent.top

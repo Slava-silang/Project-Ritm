@@ -3,10 +3,16 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Dialog {
+RitmDialog {
     id: dialog
+
+    component UiSpin: RitmSpinBox { appearance: dialog.uiAppearance }
+    component UiFooter: RitmDialogFooter { appearance: dialog.uiAppearance }
+    appearance: dialog.uiAppearance
     required property var media
     required property var uiAppearance
+
+    component UiButton: RitmButton { appearance: dialog.uiAppearance }
     property string context: ""
     property string fileId: ""
     property int turns: 0
@@ -58,7 +64,7 @@ Dialog {
                 text: dialog.snapshot.busy ? qsTr("Подготовка…")
                     : dialog.snapshot.error || ((dialog.snapshot.width || 0) + " × " + (dialog.snapshot.height || 0))
             }
-            Button {
+            UiButton {
                 objectName: "mediaRotate"
                 text: qsTr("Повернуть на 90°")
                 enabled: !dialog.snapshot.busy
@@ -73,15 +79,15 @@ Dialog {
                 columns: 2
                 enabled: !dialog.snapshot.busy
                 Label { text: qsTr("Слева, %") }
-                SpinBox { id: cropX; objectName: "mediaCropX"; from: 0; to: 99; editable: true; onValueModified: dialog.dirty = true }
+                UiSpin { id: cropX; objectName: "mediaCropX"; from: 0; to: 99; editable: true; onValueModified: dialog.dirty = true }
                 Label { text: qsTr("Сверху, %") }
-                SpinBox { id: cropY; objectName: "mediaCropY"; from: 0; to: 99; editable: true; onValueModified: dialog.dirty = true }
+                UiSpin { id: cropY; objectName: "mediaCropY"; from: 0; to: 99; editable: true; onValueModified: dialog.dirty = true }
                 Label { text: qsTr("Ширина, %") }
-                SpinBox { id: cropW; objectName: "mediaCropWidth"; from: 1; to: 100; editable: true; onValueModified: dialog.dirty = true }
+                UiSpin { id: cropW; objectName: "mediaCropWidth"; from: 1; to: 100; editable: true; onValueModified: dialog.dirty = true }
                 Label { text: qsTr("Высота, %") }
-                SpinBox { id: cropH; objectName: "mediaCropHeight"; from: 1; to: 100; editable: true; onValueModified: dialog.dirty = true }
+                UiSpin { id: cropH; objectName: "mediaCropHeight"; from: 1; to: 100; editable: true; onValueModified: dialog.dirty = true }
             }
-            Button {
+            UiButton {
                 objectName: "mediaRefreshPreview"
                 text: qsTr("Обновить предпросмотр")
                 enabled: !dialog.snapshot.busy
@@ -94,14 +100,14 @@ Dialog {
             }
         }
     }
-    footer: DialogButtonBox {
-        Button {
+    footer: UiFooter {
+        UiButton {
             objectName: "mediaClose"
             text: qsTr("Закрыть")
             enabled: !dialog.snapshot.busy
             onClicked: dialog.close()
         }
-        Button {
+        UiButton {
             objectName: "mediaSaveCopy"
             text: qsTr("Сохранить копию")
             enabled: !dialog.snapshot.busy && !dialog.dirty && !!dialog.snapshot.url && !dialog.snapshot.error
