@@ -9,6 +9,7 @@ from decimal import Decimal, InvalidOperation
 from fractions import Fraction
 from pathlib import Path
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfoNotFoundError
 
 from PySide6.QtCore import Property, QObject, QTimer, QTimeZone, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
@@ -532,7 +533,10 @@ class TaskController(QObject):
                 **empty_view(),
                 **status,
                 "error": (
-                    str(error)
+                    "Недоступны данные часовых поясов. Обновите зависимости приложения "
+                    "командой uv sync --locked и перезапустите Ритм."
+                    if isinstance(error, ZoneInfoNotFoundError)
+                    else str(error)
                     if isinstance(error, ValueError)
                     else "Не удалось обновить сад. Проверьте папку профиля и повторите обновление."
                 ),

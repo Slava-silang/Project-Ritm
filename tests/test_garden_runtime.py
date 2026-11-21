@@ -115,7 +115,9 @@ def test_queue_failure_keeps_task_and_retry_pays_once(runtime, monkeypatch):
     assert sync()["balance"] == "400.00"
 
 
-@pytest.mark.parametrize("mode", ["live", "recovery", "restore", "legacy", "closing_restore"])
+@pytest.mark.parametrize(
+    "mode", ["live", "portable", "recovery", "restore", "legacy", "closing_restore"]
+)
 def test_garden_worker_gui(tmp_path, mode):
     env = {
         **os.environ,
@@ -123,12 +125,14 @@ def test_garden_worker_gui(tmp_path, mode):
         "QT_QUICK_BACKEND": "software",
         **{f"XDG_{k}_HOME": str(tmp_path / k.lower()) for k in ("CACHE", "DATA", "CONFIG")},
     }
+    if mode == "portable":
+        env.update(PYTHONTZPATH="", RITM_TEST_SYSTEM_ZONE="1", TZ="Europe/Moscow")
     result = subprocess.run(
         [
             sys.executable,
             str(Path(__file__).with_name("ui_garden_runtime_scenario.py")),
             str(tmp_path),
-            mode,
+            "live" if mode == "portable" else mode,
         ],
         env=env,
         cwd=tmp_path,
@@ -173,3 +177,57 @@ def test_creation_uses_local_month_without_rotating_existing_garden(runtime):
     sync()
     with GardenStore(profile / "garden.sqlite3") as garden:
         assert garden.snapshot().garden.month == "2026-12"  # rotation belongs to T39e
+
+
+@pytest.mark.parametrize(
+    ("zone", "month"),
+    [("UTC", "2026-11"), ("Europe/Moscow", "2026-12"), ("America/New_York", "2026-11")],
+)
+def test_create_and_reopen_without_system_timezone_data(tmp_path, zone, month):
+    """Windows-like Python environment: no OS IANA files, also on Linux CI."""
+    script = r"""
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+from uuid import uuid4
+from zoneinfo import TZPATH
+from ritm.application.garden_runtime import sync_garden
+from ritm.application.tasks import TaskService
+from ritm.domain.tasks import Task
+from ritm.storage.garden import GardenStore
+from ritm.storage.sqlite import TaskStore
+
+profile, zone, month, action = Path(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4]
+assert TZPATH == ()  # No accidental success via the host Linux timezone files.
+now = datetime(2026, 11, 30, 22, tzinfo=UTC)
+with TaskStore(profile / 'tasks.sqlite3', clock=lambda: now) as source:
+    if action == 'create':
+        assert not (profile / 'garden.sqlite3').exists()
+        assert not sync_garden(source, profile, now, zone=zone)['subscribed']
+        assert not (profile / 'garden.sqlite3').exists()
+        view = sync_garden(source, profile, now, zone=zone, enabled=True)
+        assert view['enabled'] and view['balance'] == '100.00', view
+        TaskService(source).create_task(Task(title='Новая задача'))
+        assert sync_garden(source, profile, now, zone=zone)['balance'] == '400.00'
+        with GardenStore(profile / 'garden.sqlite3') as garden:
+            garden.execute(uuid4(), {'action': 'buy', 'kind': 'daisy'},
+                           expected_revision=garden.snapshot().revision)
+    else:
+        view = sync_garden(source, profile, now, zone=zone, enabled=True)
+        assert view['enabled'] and view['balance'] == '320.00', view
+        with GardenStore(profile / 'garden.sqlite3') as garden:
+            state = garden.snapshot()
+            assert state.garden.month == month
+            assert len(state.garden.items) == 1
+            assert state.garden.items[0].kind == 'daisy'
+"""
+    for action in ("create", "reopen"):
+        result = subprocess.run(
+            [sys.executable, "-c", script, str(tmp_path), zone, month, action],
+            env={**os.environ, "PYTHONTZPATH": ""},
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr

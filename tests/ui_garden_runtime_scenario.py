@@ -1,9 +1,11 @@
 """Живой worker/фокус/restore/совместимость через настоящий Qt, временный профиль."""
 
+import os
 import sys
 import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfoNotFoundError
 
 from gui_support import GuiHarness
 from PySide6.QtCore import QPointF, QUrl
@@ -52,7 +54,9 @@ def checked_sync(*args, **kwargs):
 
 
 ui_tasks.sync_garden = checked_sync
-controller = TaskController(profile, clock=lambda: now, zone=UTC)
+controller = TaskController(
+    profile, clock=lambda: now, zone=None if os.environ.get("RITM_TEST_SYSTEM_ZONE") else UTC
+)
 engine = load_window(controller)
 window = engine.rootObjects()[0]
 gui = GuiHarness(app, window, controller)
@@ -131,6 +135,11 @@ try:
         assert controller.garden["error"]
         with TaskStore(profile / "tasks.sqlite3") as store:
             assert store.get_task(task.id).title == "Сохранено при ошибке получателя"
+        failure[0] = ZoneInfoNotFoundError
+        controller.reload()
+        idle()
+        assert "часовых поясов" in controller.garden["error"]
+        assert "uv sync --locked" in controller.garden["error"]
         GardenStore.apply_source_event = original_apply
         controller.reload()
         idle()

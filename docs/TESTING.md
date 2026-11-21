@@ -566,3 +566,35 @@ tests/test_garden_editor.py добавляет 8 проверок. Чистая 
 Ruff check/format 196 Python-файлов, qmllint 16 QML и diff --check passed. Итоговый полный pytest: 674 passed (399.86 с), /tmp/ritm-t39d2-suite.log. Прогоны не суммировать как уникальные проверки. Новые схемы/зависимости/платные вызовы/реальные Google/ИИ/личный профиль не использовались. Windows/Wayland/Nuitka не проверены. Подробные месячные достижения и финальная проверка доступности — T39d3.
 
 T39d2: wheel /tmp/ritm-t39d2-wheel повторно собран офлайн и установлен scripts/check_garden_wheel.py вне репозитория: 98 PNG/100 клеток проверены; наличие и точные bytes текущих GardenPane.qml/Main.qml/ui/garden_editor.py проверены в архиве. Лог /tmp/ritm-t39d2-wheel-check.log. Самостоятельная поставка не пересобиралась.
+
+
+## T39fix1 — первый запуск сада без системной IANA-базы, 21 ноября
+
+Воспроизведение по сообщению пользователя (коллега запускает Windows):
+`PYTHONTZPATH='' .venv/bin/python` + настоящий `sync_garden(..., enabled=True)`
+на пустом временном профиле вызывает `ZoneInfoNotFoundError` ещё до создания
+`garden.sqlite3`. Обычный прежний набор runtime: 14 passed (33,37 с), поэтому
+системная база Linux скрывала отсутствие зависимости. Четыре новые проверки
+до исправления: 4 failed (1,69 с), `/tmp/ritm-garden-portable-red.log`.
+
+Добавлена обязательная runtime-зависимость tzdata (lock: 2026.6). Три проверки
+с пустым TZPATH создают базы, подписку/100 монет, новую задачу/300 монет,
+покупают растение и открывают тот же профиль отдельным новым процессом:
+предмет/кошелёк/местный месяц сохраняются, повторной награды нет. UTC,
+Europe/Moscow и America/New_York проверены на границе месяца. Четвёртая
+проверка — полный прежний live Qt-сценарий с пустым TZPATH, поясом от Qt
+вместо явно заданного UTC и реальным нажатием переключателя. Отдельно
+внедрённый ZoneInfoNotFoundError проверяет понятное сообщение/сохранность
+задачи и успешный повтор. После исправления: 4 passed (17,37 с),
+`/tmp/ritm-garden-portable-green.log`. Исходный минимальный сценарий также
+повторно успешен.
+
+Native X11/Cinnamon: portable 1 passed (13,26 с),
+`/tmp/ritm-garden-timezone-native.log`. Ruff check/format (196 файлов) и
+`git diff --check` пройдены. Офлайн-wheel собран в
+`/tmp/ritm-garden-timezone-wheel`, проверено фактическое Requires-Dist tzdata
+в METADATA. Это не самостоятельная поставка и не проверка Windows.
+Пользовательские профили не открывались, базы не удалялись, схемы прежние
+v13/v6, новые награды/подмена пояса UTC не добавлялись.
+
+Совместный итоговый набор `tests/test_garden*.py tests/test_profile_backup.py tests/test_backup.py tests/test_appearance.py tests/test_startup.py`: **219 passed (161,14 с)**, `/tmp/ritm-garden-storage-fix.log`. Полный набор всего проекта повторно не запускался.
