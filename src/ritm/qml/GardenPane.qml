@@ -5,6 +5,14 @@ import QtQuick.Layouts
 
 Item {
     id: pane
+
+    component UiCheck: RitmCheckBox { appearance: pane.appearance }
+    component UiTool: RitmButton { appearance: pane.appearance; compact: true; quiet: true }
+    component UiButton: RitmButton { appearance: pane.appearance }
+    component UiCombo: RitmComboBox { appearance: pane.appearance }
+    component UiField: RitmTextField { appearance: pane.appearance }
+    component UiDialog: RitmDialog { appearance: pane.appearance }
+    component UiFooter: RitmDialogFooter { appearance: pane.appearance }
     required property var backend
     required property var appearance
     property bool active: visible
@@ -174,7 +182,7 @@ Item {
         Flow {
             Layout.fillWidth: true
             spacing: pane.appearance.dp(6)
-            CheckBox {
+            UiCheck {
                 objectName: "gardenEnabled"
                 text: pane.narrow ? qsTr("Учёт сада") : qsTr("Учитывать работу для сада")
                 checked: pane.backend.garden.enabled
@@ -192,13 +200,13 @@ Item {
                 text: qsTr("Удобрение: %1").arg(pane.board.fertilizer)
                 padding: pane.appearance.dp(8)
             }
-            Button {
+            UiButton {
                 objectName: "gardenProgressWhenOff"
                 visible: !pane.backend.garden.enabled && pane.backend.garden.subscribed
                 text: qsTr("Прогресс")
                 onClicked: progress.open()
             }
-            Button {
+            UiButton {
                 objectName: "closeGarden"
                 text: qsTr("К задачам")
                 onClicked: pane.leave()
@@ -228,13 +236,13 @@ Item {
             visible: !!pane.backend.garden.error || !!pane.board.error
                      || pane.backend.gardenCommandPending
             spacing: pane.appearance.dp(6)
-            Button {
+            UiButton {
                 objectName: "retryGarden"
                 text: qsTr("Обновить сад")
                 enabled: !pane.backend.busy
                 onClicked: pane.backend.reload()
             }
-            Button {
+            UiButton {
                 objectName: "retryGardenCommand"
                 visible: pane.backend.gardenCommandPending
                 text: qsTr("Проверить действие")
@@ -253,7 +261,7 @@ Item {
             Layout.fillWidth: true
             visible: pane.board.ready
             spacing: pane.appearance.dp(4)
-            ComboBox {
+            UiCombo {
                 objectName: "gardenMode"
                 width: pane.appearance.dp(pane.narrow ? 130 : 170)
                 model: [qsTr("Выбор"), qsTr("Трава"), qsTr("Грядка"), qsTr("Вода")]
@@ -264,32 +272,32 @@ Item {
                     pane.mode = ["select", "grass", "tilled_soil", "water"][index];
                 }
             }
-            Button {
+            UiButton {
                 objectName: "gardenZoom1"
                 visible: !pane.narrow
                 text: "1×"
                 highlighted: pane.zoom === 1
                 onClicked: pane.changeZoom(1)
             }
-            Button {
+            UiButton {
                 objectName: "gardenZoom2"
                 text: pane.narrow && pane.zoom === 2 ? "1×" : "2×"
                 highlighted: pane.zoom === 2
                 onClicked: pane.changeZoom(pane.narrow && pane.zoom === 2 ? 1 : 2)
             }
-            Button {
+            UiButton {
                 objectName: "gardenCenter"
                 visible: !pane.narrow
                 text: qsTr("Центр")
                 onClicked: pane.centerView()
             }
-            Button {
+            UiButton {
                 objectName: "gardenTools"
                 visible: pane.narrow
                 text: qsTr("Предметы")
                 onClicked: tools.open()
             }
-            Button {
+            UiButton {
                 objectName: "gardenCancelPlacement"
                 visible: !!pane.placingId || pane.mode !== "select"
                 text: qsTr("Отмена · Esc")
@@ -313,7 +321,7 @@ Item {
                 Layout.fillHeight: true
                 color: pane.appearance.colors.surface
                 border.color: pane.appearance.colors.border
-                radius: pane.appearance.dp(10)
+                radius: pane.appearance.controlRadius(10)
                 clip: true
                 Flickable {
                     id: viewport
@@ -457,6 +465,12 @@ Item {
         width: Math.min(pane.appearance.dp(340), parent.width - 24)
         height: parent.height
         modal: true
+        padding: pane.appearance.graphite ? pane.appearance.dp(12) : 0
+        background: GraphiteBackground {
+            appearance: pane.appearance
+            kind: "dialog"
+            legacyColor: tools.palette.window
+        }
         contentItem: Loader {
             active: tools.visible
             sourceComponent: panel
@@ -474,26 +488,26 @@ Item {
                               pane.board.fertilizer)
                     wrapMode: Text.Wrap
                 }
-                ToolButton {
+                UiTool {
                     objectName: "gardenProgressButton"
                     text: qsTr("Прогресс")
                     onClicked: progress.open()
                 }
             }
             RowLayout {
-                Button {
+                UiButton {
                     objectName: "gardenShopTab"
                     text: qsTr("Магазин")
                     highlighted: pane.tab === "shop"
                     onClicked: pane.tab = "shop"
                 }
-                Button {
+                UiButton {
                     objectName: "gardenInventoryTab"
                     text: qsTr("Инвентарь")
                     highlighted: pane.tab === "inventory"
                     onClicked: pane.tab = "inventory"
                 }
-                Button {
+                UiButton {
                     visible: pane.narrow
                     text: "×"
                     onClicked: tools.close()
@@ -522,13 +536,13 @@ Item {
                     Flow {
                         Layout.fillWidth: true
                         spacing: pane.appearance.dp(4)
-                        Button {
+                        UiButton {
                             objectName: "gardenMove"
                             text: pane.selected.placed ? qsTr("Переместить") : qsTr("Разместить")
                             enabled: pane.writable
                             onClicked: pane.beginPlacement()
                         }
-                        Button {
+                        UiButton {
                             objectName: "gardenStash"
                             text: qsTr("В инвентарь")
                             visible: !!pane.selected.placed
@@ -538,7 +552,7 @@ Item {
                                                                       id: pane.selectedId
                                                                   })
                         }
-                        Button {
+                        UiButton {
                             objectName: "gardenGrow"
                             text: qsTr("Удобрить · %1 ед.").arg(pane.selected.dose || 0)
                             visible: !!pane.selected.growing && pane.selected.stage < 4
@@ -548,7 +562,7 @@ Item {
                                                                       id: pane.selectedId
                                                                   })
                         }
-                        Button {
+                        UiButton {
                             objectName: "gardenSell"
                             text: qsTr("Продать · %1").arg(pane.selected.refund || 0)
                             visible: !!pane.selected.growing
@@ -586,7 +600,7 @@ Item {
                             Layout.fillWidth: true
                             implicitHeight: cardContent.implicitHeight + pane.appearance.dp(12)
                             color: pane.appearance.colors.raised
-                            radius: pane.appearance.dp(8)
+                            radius: pane.appearance.controlRadius(8)
                             RowLayout {
                                 id: cardContent
                                 anchors.fill: parent
@@ -631,7 +645,7 @@ Item {
                                         wrapMode: Text.Wrap
                                         font.pixelSize: pane.appearance.dp(12)
                                     }
-                                    Button {
+                                    UiButton {
                                         objectName: pane.tab === "shop" ? "gardenBuy_"
                                                                           + card.modelData.kind :
                                                                           "gardenChoose_"
@@ -668,7 +682,7 @@ Item {
                         Label {
                             text: qsTr("Удобрение · 10 монет за единицу")
                         }
-                        TextField {
+                        UiField {
                             id: fertilizer
                             objectName: "gardenFertilizerQuantity"
                             Layout.fillWidth: true
@@ -685,7 +699,7 @@ Item {
                             }
                             text: qsTr("Всего: %1 монет").arg(quote.cost)
                         }
-                        Button {
+                        UiButton {
                             objectName: "gardenBuyFertilizer"
                             readonly property var quote: {
                                 const revision = pane.board.revision;
@@ -703,7 +717,7 @@ Item {
             }
         }
     }
-    Dialog {
+    UiDialog {
         id: progress
         parent: Overlay.overlay
         anchors.centerIn: parent
@@ -747,13 +761,15 @@ Item {
                 }
             }
         }
-        footer: Button {
-            objectName: "closeGardenProgress"
-            text: qsTr("Закрыть")
-            onClicked: progress.close()
+        footer: UiFooter {
+            UiButton {
+                objectName: "closeGardenProgress"
+                text: qsTr("Закрыть")
+                onClicked: progress.close()
+            }
         }
     }
-    Dialog {
+    UiDialog {
         id: sale
         property string itemId: ""
         property string itemTitle: ""
@@ -771,14 +787,14 @@ Item {
             textFormat: Text.PlainText
             wrapMode: Text.Wrap
         }
-        footer: RowLayout {
-            Button {
+        footer: UiFooter {
+            UiButton {
                 objectName: "gardenCancelSale"
                 text: qsTr("Отмена")
                 enabled: !pane.backend.busy
                 onClicked: sale.close()
             }
-            Button {
+            UiButton {
                 objectName: "gardenConfirmSale"
                 text: qsTr("Продать")
                 enabled: pane.writable

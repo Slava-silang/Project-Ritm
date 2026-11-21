@@ -4,11 +4,10 @@ QtObject {
     id: appearance
     property string themeKey: "light"
     property real scale: 1
-    property bool graphiteEnabled: true
     readonly property bool darkPreference: themeKey === "dark"
         || (themeKey === "system" && Application.styleHints.colorScheme === Qt.Dark)
     readonly property bool dark: darkPreference || themeKey === "space"
-    readonly property bool graphite: graphiteEnabled && darkPreference
+    readonly property bool graphite: darkPreference
     readonly property var colors: graphite ? ({
         background: "#171b1e",
         sidebar: "#121618",

@@ -6,6 +6,12 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: pane
+
+    component UiArea: RitmTextArea { appearance: pane.appearance }
+
+    component UiCheck: RitmCheckBox { appearance: pane.appearance }
+    component UiDialog: RitmDialog { appearance: pane.appearance }
+    component UiFooter: RitmDialogFooter { appearance: pane.appearance }
     required property var source
     required property var appearance
 
@@ -34,7 +40,7 @@ ColumnLayout {
         nameFilters: [qsTr("Конфигурация JSON (*.json)")]
         onAccepted: pane.source.configure(selectedFile)
     }
-    Dialog {
+    UiDialog {
         id: viewer
         objectName: "gmailSourceDialog"
         parent: Overlay.overlay
@@ -132,7 +138,7 @@ ColumnLayout {
                     enabled: !pane.mailState.busy && !pane.writing
                     onTextEdited: { consent.checked = false; pane.source.cancel(); }
                 }
-                CheckBox {
+                UiCheck {
                     id: spam
                     objectName: "gmailIncludeSpam"
                     checked: true
@@ -140,7 +146,7 @@ ColumnLayout {
                     enabled: !pane.mailState.busy && !pane.writing
                     onToggled: { consent.checked = false; pane.source.cancel(); }
                 }
-                CheckBox {
+                UiCheck {
                     id: consent
                     objectName: "gmailReadConsent"
                     Layout.fillWidth: true
@@ -194,7 +200,7 @@ ColumnLayout {
                         }
                     }
                 }
-                TextArea {
+                UiArea {
                     objectName: "gmailMessageBody"
                     Layout.fillWidth: true
                     visible: pane.mailState.selected >= 0
@@ -218,7 +224,7 @@ ColumnLayout {
                 }
             }
         }
-        footer: DialogButtonBox {
+        footer: UiFooter {
             UiButton {
                 objectName: "gmailCancel"
                 text: qsTr("Отменить")

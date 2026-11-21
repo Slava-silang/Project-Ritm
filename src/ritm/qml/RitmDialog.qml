@@ -4,6 +4,7 @@ import QtQuick.Controls
 Dialog {
     id: dialog
     required property var appearance
+    padding: appearance.graphite ? appearance.dp(20) : 12
 
     background: GraphiteBackground {
         appearance: dialog.appearance

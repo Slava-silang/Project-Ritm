@@ -5,6 +5,10 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: pane
+
+    component UiArea: RitmTextArea { appearance: pane.appearance }
+
+    component UiCheck: RitmCheckBox { appearance: pane.appearance }
     objectName: "mailProposalPane"
     required property var helper
     required property var appearance
@@ -59,7 +63,7 @@ ColumnLayout {
         wrapMode: Text.Wrap
         text: qsTr("Будут переданы тема, отправитель, дата и текст выбранного письма, ваш запрос и названия, описания, сроки, состояние и подзадачи всех активных задач. Для обновления — связанная задача (включая выполненную) или событие. Вложения и история чата не передаются. Проверьте получателя и его условия обработки данных.")
     }
-    TextArea {
+    UiArea {
         id: prompt
         objectName: "mailPrompt"
         Layout.fillWidth: true
@@ -68,7 +72,7 @@ ColumnLayout {
         enabled: !pane.proposalState.busy
         onTextChanged: sendConsent.checked = false
     }
-    CheckBox {
+    UiCheck {
         id: sendConsent
         objectName: "mailSendConsent"
         Layout.fillWidth: true
@@ -132,7 +136,7 @@ ColumnLayout {
             onTextEdited: { if (pane.form.kind === "task") pane.fields().title = text; else pane.form.event.title = text; }
         }
         Label { text: qsTr("Описание"); visible: pane.form.kind === "task" }
-        TextArea {
+        UiArea {
             objectName: "mailEditDescription"
             Layout.fillWidth: true
             visible: pane.form.kind === "task"
@@ -193,7 +197,7 @@ ColumnLayout {
             text: pane.proposalState.end || ""
             placeholderText: qsTr("Окончание события")
         }
-        CheckBox {
+        UiCheck {
             visible: pane.form.kind === "task" && !!pane.form.task && !!pane.form.task.changes
                 && pane.form.task.changes.completed !== undefined
             text: qsTr("Выполнение главной задачи")
@@ -217,7 +221,7 @@ ColumnLayout {
                     text: patch.modelData.title || ""
                     onTextEdited: pane.form.task.nodes[patch.index].title = text
                 }
-                CheckBox {
+                UiCheck {
                     visible: patch.modelData.completed !== undefined
                     checked: !!patch.modelData.completed
                     text: qsTr("Выполнено")

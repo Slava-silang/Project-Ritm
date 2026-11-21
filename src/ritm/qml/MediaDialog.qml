@@ -5,6 +5,9 @@ import QtQuick.Layouts
 
 RitmDialog {
     id: dialog
+
+    component UiSpin: RitmSpinBox { appearance: dialog.uiAppearance }
+    component UiFooter: RitmDialogFooter { appearance: dialog.uiAppearance }
     appearance: dialog.uiAppearance
     required property var media
     required property var uiAppearance
@@ -76,13 +79,13 @@ RitmDialog {
                 columns: 2
                 enabled: !dialog.snapshot.busy
                 Label { text: qsTr("Слева, %") }
-                SpinBox { id: cropX; objectName: "mediaCropX"; from: 0; to: 99; editable: true; onValueModified: dialog.dirty = true }
+                UiSpin { id: cropX; objectName: "mediaCropX"; from: 0; to: 99; editable: true; onValueModified: dialog.dirty = true }
                 Label { text: qsTr("Сверху, %") }
-                SpinBox { id: cropY; objectName: "mediaCropY"; from: 0; to: 99; editable: true; onValueModified: dialog.dirty = true }
+                UiSpin { id: cropY; objectName: "mediaCropY"; from: 0; to: 99; editable: true; onValueModified: dialog.dirty = true }
                 Label { text: qsTr("Ширина, %") }
-                SpinBox { id: cropW; objectName: "mediaCropWidth"; from: 1; to: 100; editable: true; onValueModified: dialog.dirty = true }
+                UiSpin { id: cropW; objectName: "mediaCropWidth"; from: 1; to: 100; editable: true; onValueModified: dialog.dirty = true }
                 Label { text: qsTr("Высота, %") }
-                SpinBox { id: cropH; objectName: "mediaCropHeight"; from: 1; to: 100; editable: true; onValueModified: dialog.dirty = true }
+                UiSpin { id: cropH; objectName: "mediaCropHeight"; from: 1; to: 100; editable: true; onValueModified: dialog.dirty = true }
             }
             UiButton {
                 objectName: "mediaRefreshPreview"
@@ -97,7 +100,7 @@ RitmDialog {
             }
         }
     }
-    footer: DialogButtonBox {
+    footer: UiFooter {
         UiButton {
             objectName: "mediaClose"
             text: qsTr("Закрыть")

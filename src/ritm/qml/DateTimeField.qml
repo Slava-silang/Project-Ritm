@@ -6,6 +6,11 @@ import QtQuick.Layouts
 RitmTextField {
     id: field
 
+    component UiSpin: RitmSpinBox { appearance: field.appearance }
+    component UiTool: RitmButton { appearance: field.appearance; compact: true; quiet: true }
+    component UiDialog: RitmDialog { appearance: field.appearance }
+    component UiFooter: RitmDialogFooter { appearance: field.appearance }
+
     component UiButton: RitmButton { appearance: field.appearance }
     component UiField: RitmTextField { appearance: field.appearance }
     component UiCombo: RitmComboBox { appearance: field.appearance }
@@ -56,7 +61,7 @@ RitmTextField {
         offsetInput.text = offset;
         picker.open();
     }
-    ToolButton {
+    UiTool {
         id: chooser
         objectName: field.objectName + "Picker"
         anchors.right: parent.right
@@ -67,7 +72,7 @@ RitmTextField {
         Accessible.name: field.timeOnly ? qsTr("Выбрать время") : qsTr("Выбрать дату и время")
         onClicked: field.openPicker()
     }
-    Dialog {
+    UiDialog {
         id: picker
         objectName: field.objectName + "DateTimePicker"
         property date chosen: new Date()
@@ -115,7 +120,7 @@ RitmTextField {
                 RowLayout {
                     Layout.fillWidth: true
                     visible: !field.timeOnly
-                    ToolButton {
+                    UiTool {
                         objectName: field.objectName + "PreviousMonth"
                         text: "←"
                         Accessible.name: qsTr("Предыдущий месяц")
@@ -128,7 +133,7 @@ RitmTextField {
                         currentIndex: picker.viewMonth
                         onActivated: picker.viewMonth = currentIndex
                     }
-                    SpinBox {
+                    UiSpin {
                         objectName: field.objectName + "Year"
                         Layout.preferredWidth: field.appearance.dp(140)
                         from: 1
@@ -140,7 +145,7 @@ RitmTextField {
                         valueFromText: value => parseInt(value, 10)
                         onValueModified: picker.viewYear = value
                     }
-                    ToolButton {
+                    UiTool {
                         objectName: field.objectName + "NextMonth"
                         text: "→"
                         Accessible.name: qsTr("Следующий месяц")
@@ -193,7 +198,7 @@ RitmTextField {
                 RowLayout {
                     Layout.fillWidth: true
                     visible: !field.dateOnly
-                    SpinBox {
+                    UiSpin {
                         id: hours
                         objectName: field.objectName + "Hour"
                         Layout.fillWidth: true
@@ -207,7 +212,7 @@ RitmTextField {
                         valueFromText: value => parseInt(value, 10)
                     }
                     Label { text: ":" }
-                    SpinBox {
+                    UiSpin {
                         id: minutes
                         objectName: field.objectName + "Minute"
                         Layout.fillWidth: true
@@ -231,10 +236,7 @@ RitmTextField {
                 }
             }
         }
-        footer: Flow {
-            width: picker.availableWidth
-            padding: field.appearance.dp(8)
-            spacing: field.appearance.dp(6)
+        footer: UiFooter {
             UiButton {
                 objectName: field.objectName + "PickerApply"
                 text: qsTr("Выбрать")

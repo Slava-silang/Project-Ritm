@@ -5,6 +5,9 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: pane
+
+    component UiSpin: RitmSpinBox { appearance: pane.appearance }
+    component UiFooter: RitmDialogFooter { appearance: pane.appearance }
     objectName: "pomodoroPane"
     required property var backend
     required property var appearance
@@ -169,11 +172,11 @@ ColumnLayout {
                     columns: 2
                     enabled: !pane.snapshot.active
                     Label { text: qsTr("Работа, мин") }
-                    SpinBox { id: work; objectName: "pomodoroWorkMinutes"; from: 1; to: 240; editable: true }
+                    UiSpin { id: work; objectName: "pomodoroWorkMinutes"; from: 1; to: 240; editable: true }
                     Label { text: qsTr("Перерыв, мин") }
-                    SpinBox { id: shortBreak; objectName: "pomodoroShortMinutes"; from: 1; to: 240; editable: true }
+                    UiSpin { id: shortBreak; objectName: "pomodoroShortMinutes"; from: 1; to: 240; editable: true }
                     Label { text: qsTr("Длинный, мин") }
-                    SpinBox { id: longBreak; objectName: "pomodoroLongMinutes"; from: 1; to: 240; editable: true }
+                    UiSpin { id: longBreak; objectName: "pomodoroLongMinutes"; from: 1; to: 240; editable: true }
                 }
                 Label {
                     Layout.fillWidth: true
@@ -194,7 +197,7 @@ ColumnLayout {
                 }
             }
         }
-        footer: DialogButtonBox {
+        footer: UiFooter {
             UiButton {
                 text: qsTr("Отмена")
                 enabled: !pane.backend.busy
@@ -228,7 +231,7 @@ ColumnLayout {
                 wrapMode: Text.Wrap
             }
         }
-        footer: DialogButtonBox {
+        footer: UiFooter {
             UiButton { text: qsTr("Отмена"); enabled: !pane.backend.busy; onClicked: stopDialog.close() }
             UiButton {
                 objectName: "pomodoroConfirmStop"

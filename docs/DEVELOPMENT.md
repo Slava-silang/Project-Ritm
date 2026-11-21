@@ -238,7 +238,7 @@ RITM_UI_PLATFORM=xcb uv run --locked pytest tests/test_calendar_drag.py::test_po
 
 Нажмите «Вид», выберите тему и масштаб, затем «Применить». Значение «Тёмная» включает «Графит». «Как в системе» включает его при тёмном оформлении ОС. Боковая панель переходит в верхнюю навигацию, когда рабочей области не хватает ширины или высоты. Настройки сохраняются в appearance.json выбранного профиля. Клавиатурные действия перечислены в диалоге, основные — Ctrl+N, Ctrl+F и Ctrl+1…4.
 
-Цветовые роли и радиусы тёмной темы находятся в Appearance.qml. Main.qml использует общую навигацию, а RitmButton, RitmTextField, RitmComboBox и RitmDialog применяют оформление к стандартным элементам Qt Quick Controls.
+Цветовые роли и радиусы тёмной темы находятся в Appearance.qml. Main.qml использует общую навигацию, а компоненты RitmButton, RitmCheckBox, RitmSpinBox, RitmTextField, RitmTextArea, RitmComboBox и RitmDialog применяют оформление к стандартным элементам Qt Quick Controls. RitmDialogFooter задаёт масштабируемые отступы и перенос действий в диалогах.
 
 Проверка — `uv run --locked pytest tests/test_appearance.py tests/test_weekly_statistics.py`.
 

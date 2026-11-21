@@ -5,6 +5,8 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: pane
+
+    component UiCheck: RitmCheckBox { appearance: pane.uiAppearance }
     required property var connection
     required property var agent
     required property var uiAppearance
@@ -105,7 +107,7 @@ ColumnLayout {
                 onClicked: Qt.openUrlExternally("https://chatgpt.com/")
             }
         }
-        CheckBox {
+        UiCheck {
             id: consent
             objectName: "chatgptProbeConsent"
             Layout.fillWidth: true

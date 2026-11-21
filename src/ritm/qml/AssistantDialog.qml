@@ -4,8 +4,14 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 
-Dialog {
+RitmDialog {
     id: dialog
+
+    component UiArea: RitmTextArea { appearance: dialog.uiAppearance }
+
+    component UiCheck: RitmCheckBox { appearance: dialog.uiAppearance }
+    component UiFooter: RitmDialogFooter { appearance: dialog.uiAppearance }
+    appearance: dialog.uiAppearance
     objectName: "assistantDialog"
     property var connection: null
     required property var agent
@@ -41,6 +47,10 @@ Dialog {
     property bool editing: false
     title: state.provider === "chatgpt" ? qsTr("Помощник — подписка ChatGPT") : qsTr("Тестовый помощник — без сети")
     modal: false
+    dim: dialog.uiAppearance.graphite
+    Overlay.modeless: Rectangle {
+        color: "#50101517"
+    }
     closePolicy: state.saving ? Popup.NoAutoClose : Popup.CloseOnEscape
     onClosed: if (agent) { agent.cancel(); agent.media.reset(); mediaEditor.close(); gmailPane.closeSource(); }
     background: Rectangle {
@@ -52,6 +62,7 @@ Dialog {
         id: clearHistoryDialog
         objectName: "clearChatHistoryDialog"
         title: qsTr("Удалить всю историю помощника?")
+        parent: Overlay.overlay
         anchors.centerIn: parent
         width: Math.min(dialog.uiAppearance.dp(460), dialog.width - 24)
         height: Math.min(dialog.uiAppearance.dp(300), dialog.height - 24)
@@ -60,7 +71,7 @@ Dialog {
             text: qsTr("Сообщения удалятся с устройства, текущий диалог сбросится. Задачи и вложения сохранятся.")
             wrapMode: Text.Wrap
         }
-        footer: Flow {
+        footer: UiFooter {
             UiButton {
                 objectName: "confirmChatHistoryClear"
                 text: qsTr("Удалить историю")
@@ -98,7 +109,7 @@ Dialog {
             text: qsTr("Выбранные файлы снова получит текущая модель. Файлы из прежних сообщений автоматически не добавляются.")
             wrapMode: Text.Wrap
         }
-        footer: DialogButtonBox {
+        footer: UiFooter {
             UiButton { objectName: "assistantCancelResend"; text: qsTr("Отмена"); onClicked: resendDialog.close() }
             UiButton {
                 objectName: "assistantConfirmResend"
@@ -182,7 +193,11 @@ Dialog {
         id: scroll
         clip: true
         contentWidth: availableWidth
+        rightPadding: dialog.uiAppearance.graphite ? dialog.uiAppearance.dp(12) : 0
+        ScrollBar.vertical.policy: dialog.uiAppearance.graphite && assistantForm.implicitHeight > availableHeight + 1
+            ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
         ColumnLayout {
+            id: assistantForm
             width: scroll.availableWidth
             spacing: dialog.uiAppearance.dp(10)
             Label {
@@ -212,7 +227,7 @@ Dialog {
                 source: dialog.agent ? dialog.agent.gmail : null
                 appearance: dialog.uiAppearance
             }
-            CheckBox {
+            UiCheck {
                 id: saveHistoryCheck
                 objectName: "chatSaveHistory"
                 Layout.fillWidth: true
@@ -261,7 +276,7 @@ Dialog {
                 text: qsTr("Сообщений в контексте текущего обсуждения: ") + (dialog.state.contextCount || 0)
                 wrapMode: Text.Wrap
             }
-            CheckBox {
+            UiCheck {
                 id: showHistory
                 objectName: "chatShowHistory"
                 Layout.fillWidth: true
@@ -287,7 +302,7 @@ Dialog {
                         text: (chatEntry.modelData.role === "user" ? qsTr("Вы") : chatEntry.modelData.role === "assistant" ? chatEntry.modelData.label : qsTr("Состояние")) + " · " + Qt.formatDateTime(new Date(chatEntry.modelData.time), "dd.MM.yyyy HH:mm")
                         wrapMode: Text.Wrap
                     }
-                    TextArea {
+                    UiArea {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         readOnly: true
@@ -371,7 +386,7 @@ Dialog {
                     required property var modelData
                     required property int index
                     Layout.fillWidth: true
-                    CheckBox {
+                    UiCheck {
                         id: fileChoice
                         objectName: "assistantFile_" + fileRow.index
                         Layout.fillWidth: true
@@ -407,7 +422,7 @@ Dialog {
                 wrapMode: Text.Wrap
                 text: qsTr("К отправке: ") + (dialog.state.files || []).filter(x => dialog.selectedFiles.indexOf(x.id) >= 0).map(x => x.name).join(", ")
             }
-            TextArea {
+            UiArea {
                 id: prompt
                 objectName: "assistantPrompt"
                 Layout.fillWidth: true
@@ -457,7 +472,7 @@ Dialog {
                     onTextEdited: dialog.dirty = true
                 }
                 Label { text: qsTr("Описание"); visible: !dialog.state.split }
-                TextArea {
+                UiArea {
                     id: descriptionInput
                     Layout.fillWidth: true
                     visible: !dialog.state.split
@@ -501,7 +516,7 @@ Dialog {
                     Layout.fillWidth: true
                     onTextEdited: dialog.dirty = true
                 }
-                CheckBox {
+                UiCheck {
                     objectName: "draftRootCompleted"
                     visible: !!dialog.state.updateMode && Object.prototype.hasOwnProperty.call(dialog.form.changes || {}, "completed")
                     text: qsTr("Выполнить всю задачу (с подзадачами)")
@@ -527,7 +542,7 @@ Dialog {
                             text: nodeEdit.modelData.title || ""
                             onTextEdited: { dialog.form.nodes[nodeEdit.index].title = text; dialog.dirty = true; }
                         }
-                        CheckBox {
+                        UiCheck {
                             objectName: "draftNodeCompleted_" + nodeEdit.index
                             visible: Object.prototype.hasOwnProperty.call(nodeEdit.modelData, "completed")
                             text: qsTr("Отметить пункт выполненным")
@@ -551,7 +566,7 @@ Dialog {
                             onTextEdited: { dialog.form.subtasks[branch.index].title = text; dialog.dirty = true; }
                         }
                         Label { text: qsTr("Пункты второго уровня, каждый с новой строки") }
-                        TextArea {
+                        UiArea {
                             objectName: "draftItems_" + branch.index
                             Layout.fillWidth: true
                             wrapMode: TextEdit.Wrap
@@ -585,9 +600,7 @@ Dialog {
             }
         }
     }
-    footer: Flow {
-        width: dialog.availableWidth
-        padding: dialog.uiAppearance.dp(10)
+    footer: UiFooter {
         UiButton {
             objectName: "chatRefine"
             text: qsTr("Уточнить предложение")
@@ -595,7 +608,6 @@ Dialog {
             enabled: !dialog.state.busy
             onClicked: { dialog.agent.refine(); prompt.text = ""; prompt.forceActiveFocus(); }
         }
-        spacing: dialog.uiAppearance.dp(8)
         UiButton {
             objectName: "assistantEdit"
             text: qsTr("Изменить черновик")

@@ -6,6 +6,7 @@ Button {
     required property var appearance
     property bool primary: false
     property bool quiet: false
+    property bool compact: false
     readonly property color legacyFill: checked || highlighted ? palette.dark : palette.button
 
     highlighted: primary
@@ -16,7 +17,7 @@ Button {
 
     background: GraphiteBackground {
         appearance: button.appearance
-        implicitWidth: appearance.graphite ? 0 : 100
+        implicitWidth: appearance.graphite ? 0 : button.compact ? 40 : 100
         implicitHeight: appearance.graphite ? appearance.dp(30) : 40
         visible: appearance.graphite || !button.flat || button.down || button.checked || button.highlighted
         primary: button.primary

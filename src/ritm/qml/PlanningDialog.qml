@@ -3,12 +3,16 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Dialog {
+RitmDialog {
     id: dialog
+
+    component UiArea: RitmTextArea { appearance: dialog.appearance }
+
+    component UiCheck: RitmCheckBox { appearance: dialog.appearance }
+    component UiFooter: RitmDialogFooter { appearance: dialog.appearance }
     objectName: "planningDialog"
     required property var planner
     required property var taskBackend
-    required property var appearance
 
     component UiButton: RitmButton { appearance: dialog.appearance }
     component UiCombo: RitmComboBox { appearance: dialog.appearance }
@@ -78,7 +82,7 @@ Dialog {
                     required property int index
                     Layout.fillWidth: true
                     enabled: !dialog.state.busy
-                    CheckBox {
+                    UiCheck {
                         objectName: "workingDay_" + dayRow.index
                         text: [qsTr("Пн"), qsTr("Вт"), qsTr("Ср"), qsTr("Чт"), qsTr("Пт"), qsTr("Сб"), qsTr("Вс")][dayRow.index]
                         checked: dayRow.modelData.enabled
@@ -170,7 +174,7 @@ Dialog {
                     onTextEdited: if (dialog.state.hasDraft) dialog.planner.cancel()
                 }
             }
-            TextArea {
+            UiArea {
                 id: prompt
                 objectName: "planningPrompt"
                 Layout.fillWidth: true
@@ -260,9 +264,7 @@ Dialog {
             }
         }
     }
-    footer: Flow {
-        padding: dialog.appearance.dp(10)
-        spacing: dialog.appearance.dp(8)
+    footer: UiFooter {
         UiButton {
             objectName: "planningApply"
             text: qsTr("Подтвердить и добавить блоки")

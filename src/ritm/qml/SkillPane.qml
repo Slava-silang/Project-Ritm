@@ -5,6 +5,8 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: pane
+
+    component UiArea: RitmTextArea { appearance: pane.appearance }
     required property var library
     required property var appearance
 
@@ -108,7 +110,7 @@ ColumnLayout {
             Accessible.name: qsTr("Название навыка")
             maximumLength: 120
         }
-        TextArea {
+        UiArea {
             id: description
             objectName: pane.prefix + "SkillDescription"
             Layout.fillWidth: true
@@ -118,7 +120,7 @@ ColumnLayout {
             textFormat: TextEdit.PlainText
             wrapMode: TextEdit.Wrap
         }
-        TextArea {
+        UiArea {
             id: instruction
             objectName: pane.prefix + "SkillInstruction"
             Layout.fillWidth: true

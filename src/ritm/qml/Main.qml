@@ -6,6 +6,11 @@ import QtQuick.Layouts
 
 ApplicationWindow {
     id: window
+
+    component UiCheck: RitmCheckBox { appearance: window.appearance }
+    component UiSpin: RitmSpinBox { appearance: window.appearance }
+    component UiTool: RitmButton { appearance: window.appearance; compact: true; quiet: true }
+    component UiFooter: RitmDialogFooter { appearance: window.appearance }
     property var connection: null
     property var assistant: null
     property var planner: null
@@ -18,7 +23,6 @@ ApplicationWindow {
         objectName: "uiAppearance"
         themeKey: window.backend.appearance.theme
         scale: window.backend.appearance.scale / 100
-        graphiteEnabled: window.page !== "garden"
     }
     objectName: "mainWindow"
     width: 1120
@@ -53,6 +57,7 @@ ApplicationWindow {
     property bool narrow: width - sidebarWidth < appearance.dp(850)
     readonly property bool compactGraphite: appearance.graphite && narrow
     readonly property bool inlinePomodoro: compactGraphite && width - appearance.dp(24) < appearance.dp(700)
+    readonly property real workspaceDialogMargin: appearance.dp(narrow ? 12 : 24)
     property bool detailOpen: true
     property string page: "tasks"
     onPageChanged: backend.setGardenVisible(window.visible && page === "garden")
@@ -104,6 +109,13 @@ ApplicationWindow {
                 ctx.roundedRect(5, 4, 14, 16, 2, 2);
                 ctx.moveTo(9, 4); ctx.lineTo(9, 20);
                 ctx.moveTo(12, 9); ctx.lineTo(16, 9);
+                break;
+            case "garden":
+                ctx.moveTo(12, 20); ctx.lineTo(12, 11);
+                ctx.moveTo(12, 14); ctx.quadraticCurveTo(4, 14, 4, 6);
+                ctx.quadraticCurveTo(10, 6, 12, 11);
+                ctx.quadraticCurveTo(14, 4, 20, 4);
+                ctx.quadraticCurveTo(20, 12, 12, 14);
                 break;
             }
             ctx.stroke();
@@ -483,6 +495,14 @@ ApplicationWindow {
             highlighted: window.page === "materials"
             onClicked: window.page = "materials"
         }
+        NavButton {
+            objectName: "gardenButton"
+            symbol: "garden"
+            text: qsTr("Сад")
+            enabled: !window.backend.busy
+            highlighted: window.page === "garden"
+            onClicked: window.page = "garden"
+        }
         Rectangle {
             visible: window.sidebarVisible
             width: window.appearance.dp(160)
@@ -531,13 +551,6 @@ ApplicationWindow {
                 petFullscreen.checked = window.companion.state.hide_fullscreen;
                 companionDialog.open();
             }
-        }
-        NavButton {
-            objectName: "gardenButton"
-            text: qsTr("Сад")
-            enabled: !window.backend.busy
-            highlighted: window.page === "garden"
-            onClicked: window.page = "garden"
         }
         NavButton {
             objectName: "appearanceButton"
@@ -1173,7 +1186,7 @@ ApplicationWindow {
                     contentWidth: availableWidth
                     ColumnLayout {
                         width: detailScroll.availableWidth
-                        spacing: window.appearance.dp(16)
+                        spacing: window.appearance.dp(window.appearance.graphite ? 12 : 16)
                         RowLayout {
                             Layout.fillWidth: true
                             UiButton {
@@ -1192,7 +1205,7 @@ ApplicationWindow {
                             Item {
                                 Layout.fillWidth: true
                             }
-                            ToolButton {
+                            UiButton {
                                 objectName: "deleteTaskButton"
                                 text: qsTr("Удалить")
                                 onClicked: window.askDelete(window.current)
@@ -1327,7 +1340,7 @@ ApplicationWindow {
                                         text: historyRow.modelData.started + " · " + historyRow.modelData.elapsed
                                             + (historyRow.modelData.days ? "\n" + historyRow.modelData.days : "")
                                     }
-                                    ToolButton {
+                                    UiTool {
                                         objectName: "editFocusRecord_" + historyRow.modelData.id
                                         text: qsTr("Исправить")
                                         onClicked: focusRecordEditor.prepare("edit", historyRow.modelData)
@@ -1349,7 +1362,7 @@ ApplicationWindow {
                                 color: window.appearance.colors.accent
                             }
                         }
-                        CheckBox {
+                        UiCheck {
                             objectName: "taskComplete"
                             text: qsTr("Задача выполнена")
                             checked: window.current.completed || false
@@ -1404,7 +1417,7 @@ ApplicationWindow {
                                     spacing: window.appearance.dp(6)
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        CheckBox {
+                                        UiCheck {
                                             objectName: "branchCheck_" + branch.index
                                             checked: branch.modelData.completed
                                             nextCheckState: () => branch.modelData.completed ? Qt.Checked : Qt.Unchecked
@@ -1421,19 +1434,19 @@ ApplicationWindow {
                                         Caption {
                                             text: branch.modelData.weight + "%"
                                         }
-                                        ToolButton {
+                                        UiTool {
                                             text: "⋯"
                                             objectName: "renameBranch_" + branch.index
                                             Accessible.name: qsTr("Переименовать подзадачу")
                                             onClicked: window.renameNode(branch.modelData)
                                         }
-                                        ToolButton {
+                                        UiTool {
                                             objectName: "branchAttachments_" + branch.index
                                             text: qsTr("Файлы")
                                             Accessible.name: qsTr("Вложения подзадачи")
                                             onClicked: window.showAttachments(branch.modelData)
                                         }
-                                        ToolButton {
+                                        UiTool {
                                             objectName: "deleteBranch_" + branch.index
                                             text: "×"
                                             Accessible.name: qsTr("Удалить подзадачу")
@@ -1448,7 +1461,7 @@ ApplicationWindow {
                                             required property int index
                                             Layout.fillWidth: true
                                             Layout.leftMargin: window.appearance.dp(23)
-                                            CheckBox {
+                                            UiCheck {
                                                 objectName: "itemCheck_" + branch.index + "_" + leaf.index
                                                 checked: leaf.modelData.completed
                                                 nextCheckState: () => leaf.modelData.completed ? Qt.Checked : Qt.Unchecked
@@ -1461,19 +1474,19 @@ ApplicationWindow {
                                                 wrapMode: Text.Wrap
                                                 color: window.appearance.colors.secondary
                                             }
-                                            ToolButton {
+                                            UiTool {
                                                 text: "⋯"
                                                 objectName: "renameItem_" + branch.index + "_" + leaf.index
                                                 Accessible.name: qsTr("Переименовать пункт")
                                                 onClicked: window.renameNode(leaf.modelData)
                                             }
-                                            ToolButton {
+                                            UiTool {
                                                 objectName: "itemAttachments_" + branch.index + "_" + leaf.index
                                                 text: qsTr("Файлы")
                                                 Accessible.name: qsTr("Вложения пункта")
                                                 onClicked: window.showAttachments(leaf.modelData)
                                             }
-                                            ToolButton {
+                                            UiTool {
                                                 objectName: "deleteItem_" + branch.index + "_" + leaf.index
                                                 text: "×"
                                                 Accessible.name: qsTr("Удалить пункт")
@@ -1599,8 +1612,7 @@ ApplicationWindow {
                 }
             }
         }
-        footer: RowLayout {
-            Item { Layout.fillWidth: true }
+        footer: UiFooter {
             UiButton {
                 objectName: "cancelAppearance"
                 text: qsTr("Отмена")
@@ -1690,8 +1702,7 @@ ApplicationWindow {
                     ? window.backend.error : (window.backend.backups.automaticError || "")
             }
         }
-        footer: RowLayout {
-            Item { Layout.fillWidth: true }
+        footer: UiFooter {
             UiButton {
                 objectName: "closeBackups"
                 text: qsTr("Закрыть")
@@ -1750,8 +1761,7 @@ ApplicationWindow {
                 color: window.appearance.colors.warning
             }
         }
-        footer: RowLayout {
-            Item { Layout.fillWidth: true }
+        footer: UiFooter {
             UiButton {
                 objectName: "cancelBackupRestore"
                 text: qsTr("Отмена")
@@ -1882,8 +1892,7 @@ ApplicationWindow {
                 color: window.appearance.colors.warning
             }
         }
-        footer: RowLayout {
-            Item { Layout.fillWidth: true }
+        footer: UiFooter {
             UiButton {
                 objectName: "closeAttachments"
                 text: qsTr("Закрыть")
@@ -1923,9 +1932,13 @@ ApplicationWindow {
             id: petScroll
             contentWidth: availableWidth
             clip: true
+            rightPadding: window.appearance.graphite ? window.appearance.dp(12) : 0
+            ScrollBar.vertical.policy: window.appearance.graphite && petForm.implicitHeight > availableHeight + 1
+                ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
             ColumnLayout {
+                id: petForm
                 width: petScroll.availableWidth
-                CheckBox { id: petEnabled; objectName: "petEnabled"; text: qsTr("Показывать компаньона") }
+                UiCheck { id: petEnabled; objectName: "petEnabled"; text: qsTr("Показывать компаньона") }
                 UiCombo {
                     id: petChoice
                     objectName: "petChoice"
@@ -1943,7 +1956,7 @@ ApplicationWindow {
                     wrapMode: Text.Wrap
                     text: qsTr("Пока используются статичные JPG. Состояние и реплики показаны под картинкой. Перетаскивание — левой кнопкой, меню — правой. Анимации подключим после готовности материалов.")
                 }
-                CheckBox {
+                UiCheck {
                     id: petMuted
                     objectName: "petMuted"
                     text: qsTr("Отключить реплики")
@@ -1957,7 +1970,7 @@ ApplicationWindow {
                     model: [qsTr("Редко — не чаще раза в 5 минут"), qsTr("Обычно — раз в 2 минуты"), qsTr("Чаще — раз в 30 секунд")]
                 }
                 Label { text: qsTr("Предложить перерыв после, минут") }
-                SpinBox {
+                UiSpin {
                     id: petBreak
                     objectName: "petBreak"
                     from: 5
@@ -1969,7 +1982,7 @@ ApplicationWindow {
                     wrapMode: Text.Wrap
                     text: qsTr("Считается активная работа после начала или продолжения фокуса. Пауза начинает отсчёт заново. Реплика не ставит задачу на паузу автоматически.")
                 }
-                CheckBox {
+                UiCheck {
                     id: petReducedMotion
                     objectName: "petReducedMotion"
                     Layout.fillWidth: true
@@ -1980,7 +1993,7 @@ ApplicationWindow {
                     wrapMode: Text.Wrap
                     text: qsTr("Настройка сохранится для будущих анимаций. Сейчас все персонажи статичны.")
                 }
-                CheckBox {
+                UiCheck {
                     id: petFullscreen
                     objectName: "petFullscreen"
                     Layout.fillWidth: true
@@ -1999,9 +2012,7 @@ ApplicationWindow {
                 }
             }
         }
-        footer: Flow {
-            width: companionDialog.availableWidth
-            padding: window.appearance.dp(8)
+        footer: UiFooter {
             UiButton {
                 objectName: "applyCompanion"
                 text: qsTr("Применить")
@@ -2023,10 +2034,10 @@ ApplicationWindow {
         planner: window.planner
         taskBackend: window.backend
         appearance: window.appearance
-        parent: window.contentItem
+        parent: Overlay.overlay
         anchors.centerIn: parent
-        width: Math.min(window.appearance.dp(760), window.width - 32)
-        height: window.height - 32
+        width: Math.min(window.appearance.dp(760), parent.width - 2 * window.workspaceDialogMargin)
+        height: Math.min(window.appearance.dp(680), parent.height - 2 * window.workspaceDialogMargin)
     }
 
     AssistantDialog {
@@ -2035,10 +2046,10 @@ ApplicationWindow {
         agent: window.assistant
         taskBackend: window.backend
         uiAppearance: window.appearance
-        parent: window.contentItem
+        parent: Overlay.overlay
         anchors.centerIn: parent
-        width: Math.min(window.appearance.dp(760), window.width - 32)
-        height: window.height - 32
+        width: Math.min(window.appearance.dp(760), parent.width - 2 * window.workspaceDialogMargin)
+        height: Math.min(window.appearance.dp(680), parent.height - 2 * window.workspaceDialogMargin)
     }
 
     EditorDialog {
@@ -2046,14 +2057,18 @@ ApplicationWindow {
         objectName: "systemDialog"
         title: qsTr("Настройки приложения")
         anchors.centerIn: parent
-        width: Math.min(window.appearance.dp(480), window.width - 32)
+        width: Math.min(window.appearance.dp(520), window.width - 32)
         height: Math.min(window.appearance.dp(480), window.height - 32)
         modal: true
         contentItem: ScrollView {
             id: systemScroll
             contentWidth: availableWidth
             clip: true
+            rightPadding: window.appearance.graphite ? window.appearance.dp(12) : 0
+            ScrollBar.vertical.policy: window.appearance.graphite && systemForm.implicitHeight > availableHeight + 1
+                ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
             ColumnLayout {
+                id: systemForm
                 width: systemScroll.availableWidth
                 Caption {
                     Layout.fillWidth: true
@@ -2062,7 +2077,7 @@ ApplicationWindow {
                         ? qsTr("Крестик скрывает окно в трей. Фокусировка продолжает работать. Открыть окно и выйти можно через значок Ритма.")
                         : qsTr("Системный трей недоступен. Крестик завершает приложение; активную сессию потребуется подтвердить.")
                 }
-                CheckBox {
+                UiCheck {
                     id: pauseOnSystem
                     objectName: "pauseOnSystem"
                     Layout.fillWidth: true
@@ -2093,13 +2108,13 @@ ApplicationWindow {
                     enabled: !window.backend.busy
                     onClicked: window.backend.saveFocusSettings(pauseOnSystem.checked)
                 }
-                CheckBox {
+                UiCheck {
                     id: autoStart
                     objectName: "autoStart"
                     text: qsTr("Запускать при входе в систему")
                     enabled: !!window.desktop && window.desktop.settings.supported && !window.desktop.settings.busy
                 }
-                CheckBox {
+                UiCheck {
                     id: hiddenStart
                     objectName: "hiddenStart"
                     text: qsTr("Запускать скрытым в трей")
@@ -2118,7 +2133,7 @@ ApplicationWindow {
                 }
             }
         }
-        footer: ColumnLayout {
+        footer: UiFooter {
             UiButton {
                 objectName: "saveAutostart"
                 text: qsTr("Применить автозапуск")
@@ -2164,8 +2179,7 @@ ApplicationWindow {
                 color: window.appearance.colors.warning
             }
         }
-        footer: RowLayout {
-            Item { Layout.fillWidth: true }
+        footer: UiFooter {
             UiButton {
                 objectName: "cancelFocusExit"
                 text: qsTr("Остаться")
@@ -2267,8 +2281,7 @@ ApplicationWindow {
                 color: window.appearance.colors.warning
             }
         }
-        footer: RowLayout {
-            Item { Layout.fillWidth: true }
+        footer: UiFooter {
             UiButton {
                 text: focusRecordEditor.mode === "recover" ? qsTr("Позже") : qsTr("Отмена")
                 enabled: !window.backend.busy
@@ -2331,8 +2344,7 @@ ApplicationWindow {
                 color: window.appearance.colors.warning
             }
         }
-        footer: RowLayout {
-            Item { Layout.fillWidth: true }
+        footer: UiFooter {
             UiButton {
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy
@@ -2471,21 +2483,14 @@ ApplicationWindow {
                 }
             }
         }
-        footer: RowLayout {
-            spacing: window.appearance.dp(10)
-            Item {
-                Layout.fillWidth: true
-            }
+        footer: UiFooter {
             UiButton {
-                Layout.bottomMargin: window.appearance.graphite ? window.appearance.dp(16) : 0
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy
                 onClicked: taskEditor.close()
             }
             AccentButton {
                 objectName: "saveTaskButton"
-                Layout.rightMargin: window.appearance.graphite ? window.appearance.dp(20) : 0
-                Layout.bottomMargin: window.appearance.graphite ? window.appearance.dp(16) : 0
                 text: qsTr("Сохранить")
                 enabled: !window.backend.busy
                 onClicked: window.backend.saveTask(taskEditor.taskId, {
@@ -2523,10 +2528,7 @@ ApplicationWindow {
                 wrapMode: Text.Wrap
             }
         }
-        footer: RowLayout {
-            Item {
-                Layout.fillWidth: true
-            }
+        footer: UiFooter {
             UiButton {
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy
@@ -2585,10 +2587,7 @@ ApplicationWindow {
                 }
             }
         }
-        footer: RowLayout {
-            Item {
-                Layout.fillWidth: true
-            }
+        footer: UiFooter {
             UiButton {
                 text: qsTr("Отмена")
                 enabled: !window.backend.busy
@@ -2632,10 +2631,7 @@ ApplicationWindow {
                 wrapMode: Text.Wrap
             }
         }
-        footer: RowLayout {
-            Item {
-                Layout.fillWidth: true
-            }
+        footer: UiFooter {
             UiButton {
                 objectName: "cancelDeleteButton"
                 text: qsTr("Отмена")
@@ -2697,7 +2693,7 @@ ApplicationWindow {
                         required property var modelData
                         required property int index
                         Layout.fillWidth: true
-                        CheckBox {
+                        UiCheck {
                             objectName: "selectTrash_" + trashRow.index
                             Accessible.name: qsTr("Выбрать: %1").arg(trashRow.modelData.title)
                             checked: trashEditor.selection.includes(trashRow.modelData.id)
@@ -2740,8 +2736,7 @@ ApplicationWindow {
                 }
             }
         }
-        footer: RowLayout {
-            Item { Layout.fillWidth: true }
+        footer: UiFooter {
             UiButton {
                 objectName: "closeTrashButton"
                 text: qsTr("Закрыть")
@@ -2797,8 +2792,7 @@ ApplicationWindow {
                 wrapMode: Text.Wrap
             }
         }
-        footer: RowLayout {
-            Item { Layout.fillWidth: true }
+        footer: UiFooter {
             UiButton {
                 objectName: "cancelPurgeButton"
                 text: qsTr("Отмена")

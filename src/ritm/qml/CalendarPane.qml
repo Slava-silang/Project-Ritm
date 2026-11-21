@@ -5,6 +5,10 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: pane
+
+    component UiTool: RitmButton { appearance: pane.appearance; compact: true; quiet: true }
+    component UiDialog: RitmDialog { appearance: pane.appearance }
+    component UiFooter: RitmDialogFooter { appearance: pane.appearance }
     objectName: "calendarPane"
     required property var backend
     required property var appearance
@@ -148,7 +152,7 @@ ColumnLayout {
                 Item {
                     Layout.fillWidth: true
                 }
-                ToolButton {
+                UiTool {
                     objectName: "editBlock_" + eventButton.entry.id
                     width: pane.appearance.dp(25)
                     height: pane.appearance.dp(24)
@@ -453,7 +457,7 @@ ColumnLayout {
             }
         }
     }
-    Dialog {
+    UiDialog {
         id: blockEditor
         objectName: "blockEditor"
         property var entry: null
@@ -572,10 +576,7 @@ ColumnLayout {
                 }
             }
         }
-        footer: RowLayout {
-            Item {
-                Layout.fillWidth: true
-            }
+        footer: UiFooter {
             UiButton {
                 objectName: "cancelBlockButton"
                 text: qsTr("Отмена")

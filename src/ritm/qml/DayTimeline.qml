@@ -4,6 +4,8 @@ import QtQuick.Controls
 
 Rectangle {
     id: timeline
+
+    component UiTool: RitmButton { appearance: timeline.appearance; compact: true; quiet: true }
     required property var backend
     required property var appearance
     required property var view
@@ -157,7 +159,7 @@ Rectangle {
                 }
                 ToolTip.visible: mover.containsMouse && !mover.pressed && !!modelData.warning
                 ToolTip.text: modelData.warning
-                ToolButton {
+                UiTool {
                     objectName: "timelineEdit_" + blockItem.modelData.id
                     anchors.right: parent.right
                     anchors.top: parent.top
