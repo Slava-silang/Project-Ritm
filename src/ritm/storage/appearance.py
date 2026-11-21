@@ -31,13 +31,14 @@ def load_appearance(profile: Path) -> dict:
 
 def save_appearance(profile: Path, theme: str, scale: int) -> dict:
     data = validate_appearance(theme, scale)
-    with NamedTemporaryFile(dir=profile, delete=False) as stream:
-        temporary = Path(stream.name)
-        try:
+    stream = NamedTemporaryFile(dir=profile, delete=False)
+    temporary = Path(stream.name)
+    try:
+        with stream:
             stream.write(json.dumps(data).encode())
             stream.flush()
             os.fsync(stream.fileno())
-            os.replace(temporary, profile / "appearance.json")
-        finally:
-            temporary.unlink(missing_ok=True)
+        os.replace(temporary, profile / "appearance.json")
+    finally:
+        temporary.unlink(missing_ok=True)
     return data

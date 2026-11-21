@@ -5,9 +5,16 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: pane
+
+    component UiArea: RitmTextArea { appearance: pane.appearance }
+
+    component UiCheck: RitmCheckBox { appearance: pane.appearance }
     objectName: "mailProposalPane"
     required property var helper
     required property var appearance
+
+    component UiButton: RitmButton { appearance: pane.appearance }
+    component UiField: RitmTextField { appearance: pane.appearance }
     required property var sourceState
     property var proposalState: helper ? helper.state : ({busy: false})
     property var form: ({})
@@ -56,7 +63,7 @@ ColumnLayout {
         wrapMode: Text.Wrap
         text: qsTr("Будут переданы тема, отправитель, дата и текст выбранного письма, ваш запрос и названия, описания, сроки, состояние и подзадачи всех активных задач. Для обновления — связанная задача (включая выполненную) или событие. Вложения и история чата не передаются. Проверьте получателя и его условия обработки данных.")
     }
-    TextArea {
+    UiArea {
         id: prompt
         objectName: "mailPrompt"
         Layout.fillWidth: true
@@ -65,7 +72,7 @@ ColumnLayout {
         enabled: !pane.proposalState.busy
         onTextChanged: sendConsent.checked = false
     }
-    CheckBox {
+    UiCheck {
         id: sendConsent
         objectName: "mailSendConsent"
         Layout.fillWidth: true
@@ -73,7 +80,7 @@ ColumnLayout {
         text: qsTr("Разрешаю обработать эти данные выбранной моделью для этого запроса")
         contentItem: Label { text: sendConsent.text; wrapMode: Text.Wrap; leftPadding: sendConsent.indicator.width + sendConsent.spacing }
     }
-    Button {
+    UiButton {
         objectName: "mailGenerate"
         text: qsTr("Подготовить предложение")
         enabled: sendConsent.enabled && sendConsent.checked
@@ -109,7 +116,7 @@ ColumnLayout {
         visible: !!pane.proposalState.hasDraft
         text: pane.proposalState.preview || ""
     }
-    Button {
+    UiButton {
         objectName: "mailEdit"
         text: qsTr("Исправить предложение")
         visible: !!pane.proposalState.hasDraft
@@ -121,7 +128,7 @@ ColumnLayout {
         visible: pane.editing
         enabled: !pane.proposalState.busy
         Label { text: qsTr("Название") }
-        TextField {
+        UiField {
             objectName: "mailEditTitle"
             Layout.fillWidth: true
             placeholderText: qsTr("Название")
@@ -129,7 +136,7 @@ ColumnLayout {
             onTextEdited: { if (pane.form.kind === "task") pane.fields().title = text; else pane.form.event.title = text; }
         }
         Label { text: qsTr("Описание"); visible: pane.form.kind === "task" }
-        TextArea {
+        UiArea {
             objectName: "mailEditDescription"
             Layout.fillWidth: true
             visible: pane.form.kind === "task"
@@ -139,7 +146,7 @@ ColumnLayout {
             onTextChanged: if (pane.editing && activeFocus && pane.form.kind === "task") pane.fields().description = text
         }
         Label { text: qsTr("Сложность (1–10)"); visible: pane.form.kind === "task" }
-        TextField {
+        UiField {
             objectName: "mailEditDifficulty"
             Layout.fillWidth: true
             visible: pane.form.kind === "task"
@@ -148,7 +155,7 @@ ColumnLayout {
             onTextEdited: pane.fields().difficulty = pane.number(text)
         }
         Label { text: qsTr("Ожидаемое время, минуты"); visible: pane.form.kind === "task" }
-        TextField {
+        UiField {
             objectName: "mailEditMinutes"
             Layout.fillWidth: true
             visible: pane.form.kind === "task"
@@ -190,7 +197,7 @@ ColumnLayout {
             text: pane.proposalState.end || ""
             placeholderText: qsTr("Окончание события")
         }
-        CheckBox {
+        UiCheck {
             visible: pane.form.kind === "task" && !!pane.form.task && !!pane.form.task.changes
                 && pane.form.task.changes.completed !== undefined
             text: qsTr("Выполнение главной задачи")
@@ -208,13 +215,13 @@ ColumnLayout {
                 required property var modelData
                 required property int index
                 Layout.fillWidth: true
-                TextField {
+                UiField {
                     Layout.fillWidth: true
                     visible: patch.modelData.title !== undefined
                     text: patch.modelData.title || ""
                     onTextEdited: pane.form.task.nodes[patch.index].title = text
                 }
-                CheckBox {
+                UiCheck {
                     visible: patch.modelData.completed !== undefined
                     checked: !!patch.modelData.completed
                     text: qsTr("Выполнено")
@@ -229,7 +236,7 @@ ColumnLayout {
                 required property var modelData
                 required property int index
                 Layout.fillWidth: true
-                TextField {
+                UiField {
                     objectName: "mailEditBranch_" + branch.index
                     Layout.fillWidth: true
                     text: branch.modelData.title
@@ -237,7 +244,7 @@ ColumnLayout {
                 }
                 Repeater {
                     model: branch.modelData.items || []
-                    delegate: TextField {
+                    delegate: UiField {
                         required property string modelData
                         required property int index
                         objectName: "mailEditLeaf_" + branch.index + "_" + index
@@ -248,7 +255,7 @@ ColumnLayout {
                 }
             }
         }
-        TextField {
+        UiField {
             objectName: "mailEditWeights"
             Layout.fillWidth: true
             visible: pane.form.kind === "task" && !!pane.form.task && !!pane.form.task.weights && pane.form.task.weights.length > 0
@@ -256,20 +263,20 @@ ColumnLayout {
             text: pane.form.task && pane.form.task.weights ? pane.form.task.weights.join(" ") : ""
             onTextEdited: pane.form.task.weights = text.trim().split(/\s+/)
         }
-        Button {
+        UiButton {
             objectName: "mailCheckEdits"
             text: qsTr("Проверить правки и обновить предпросмотр")
             onClicked: pane.helper.edit(JSON.stringify(pane.form), deadline.text, start.text, end.text)
         }
     }
-    Button {
+    UiButton {
         objectName: "mailApply"
         text: qsTr("Подтвердить и сохранить предложение")
         visible: !!pane.proposalState.hasDraft
         enabled: !pane.proposalState.busy && !pane.editing
         onClicked: pane.helper.apply(true)
     }
-    Button {
+    UiButton {
         objectName: "mailCancelProposal"
         text: qsTr("Отменить предложение")
         visible: !!pane.proposalState.hasDraft || !!pane.proposalState.busy

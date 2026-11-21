@@ -51,6 +51,7 @@ try:
     gui.click("nextStatsWeek")
     assert controller.statistics["taskCount"] == 1
     assert controller.statistics["completedCount"] == 0
+    assert controller.statistics["currentWeek"]["percent"] == 100
     gui.click("nextStatsWeek")
     assert "нет задач" in gui.item("weeklyProgressLabel").property("text")
     gui.click("previousStatsWeek")

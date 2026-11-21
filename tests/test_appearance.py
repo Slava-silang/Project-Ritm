@@ -33,7 +33,15 @@ def test_failed_settings_write_preserves_previous_choice(tmp_path, monkeypatch):
     assert [file.name for file in tmp_path.iterdir()] == ["appearance.json"]
 
 
-def test_theme_scale_shortcuts_and_restart(tmp_path):
+@pytest.mark.parametrize(
+    ("script_name", "modes"),
+    [
+        ("ui_appearance_scenario.py", ("run", "reopen")),
+        ("ui_graphite_layout_scenario.py", ("layout",)),
+    ],
+    ids=["theme-and-restart", "dialog-and-garden-layout"],
+)
+def test_qml_appearance(tmp_path, script_name, modes):
     env = {
         **os.environ,
         "QT_QPA_PLATFORM": os.environ.get("RITM_UI_PLATFORM", "offscreen"),
@@ -42,15 +50,15 @@ def test_theme_scale_shortcuts_and_restart(tmp_path):
         "XDG_DATA_HOME": str(tmp_path / "data"),
         "XDG_CONFIG_HOME": str(tmp_path / "config"),
     }
-    script = Path(__file__).with_name("ui_appearance_scenario.py")
-    for mode in ("run", "reopen"):
+    script = Path(__file__).with_name(script_name)
+    for mode in modes:
         result = subprocess.run(
             [sys.executable, str(script), str(tmp_path), mode],
             cwd=tmp_path,
             env=env,
             capture_output=True,
             text=True,
-            timeout=45,
+            timeout=75,
         )
         assert result.returncode == 0, result.stdout + result.stderr
         for warning in (

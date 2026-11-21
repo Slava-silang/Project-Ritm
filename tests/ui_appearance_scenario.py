@@ -34,9 +34,10 @@ try:
     gui.idle()
     window.requestActivate()
     QTest.qWait(50)
+    look = window.findChild(QObject, "uiAppearance")
     if sys.argv[2] == "reopen":
         assert controller.appearance == {"theme": "space", "scale": 150}
-        assert window.findChild(QObject, "uiAppearance").property("dark")
+        assert look.property("dark") and not look.property("graphite")
         assert len(controller.tasks) == 1
     else:
         for index, name in enumerate(("space", "jungle", "light", "dark", "system")):
@@ -44,7 +45,16 @@ try:
             gui.choose("appearanceTheme", index)
             gui.click("saveAppearance")
             assert controller.appearance["theme"] == name
+            if name != "system":
+                assert look.property("graphite") == (name == "dark")
+        assert look.property("graphite") == (app.styleHints().colorScheme() == Qt.ColorScheme.Dark)
+        if not look.property("graphite"):
+            gui.click("appearanceButton")
+            gui.choose("appearanceTheme", 3)
+            gui.click("saveAppearance")
         key(Qt.Key.Key_N)
+        title_background = gui.item("titleInput").property("background")
+        assert title_background.property("radius") == 12
         gui.fill("titleInput", "Проверка оформления")
         key(Qt.Key.Key_F)
         assert gui.item("titleInput").isVisible()
@@ -70,10 +80,14 @@ try:
         window.setWidth(640)
         window.setHeight(480)
         gui.wait_for(lambda: window.width() == 640, "narrow layout")
+        assert not gui.item("graphiteSidebar").isVisible()
         gui.screenshot(profile / "dark-narrow-150.png")
         gui.click("appearanceButton")
         gui.screenshot(profile / "appearance-narrow.png")
         gui.click("cancelAppearance")
+        gui.click("calendarPageButton")
+        assert gui.item("calendarScroll").height() > 0
+        gui.click("tasksPageButton")
         key(Qt.Key.Key_0)
         assert controller.appearance["scale"] == 100
         key(Qt.Key.Key_Equal)
@@ -82,6 +96,7 @@ try:
         assert controller.appearance["scale"] == 100
         window.setWidth(1120)
         window.setHeight(780)
+        gui.wait_for(gui.item("graphiteSidebar").isVisible, "wide Graphite sidebar")
         for page in (
             "tasksPageButton",
             "calendarPageButton",
@@ -89,7 +104,12 @@ try:
             "materialsPageButton",
         ):
             gui.click(page)
+            assert gui.item("graphiteSidebar").isVisible()
             gui.screenshot(profile / ("dark-" + page + ".png"))
+        gui.click("tasksPageButton")
+        gui.click("newTaskButton")
+        gui.screenshot(profile / "graphite-task-editor.png")
+        key(Qt.Key.Key_Escape, Qt.KeyboardModifier.NoModifier)
         gui.click("appearanceButton")
         gui.choose("appearanceTheme", 0)
         gui.choose("appearanceScale", 2)
