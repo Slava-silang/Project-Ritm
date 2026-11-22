@@ -73,6 +73,12 @@ class GuiHarness:
 
     def click(self, name):
         target = self.item(name)
+        if (
+            name in ("backupsButton", "systemButton", "appearanceButton", "companionButton")
+            and not target.isVisible()
+        ):
+            self.click("parametersButton")
+            self.wait_for(target.isVisible, "parameters menu opens")
         assert target.isVisible() and target.isEnabled(), name
         self.reveal(target, full=True)
         point = target.mapToScene(QPointF(target.width() / 2, target.height() / 2)).toPoint()

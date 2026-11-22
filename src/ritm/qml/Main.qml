@@ -192,7 +192,7 @@ ApplicationWindow {
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
-    ].some(dialog => dialog.visible) || pomodoroPane.dialogsOpen || gardenPane.dialogsOpen || duskMoreMenu.visible
+    ].some(dialog => dialog.visible) || pomodoroPane.dialogsOpen || gardenPane.dialogsOpen || parametersMenu.visible
     property bool shortcutsEnabled: !window.backend.busy && !window.modalOpen
 
     function openAppearance() {
@@ -518,103 +518,77 @@ ApplicationWindow {
             color: window.appearance.colors.border
         }
         NavButton {
-            id: backupsAction
-            objectName: "backupsButton"
-            visible: !window.appearance.dusk || !window.narrow
-            text: qsTr("Копии")
-            enabled: !window.backend.busy
-            onClicked: {
-                backupDialog.attempted = false;
-                backupDialog.open();
-            }
-        }
-        NavButton {
-            id: assistantAction
             objectName: "assistantButton"
             text: window.assistant && window.assistant.state.provider !== "mock" ? qsTr("Помощник") : qsTr("Помощник (тест)")
-            visible: !!window.assistant && (!window.appearance.dusk || !window.narrow)
+            visible: !!window.assistant
             enabled: !window.backend.busy
             onClicked: assistantDialog.open()
         }
         NavButton {
-            id: systemAction
-            objectName: "systemButton"
-            text: qsTr("Приложение")
-            visible: !!window.desktop && (!window.appearance.dusk || !window.narrow)
-            onClicked: {
-                pauseOnSystem.checked = window.backend.pauseOnSystem;
-                autoStart.checked = window.desktop.settings.enabled;
-                hiddenStart.checked = window.desktop.settings.hidden;
-                systemDialog.open();
-            }
-        }
-        NavButton {
-            id: companionAction
-            objectName: "companionButton"
-            text: qsTr("Компаньон")
-            visible: !!window.companion && (!window.appearance.dusk || !window.narrow)
-            onClicked: {
-                petEnabled.checked = window.companion.state.enabled;
-                petChoice.currentIndex = companionDialog.keys.indexOf(window.companion.state.pet);
-                petSize.currentIndex = companionDialog.sizes.indexOf(window.companion.state.size);
-                petMuted.checked = window.companion.state.muted;
-                petFrequency.currentIndex = companionDialog.frequencies.indexOf(window.companion.state.frequency);
-                petBreak.value = window.companion.state.break_minutes;
-                petReducedMotion.checked = window.companion.state.reduce_motion;
-                petFullscreen.checked = window.companion.state.hide_fullscreen;
-                companionDialog.open();
-            }
-        }
-        NavButton {
-            objectName: "appearanceButton"
-            visible: !window.appearance.dusk || !window.narrow
-            text: qsTr("Вид")
+            objectName: "parametersButton"
+            text: qsTr("Параметры")
             enabled: !window.backend.busy
-            onClicked: window.openAppearance()
-        }
-        NavButton {
-            objectName: "duskMore"
-            visible: window.appearance.dusk && window.narrow
-            text: qsTr("Ещё")
-            enabled: !window.backend.busy
-            onClicked: duskMoreMenu.open()
+            highlighted: parametersMenu.visible
+            onClicked: parametersMenu.visible ? parametersMenu.close() : parametersMenu.open()
             Menu {
-                id: duskMoreMenu
-                objectName: "duskMoreMenu"
+                id: parametersMenu
+                objectName: "parametersMenu"
+                focus: true
+                closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+                onOpened: currentIndex = 0
                 y: parent.height
-                width: window.appearance.dp(210)
+                width: window.appearance.dp(220)
                 padding: window.appearance.dp(10)
                 background: GraphiteBackground {
                     appearance: window.appearance
                     kind: "dialog"
+                    legacyColor: window.appearance.colors.surface
+                    legacyBorder: window.appearance.colors.controlBorder
+                    legacyBorderWidth: 1
                 }
                 MenuItem {
-                    objectName: "duskMenu_backupsButton"
-                    text: qsTr("Резервные копии")
-                    onTriggered: backupsAction.clicked()
+                    objectName: "backupsButton"
+                    text: qsTr("Копии")
+                    enabled: !window.backend.busy
+                    onTriggered: {
+                        backupDialog.attempted = false;
+                        backupDialog.open();
+                    }
                 }
                 MenuItem {
-                    objectName: "duskMenu_assistantButton"
-                    visible: !!window.assistant
-                    text: qsTr("Помощник")
-                    onTriggered: assistantAction.clicked()
-                }
-                MenuItem {
-                    objectName: "duskMenu_systemButton"
+                    objectName: "systemButton"
                     visible: !!window.desktop
                     text: qsTr("Приложение")
-                    onTriggered: systemAction.clicked()
+                    enabled: !window.backend.busy
+                    onTriggered: {
+                        pauseOnSystem.checked = window.backend.pauseOnSystem;
+                        autoStart.checked = window.desktop.settings.enabled;
+                        hiddenStart.checked = window.desktop.settings.hidden;
+                        systemDialog.open();
+                    }
                 }
                 MenuItem {
-                    objectName: "duskMenu_companionButton"
+                    objectName: "appearanceButton"
+                    text: qsTr("Вид")
+                    enabled: !window.backend.busy
+                    onTriggered: window.openAppearance()
+                }
+                MenuItem {
+                    objectName: "companionButton"
                     visible: !!window.companion
                     text: qsTr("Компаньон")
-                    onTriggered: companionAction.clicked()
-                }
-                MenuItem {
-                    objectName: "duskMenu_appearanceButton"
-                    text: qsTr("Оформление")
-                    onTriggered: window.openAppearance()
+                    enabled: !window.backend.busy
+                    onTriggered: {
+                        petEnabled.checked = window.companion.state.enabled;
+                        petChoice.currentIndex = companionDialog.keys.indexOf(window.companion.state.pet);
+                        petSize.currentIndex = companionDialog.sizes.indexOf(window.companion.state.size);
+                        petMuted.checked = window.companion.state.muted;
+                        petFrequency.currentIndex = companionDialog.frequencies.indexOf(window.companion.state.frequency);
+                        petBreak.value = window.companion.state.break_minutes;
+                        petReducedMotion.checked = window.companion.state.reduce_motion;
+                        petFullscreen.checked = window.companion.state.hide_fullscreen;
+                        companionDialog.open();
+                    }
                 }
             }
         }

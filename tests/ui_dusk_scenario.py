@@ -70,12 +70,7 @@ def contrast(a, b):
 
 
 def utility(name):
-    if gui.item(name).isVisible():
-        gui.click(name)
-    else:
-        gui.click("duskMore")
-        gui.screenshot(profile / "dusk-more-menu.png")
-        gui.click("duskMenu_" + name)
+    gui.click(name)
 
 
 try:
@@ -108,6 +103,29 @@ try:
             QTest.qWait(120)
             assert not gui.item("graphiteSidebar").isVisible()
             assert gui.item("duskNavigation").isVisible()
+            gui.item("parametersButton").forceActiveFocus()
+            QTest.keyClick(window, Qt.Key.Key_Space)
+            gui.wait_for(lambda: gui.item("parametersMenu").property("opened"))
+            assert gui.item("parametersMenu").property("count") == 4
+            gui.screenshot(profile / f"parameters-menu-{scale}.png")
+            QTest.keyClick(window, Qt.Key.Key_Escape)
+            gui.wait_for(lambda: not gui.item("parametersMenu").property("visible"))
+            assert gui.item("parametersButton").hasActiveFocus()
+            gui.click("parametersButton")
+            gui.wait_for(lambda: gui.item("parametersMenu").property("opened"))
+            gui.click("parametersButton")
+            gui.wait_for(lambda: not gui.item("parametersMenu").property("visible"))
+            # Keyboard navigation reaches the same appearance dialog as a mouse click.
+            gui.item("parametersButton").forceActiveFocus()
+            QTest.keyClick(window, Qt.Key.Key_Space)
+            gui.wait_for(lambda: gui.item("parametersMenu").property("opened"))
+            QTest.keyClick(window, Qt.Key.Key_Home)
+            QTest.keyClick(window, Qt.Key.Key_Down)
+            QTest.keyClick(window, Qt.Key.Key_Down)
+            QTest.keyClick(window, Qt.Key.Key_Return)
+            gui.wait_for(lambda: gui.item("cancelAppearance").isVisible())
+            assert gui.item("appearanceTheme").property("currentIndex") == 5
+            gui.click("cancelAppearance")
             for button, page in (
                 ("tasksPageButton", "tasks"),
                 ("calendarPageButton", "calendar"),
