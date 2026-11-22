@@ -3,10 +3,9 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Dialog {
+RitmDialog {
     id: dialog
     required property var backend
-    required property var appearance
     readonly property var achievements: backend.garden.progress
     property string selectedMonth: ""
     readonly property var periods: achievements.periods || []
@@ -68,8 +67,9 @@ Dialog {
                     text: qsTr("Месячные цели")
                     font.bold: true
                 }
-                ComboBox {
+                RitmComboBox {
                     id: monthChoice
+                    appearance: dialog.appearance
                     objectName: "gardenProgressMonth"
                     Layout.fillWidth: true
                     model: dialog.periods
@@ -165,9 +165,13 @@ Dialog {
             }
         }
     }
-    footer: Button {
-        objectName: "closeGardenProgress"
-        text: qsTr("Закрыть")
-        onClicked: dialog.close()
+    footer: RitmDialogFooter {
+        appearance: dialog.appearance
+        RitmButton {
+            appearance: dialog.appearance
+            objectName: "closeGardenProgress"
+            text: qsTr("Закрыть")
+            onClicked: dialog.close()
+        }
     }
 }

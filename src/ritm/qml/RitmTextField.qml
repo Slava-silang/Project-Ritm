@@ -4,6 +4,7 @@ import QtQuick.Controls
 TextField {
     id: field
     required property var appearance
+    property bool invalid: false
 
     background: GraphiteBackground {
         appearance: field.appearance
@@ -13,6 +14,10 @@ TextField {
         focused: field.activeFocus
         available: field.enabled
         legacyColor: field.palette.base
+        border.color: field.invalid ? field.appearance.colors.warning
+            : field.appearance.graphite ? (field.activeFocus ? field.appearance.colors.accent
+                : field.enabled ? field.appearance.colors.controlBorder : field.appearance.colors.border)
+            : legacyBorder
         legacyBorder: field.activeFocus ? field.palette.highlight
             : Application.styleHints.accessibility.contrastPreference !== Qt.HighContrast ? field.palette.mid
             : field.enabled ? field.palette.text : Qt.tint(field.palette.base,

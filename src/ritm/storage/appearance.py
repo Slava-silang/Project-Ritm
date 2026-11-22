@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-THEMES = ("light", "dark", "space", "jungle", "system")
+THEMES = ("light", "dark", "dusk", "space", "jungle", "system")
 SCALES = (100, 125, 150)
 DEFAULT = {"theme": "light", "scale": 100}
 

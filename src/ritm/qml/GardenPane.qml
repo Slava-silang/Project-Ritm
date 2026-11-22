@@ -5,7 +5,6 @@ import QtQuick.Layouts
 
 Item {
     id: pane
-
     component UiCheck: RitmCheckBox { appearance: pane.appearance }
     component UiTool: RitmButton { appearance: pane.appearance; compact: true; quiet: true }
     component UiButton: RitmButton { appearance: pane.appearance }
@@ -117,9 +116,21 @@ Item {
             clampView();
         });
     }
+    function keyboardCell(dx, dy) {
+        const x = Math.max(0, Math.min(9, (hover.valid ? hover.x : 5) + dx));
+        const y = Math.max(0, Math.min(9, (hover.valid ? hover.y : 5) + dy));
+        const cell = (scene.cells || []).find(c => c.x === x && c.y === y);
+        if (!cell)
+            return;
+        hover = backend.gardenCellAt(cell.centerX, cell.centerY);
+        viewport.contentX = cell.centerX * zoom - viewport.width / 2;
+        viewport.contentY = cell.centerY * zoom - viewport.height / 2;
+        clampView();
+    }
     onVisibleChanged: if (!visible) {
                           tools.close();
                           sale.close();
+                          progress.close();
                           cancelPlacement();
                       }
     onPreviewChanged: if (worldLoader.item)
@@ -182,7 +193,7 @@ Item {
         Flow {
             Layout.fillWidth: true
             spacing: pane.appearance.dp(6)
-            CheckBox {
+            UiCheck {
                 objectName: "gardenEnabled"
                 text: pane.narrow ? qsTr("Учёт сада") : qsTr("Учитывать работу для сада")
                 checked: pane.backend.garden.enabled
@@ -200,13 +211,14 @@ Item {
                 text: qsTr("Удобрение: %1").arg(pane.board.fertilizer)
                 padding: pane.appearance.dp(8)
             }
-            Button {
+            UiButton {
                 objectName: "gardenProgressWhenOff"
-                visible: !pane.backend.garden.enabled && pane.backend.garden.subscribed
+                visible: pane.backend.garden.subscribed && (!pane.backend.garden.enabled ||
+                                                            !pane.board.ready || pane.narrow)
                 text: qsTr("Прогресс")
                 onClicked: progress.open()
             }
-            Button {
+            UiButton {
                 objectName: "closeGarden"
                 text: qsTr("К задачам")
                 onClicked: pane.leave()
@@ -236,13 +248,13 @@ Item {
             visible: !!pane.backend.garden.error || !!pane.board.error
                      || pane.backend.gardenCommandPending
             spacing: pane.appearance.dp(6)
-            Button {
+            UiButton {
                 objectName: "retryGarden"
                 text: qsTr("Обновить сад")
                 enabled: !pane.backend.busy
                 onClicked: pane.backend.reload()
             }
-            Button {
+            UiButton {
                 objectName: "retryGardenCommand"
                 visible: pane.backend.gardenCommandPending
                 text: qsTr("Проверить действие")
@@ -261,7 +273,7 @@ Item {
             Layout.fillWidth: true
             visible: pane.board.ready
             spacing: pane.appearance.dp(4)
-            ComboBox {
+            UiCombo {
                 objectName: "gardenMode"
                 width: pane.appearance.dp(pane.narrow ? 130 : 170)
                 model: [qsTr("Выбор"), qsTr("Трава"), qsTr("Грядка"), qsTr("Вода")]
@@ -272,32 +284,32 @@ Item {
                     pane.mode = ["select", "grass", "tilled_soil", "water"][index];
                 }
             }
-            Button {
+            UiButton {
                 objectName: "gardenZoom1"
                 visible: !pane.narrow
                 text: "1×"
                 highlighted: pane.zoom === 1
                 onClicked: pane.changeZoom(1)
             }
-            Button {
+            UiButton {
                 objectName: "gardenZoom2"
                 text: pane.narrow && pane.zoom === 2 ? "1×" : "2×"
                 highlighted: pane.zoom === 2
                 onClicked: pane.changeZoom(pane.narrow && pane.zoom === 2 ? 1 : 2)
             }
-            Button {
+            UiButton {
                 objectName: "gardenCenter"
                 visible: !pane.narrow
                 text: qsTr("Центр")
                 onClicked: pane.centerView()
             }
-            Button {
+            UiButton {
                 objectName: "gardenTools"
                 visible: pane.narrow
                 text: qsTr("Предметы")
                 onClicked: tools.open()
             }
-            Button {
+            UiButton {
                 objectName: "gardenCancelPlacement"
                 visible: !!pane.placingId || pane.mode !== "select"
                 text: qsTr("Отмена · Esc")
@@ -349,6 +361,31 @@ Item {
                     ScrollBar.horizontal: ScrollBar {}
                     ScrollBar.vertical: ScrollBar {}
                     Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            if (!pane.hover.valid)
+                                pane.keyboardCell(0, 0);
+                            const cell = (pane.scene.cells || []).find(c => c.x === pane.hover.x
+                                                                            && c.y
+                                                                            === pane.hover.y);
+                            if (cell)
+                                pane.clickCell(cell.centerX, cell.centerY);
+                            event.accepted = true;
+                            return;
+                        }
+                        if (event.modifiers & Qt.ShiftModifier) {
+                            if (event.key === Qt.Key_Left)
+                                pane.keyboardCell(-1, 0);
+                            else if (event.key === Qt.Key_Right)
+                                pane.keyboardCell(1, 0);
+                            else if (event.key === Qt.Key_Up)
+                                pane.keyboardCell(0, -1);
+                            else if (event.key === Qt.Key_Down)
+                                pane.keyboardCell(0, 1);
+                            else
+                                return;
+                            event.accepted = true;
+                            return;
+                        }
                         if (event.key === Qt.Key_Left)
                             contentX -= 32;
                         else if (event.key === Qt.Key_Right)
@@ -362,6 +399,8 @@ Item {
                         pane.clampView();
                         event.accepted = true;
                     }
+                    Accessible.name: qsTr(
+                                         "Поле сада. Стрелки — прокрутка, Shift и стрелки — выбор клетки, Enter — действие, Escape — отмена.")
                     Loader {
                         id: worldLoader
                         objectName: "gardenWorld"
@@ -482,26 +521,26 @@ Item {
                               pane.board.fertilizer)
                     wrapMode: Text.Wrap
                 }
-                ToolButton {
+                UiTool {
                     objectName: "gardenProgressButton"
                     text: qsTr("Прогресс")
                     onClicked: progress.open()
                 }
             }
             RowLayout {
-                Button {
+                UiButton {
                     objectName: "gardenShopTab"
                     text: qsTr("Магазин")
                     highlighted: pane.tab === "shop"
                     onClicked: pane.tab = "shop"
                 }
-                Button {
+                UiButton {
                     objectName: "gardenInventoryTab"
                     text: qsTr("Инвентарь")
                     highlighted: pane.tab === "inventory"
                     onClicked: pane.tab = "inventory"
                 }
-                Button {
+                UiButton {
                     visible: pane.narrow
                     text: "×"
                     onClicked: tools.close()
@@ -530,13 +569,13 @@ Item {
                     Flow {
                         Layout.fillWidth: true
                         spacing: pane.appearance.dp(4)
-                        Button {
+                        UiButton {
                             objectName: "gardenMove"
                             text: pane.selected.placed ? qsTr("Переместить") : qsTr("Разместить")
                             enabled: pane.writable
                             onClicked: pane.beginPlacement()
                         }
-                        Button {
+                        UiButton {
                             objectName: "gardenStash"
                             text: qsTr("В инвентарь")
                             visible: !!pane.selected.placed
@@ -546,7 +585,7 @@ Item {
                                                                       id: pane.selectedId
                                                                   })
                         }
-                        Button {
+                        UiButton {
                             objectName: "gardenGrow"
                             text: qsTr("Удобрить · %1 ед.").arg(pane.selected.dose || 0)
                             visible: !!pane.selected.growing && pane.selected.stage < 4
@@ -556,7 +595,7 @@ Item {
                                                                       id: pane.selectedId
                                                                   })
                         }
-                        Button {
+                        UiButton {
                             objectName: "gardenSell"
                             text: qsTr("Продать · %1").arg(pane.selected.refund || 0)
                             visible: !!pane.selected.growing
@@ -639,7 +678,7 @@ Item {
                                         wrapMode: Text.Wrap
                                         font.pixelSize: pane.appearance.dp(12)
                                     }
-                                    Button {
+                                    UiButton {
                                         objectName: pane.tab === "shop" ? "gardenBuy_"
                                                                           + card.modelData.kind :
                                                                           "gardenChoose_"
@@ -676,7 +715,7 @@ Item {
                         Label {
                             text: qsTr("Удобрение · 10 монет за единицу")
                         }
-                        TextField {
+                        UiField {
                             id: fertilizer
                             objectName: "gardenFertilizerQuantity"
                             Layout.fillWidth: true
@@ -693,7 +732,7 @@ Item {
                             }
                             text: qsTr("Всего: %1 монет").arg(quote.cost)
                         }
-                        Button {
+                        UiButton {
                             objectName: "gardenBuyFertilizer"
                             readonly property var quote: {
                                 const revision = pane.board.revision;
@@ -711,57 +750,12 @@ Item {
             }
         }
     }
-    Dialog {
+    GardenProgress {
         id: progress
-        parent: Overlay.overlay
-        anchors.centerIn: parent
-        title: qsTr("Прогресс сада")
-        width: Math.min(pane.appearance.dp(460), parent.width - 32)
-        height: Math.min(pane.appearance.dp(420), parent.height - 32)
-        modal: true
-        contentItem: ScrollView {
-            id: progressScroll
-            contentWidth: availableWidth
-            clip: true
-            ColumnLayout {
-                width: progressScroll.availableWidth
-                spacing: pane.appearance.dp(12)
-                Label {
-                    objectName: "gardenWorkProgress"
-                    Layout.fillWidth: true
-                    text: qsTr("Выполнено главных задач: %1. Оплачено часов: %2.").arg(
-                              pane.backend.garden.roots).arg(pane.backend.garden.paidHours)
-                    wrapMode: Text.Wrap
-                }
-                Label {
-                    Layout.fillWidth: true
-                    text: pane.backend.garden.welcomed ? qsTr(
-                                                             "Знакомство с садом: получено 100 монет.") :
-                                                         qsTr("Первое включение: 100 монет.")
-                    wrapMode: Text.Wrap
-                }
-                Label {
-                    Layout.fillWidth: true
-                    text: pane.backend.garden.firstTask ? qsTr(
-                                                              "Первая новая задача: получено 300 монет.") :
-                                                          qsTr("Первая новая задача после включения: 300 монет.")
-                    wrapMode: Text.Wrap
-                }
-                Label {
-                    Layout.fillWidth: true
-                    text: qsTr(
-                              "Космос — 30 оплаченных часов. Джунгли — 15 выполненных главных задач. Открытые темы сохраняются при выключении сада.")
-                    wrapMode: Text.Wrap
-                }
-            }
-        }
-        footer: Button {
-            objectName: "closeGardenProgress"
-            text: qsTr("Закрыть")
-            onClicked: progress.close()
-        }
+        backend: pane.backend
+        appearance: pane.appearance
     }
-    Dialog {
+    UiDialog {
         id: sale
         property string itemId: ""
         property string itemTitle: ""
@@ -780,13 +774,13 @@ Item {
             wrapMode: Text.Wrap
         }
         footer: RowLayout {
-            Button {
+            UiButton {
                 objectName: "gardenCancelSale"
                 text: qsTr("Отмена")
                 enabled: !pane.backend.busy
                 onClicked: sale.close()
             }
-            Button {
+            UiButton {
                 objectName: "gardenConfirmSale"
                 text: qsTr("Продать")
                 enabled: pane.writable

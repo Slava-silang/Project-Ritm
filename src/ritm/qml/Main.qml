@@ -52,7 +52,7 @@ ApplicationWindow {
     property var current: window.backend.detail
     property var activeFocus: window.backend.focus
     property bool hasTask: !!current.id
-    readonly property bool sidebarVisible: appearance.graphite && width >= appearance.dp(1040) && height >= appearance.dp(510)
+    readonly property bool sidebarVisible: appearance.graphite && !appearance.dusk && width >= appearance.dp(1040) && height >= appearance.dp(510)
     readonly property real sidebarWidth: sidebarVisible ? appearance.dp(184) : 0
     property bool narrow: width - sidebarWidth < appearance.dp(850)
     readonly property bool compactGraphite: appearance.graphite && narrow
@@ -125,7 +125,10 @@ ApplicationWindow {
     component NavButton: UiButton {
         id: navButton
         property string symbol: ""
-        quiet: window.sidebarVisible
+        quiet: window.sidebarVisible || window.appearance.dusk
+        ToolTip.visible: hovered && window.appearance.dusk && window.narrow
+        ToolTip.text: text
+        Accessible.name: text
         width: window.sidebarVisible ? window.sidebarWidth - window.appearance.dp(24) : implicitWidth
         implicitHeight: window.compactGraphite ? window.appearance.dp(26)
             : Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding)
@@ -133,11 +136,12 @@ ApplicationWindow {
         contentItem: RowLayout {
             spacing: window.appearance.dp(7)
             NavIcon {
-                visible: window.sidebarVisible && !!navButton.symbol
+                visible: (window.sidebarVisible || window.appearance.dusk) && !!navButton.symbol
                 symbol: navButton.symbol
                 ink: navButton.highlighted ? window.appearance.colors.accent : window.appearance.colors.muted
             }
             Label {
+                visible: !(window.appearance.dusk && window.narrow && !!navButton.symbol)
                 Layout.fillWidth: true
                 text: navButton.text
                 font: navButton.font
@@ -188,7 +192,7 @@ ApplicationWindow {
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
-    ].some(dialog => dialog.visible) || pomodoroPane.dialogsOpen || gardenPane.dialogsOpen
+    ].some(dialog => dialog.visible) || pomodoroPane.dialogsOpen || gardenPane.dialogsOpen || duskMoreMenu.visible
     property bool shortcutsEnabled: !window.backend.busy && !window.modalOpen
 
     function openAppearance() {
@@ -390,6 +394,10 @@ ApplicationWindow {
                 window.closeWhenIdle = false;
                 Qt.callLater(window.close);
             }
+            if (!window.backend.busy && taskEditor.visible && window.backend.error && !titleInput.text.trim()) {
+                formScroll.contentItem.contentY = 0;
+                titleInput.forceActiveFocus();
+            }
         }
         function onChanged() {
             const selected = window.backend.detail.id || "";
@@ -464,7 +472,7 @@ ApplicationWindow {
 
     Flow {
         id: navigation
-        parent: window.sidebarVisible ? sidebarNavSlot : horizontalNavSlot
+        parent: window.sidebarVisible ? sidebarNavSlot : window.appearance.dusk ? duskNavSlot : horizontalNavSlot
         width: parent.width
         spacing: window.appearance.dp(4)
         NavButton {
@@ -510,7 +518,9 @@ ApplicationWindow {
             color: window.appearance.colors.border
         }
         NavButton {
+            id: backupsAction
             objectName: "backupsButton"
+            visible: !window.appearance.dusk || !window.narrow
             text: qsTr("Копии")
             enabled: !window.backend.busy
             onClicked: {
@@ -519,16 +529,18 @@ ApplicationWindow {
             }
         }
         NavButton {
+            id: assistantAction
             objectName: "assistantButton"
             text: window.assistant && window.assistant.state.provider !== "mock" ? qsTr("Помощник") : qsTr("Помощник (тест)")
-            visible: !!window.assistant
+            visible: !!window.assistant && (!window.appearance.dusk || !window.narrow)
             enabled: !window.backend.busy
             onClicked: assistantDialog.open()
         }
         NavButton {
+            id: systemAction
             objectName: "systemButton"
             text: qsTr("Приложение")
-            visible: !!window.desktop
+            visible: !!window.desktop && (!window.appearance.dusk || !window.narrow)
             onClicked: {
                 pauseOnSystem.checked = window.backend.pauseOnSystem;
                 autoStart.checked = window.desktop.settings.enabled;
@@ -537,9 +549,10 @@ ApplicationWindow {
             }
         }
         NavButton {
+            id: companionAction
             objectName: "companionButton"
             text: qsTr("Компаньон")
-            visible: !!window.companion
+            visible: !!window.companion && (!window.appearance.dusk || !window.narrow)
             onClicked: {
                 petEnabled.checked = window.companion.state.enabled;
                 petChoice.currentIndex = companionDialog.keys.indexOf(window.companion.state.pet);
@@ -554,9 +567,56 @@ ApplicationWindow {
         }
         NavButton {
             objectName: "appearanceButton"
+            visible: !window.appearance.dusk || !window.narrow
             text: qsTr("Вид")
             enabled: !window.backend.busy
             onClicked: window.openAppearance()
+        }
+        NavButton {
+            objectName: "duskMore"
+            visible: window.appearance.dusk && window.narrow
+            text: qsTr("Ещё")
+            enabled: !window.backend.busy
+            onClicked: duskMoreMenu.open()
+            Menu {
+                id: duskMoreMenu
+                objectName: "duskMoreMenu"
+                y: parent.height
+                width: window.appearance.dp(210)
+                padding: window.appearance.dp(10)
+                background: GraphiteBackground {
+                    appearance: window.appearance
+                    kind: "dialog"
+                }
+                MenuItem {
+                    objectName: "duskMenu_backupsButton"
+                    text: qsTr("Резервные копии")
+                    onTriggered: backupsAction.clicked()
+                }
+                MenuItem {
+                    objectName: "duskMenu_assistantButton"
+                    visible: !!window.assistant
+                    text: qsTr("Помощник")
+                    onTriggered: assistantAction.clicked()
+                }
+                MenuItem {
+                    objectName: "duskMenu_systemButton"
+                    visible: !!window.desktop
+                    text: qsTr("Приложение")
+                    onTriggered: systemAction.clicked()
+                }
+                MenuItem {
+                    objectName: "duskMenu_companionButton"
+                    visible: !!window.companion
+                    text: qsTr("Компаньон")
+                    onTriggered: companionAction.clicked()
+                }
+                MenuItem {
+                    objectName: "duskMenu_appearanceButton"
+                    text: qsTr("Оформление")
+                    onTriggered: window.openAppearance()
+                }
+            }
         }
     }
 
@@ -613,14 +673,44 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: window.appearance.dp(window.compactGraphite ? 12 : window.narrow ? 16 : 24)
+        anchors.margins: window.appearance.dp(window.compactGraphite ? 12 : window.narrow ? 16 : window.appearance.dusk ? 34 : 24)
         anchors.leftMargin: window.sidebarWidth + anchors.margins
         spacing: window.appearance.dp(window.compactGraphite ? 7 : window.appearance.graphite ? 12 : 16)
+        RowLayout {
+            visible: window.appearance.dusk
+            Layout.fillWidth: true
+            spacing: window.appearance.dp(22)
+            RowLayout {
+                visible: !window.narrow
+                spacing: window.appearance.dp(9)
+                Rectangle {
+                    implicitWidth: window.appearance.dp(30)
+                    implicitHeight: implicitWidth
+                    radius: window.appearance.dp(9)
+                    color: window.appearance.colors.selection
+                    NavIcon {
+                        anchors.centerIn: parent
+                        symbol: "logo"
+                        ink: window.appearance.colors.accent
+                    }
+                }
+                Label {
+                    text: qsTr("Ритм")
+                    font.weight: Font.DemiBold
+                }
+            }
+            Item {
+                id: duskNavSlot
+                objectName: "duskNavigation"
+                Layout.fillWidth: true
+                implicitHeight: navigation.implicitHeight
+            }
+        }
         RowLayout {
             visible: window.page !== "garden" || !window.narrow
             Layout.fillWidth: true
             Rectangle {
-                visible: !window.sidebarVisible
+                visible: !window.sidebarVisible && !window.appearance.dusk
                 implicitWidth: window.appearance.dp(window.compactGraphite ? 26 : 44)
                 implicitHeight: implicitWidth
                 radius: window.appearance.dp(14)
@@ -675,7 +765,7 @@ ApplicationWindow {
         }
         Item {
             id: horizontalNavSlot
-            visible: !window.sidebarVisible
+            visible: !window.sidebarVisible && !window.appearance.dusk
             Layout.fillWidth: true
             implicitHeight: navigation.implicitHeight
         }
@@ -683,7 +773,9 @@ ApplicationWindow {
             Layout.fillWidth: true
             visible: !!window.desktop && !window.desktop.trayAvailable
             wrapMode: Text.Wrap
-            text: qsTr("Трей недоступен: крестик завершает приложение. Настройки запуска — в меню «Приложение».")
+            text: window.appearance.dusk && window.narrow
+                ? qsTr("Трей недоступен: крестик завершает приложение.")
+                : qsTr("Трей недоступен: крестик завершает приложение. Настройки запуска — в меню «Приложение».")
         }
         Rectangle {
             Layout.fillWidth: true
@@ -987,7 +1079,7 @@ ApplicationWindow {
             enabled: !window.backend.busy
             Rectangle {
                 objectName: "listPanel"
-                Layout.preferredWidth: window.appearance.dp(window.appearance.graphite && !window.narrow ? 520 : 310)
+                Layout.preferredWidth: window.appearance.dp(window.appearance.dusk && !window.narrow ? 680 : window.appearance.graphite && !window.narrow ? 520 : 310)
                 Layout.fillWidth: window.narrow || window.appearance.graphite
                 Layout.fillHeight: true
                 visible: !window.narrow || !window.hasTask || !window.detailOpen
@@ -1040,10 +1132,10 @@ ApplicationWindow {
                                 window.detailOpen = true;
                             }
                             background: Rectangle {
-                                radius: window.appearance.dp(12)
+                                radius: window.appearance.controlRadius(12)
                                 color: window.appearance.graphite
                                     ? (taskRow.selected ? window.appearance.colors.selection : taskRow.hovered
-                                        ? window.appearance.colors.raised : window.appearance.colors.surface)
+                                        ? window.appearance.colors.raised : window.appearance.dusk ? "transparent" : window.appearance.colors.surface)
                                     : taskRow.modelData.overdue ? window.appearance.colors.warningSurface
                                         : taskRow.selected ? window.appearance.colors.surface
                                         : taskRow.hovered ? window.appearance.colors.raised : "transparent"
@@ -1553,7 +1645,7 @@ ApplicationWindow {
 
     EditorDialog {
         id: appearanceDialog
-        property var themeKeys: ["space", "jungle", "light", "dark", "system"]
+        property var themeKeys: ["space", "jungle", "light", "dark", "system", "dusk"]
         property var scales: [100, 125, 150]
         property bool attempted: false
         title: qsTr("Оформление")
@@ -1574,7 +1666,7 @@ ApplicationWindow {
                     id: appearanceTheme
                     objectName: "appearanceTheme"
                     Layout.fillWidth: true
-                    model: [qsTr("Космос"), qsTr("Джунгли"), qsTr("Светлая"), qsTr("Тёмная"), qsTr("Как в системе")]
+                    model: [qsTr("Космос"), qsTr("Джунгли"), qsTr("Светлая"), qsTr("Тёмная · Графит"), qsTr("Как в системе"), qsTr("Тёмная · Сумерки")]
                 }
                 Caption {
                     objectName: "themeUnlockHint"
@@ -1582,7 +1674,7 @@ ApplicationWindow {
                     wrapMode: Text.Wrap
                     text: {
                         const key = appearanceDialog.themeKeys[appearanceTheme.currentIndex];
-                        if (window.backend.garden.themes.indexOf(key) >= 0 || key === "system")
+                        if (window.backend.garden.themes.indexOf(key) >= 0 || (key === "system" || key === "dusk"))
                             return qsTr("Тема доступна.");
                         if (key === window.backend.appearance.theme)
                             return qsTr("Ранее выбранная тема сохранена. После смены повторный выбор потребует достижения.");
@@ -1592,7 +1684,7 @@ ApplicationWindow {
                 Caption {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    text: qsTr("Пока все темы используют временное оформление. Финальный вид появится после общего дизайна.")
+                    text: qsTr("«Сумерки» — сине-серая палитра с верхней навигацией. «Графит» — мятные акценты и боковая панель. Космос и джунгли пока используют условное оформление.")
                 }
                 Caption { text: qsTr("Масштаб интерфейса") }
                 UiCombo {
@@ -1625,7 +1717,7 @@ ApplicationWindow {
             AccentButton {
                 objectName: "saveAppearance"
                 text: qsTr("Применить")
-                enabled: !window.backend.busy && (window.backend.garden.themes.indexOf(appearanceDialog.themeKeys[appearanceTheme.currentIndex]) >= 0 || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === "system" || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === window.backend.appearance.theme)
+                enabled: !window.backend.busy && (window.backend.garden.themes.indexOf(appearanceDialog.themeKeys[appearanceTheme.currentIndex]) >= 0 || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === "system" || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === "dusk" || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === window.backend.appearance.theme)
                 onClicked: {
                     appearanceDialog.attempted = true;
                     window.backend.saveAppearance(
@@ -2390,6 +2482,7 @@ ApplicationWindow {
                 UiField {
                     id: titleInput
                     objectName: "titleInput"
+                    invalid: !!window.backend.error && !text.trim()
                     Layout.fillWidth: true
                     placeholderText: qsTr("Например, лабораторная по физике")
                 }

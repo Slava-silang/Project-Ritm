@@ -4,11 +4,38 @@ QtObject {
     id: appearance
     property string themeKey: "light"
     property real scale: 1
-    readonly property bool darkPreference: themeKey === "dark"
+    readonly property bool dusk: themeKey === "dusk"
+    readonly property bool darkPreference: themeKey === "dark" || dusk
         || (themeKey === "system" && Application.styleHints.colorScheme === Qt.Dark)
     readonly property bool dark: darkPreference || themeKey === "space"
     readonly property bool graphite: darkPreference
-    readonly property var colors: graphite ? ({
+    readonly property var colors: dusk ? ({
+        background: "#1b2031",
+        sidebar: "#151a29",
+        surface: "#242b40",
+        panel: "#242b40",
+        raised: "#303950",
+        field: "#1b2133",
+        text: "#f0f1fb",
+        secondary: "#c5cde4",
+        muted: "#b0bad4",
+        border: "#3b4664",
+        controlBorder: "#6e7c9f",
+        accent: "#c4ccff",
+        accentFill: "#c4ccff",
+        accentHover: "#d5dbff",
+        accentDown: "#a6b2ed",
+        onAccent: "#21294a",
+        disabled: "#495473",
+        track: "#3b4664",
+        selection: "#303c5b",
+        work: "#2b3e51",
+        event: "#3c3557",
+        eventHover: "#51476d",
+        eventAccent: "#d2c4ff",
+        warningSurface: "#452e42",
+        warning: "#ffb8c5"
+    }) : graphite ? ({
         background: "#171b1e",
         sidebar: "#121618",
         surface: "#202629",
@@ -93,10 +120,10 @@ QtObject {
     }
 
     function controlRadius(fallback) {
-        return dp(graphite ? 12 : fallback);
+        return dp(dusk ? 14 : graphite ? 12 : fallback);
     }
 
     function dialogRadius(fallback) {
-        return dp(graphite ? 20 : fallback);
+        return dp(dusk ? 24 : graphite ? 20 : fallback);
     }
 }

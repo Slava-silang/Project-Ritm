@@ -41,18 +41,31 @@ class GuiHarness:
         self.item(name).setProperty("text", value)
         self.app.processEvents()
 
-    def reveal(self, target):
+    def reveal(self, target, *, full=False):
         ancestor = target.parentItem()
         while ancestor is not None:
             if ancestor.metaObject().indexOfProperty("contentY") >= 0:
                 center = target.mapToScene(QPointF(target.width() / 2, target.height() / 2)).y()
                 top = ancestor.mapToScene(QPointF(0, 0)).y()
-                if not top + 5 < center < top + ancestor.height() - 5:
+                target_top = target.mapToScene(QPointF()).y()
+                target_bottom = target.mapToScene(QPointF(0, target.height())).y()
+                low, high = top + 8, top + ancestor.height() - 8
+                if not full:
+                    delta = 0 if low < center < high else center - (low + high) / 2
+                elif target.height() > high - low:
+                    delta = center - (low + high) / 2
+                elif target_top < low:
+                    delta = target_top - low
+                elif target_bottom > high:
+                    delta = target_bottom - high
+                else:
+                    delta = 0
+                if abs(delta) > 1:
                     current = ancestor.property("contentY")
                     maximum = max(0, ancestor.property("contentHeight") - ancestor.height())
                     ancestor.setProperty(
                         "contentY",
-                        max(0, min(maximum, current + center - top - ancestor.height() / 2)),
+                        max(0, min(maximum, current + delta)),
                     )
                     self.app.processEvents()
                     QTest.qWait(30)
@@ -61,7 +74,7 @@ class GuiHarness:
     def click(self, name):
         target = self.item(name)
         assert target.isVisible() and target.isEnabled(), name
-        self.reveal(target)
+        self.reveal(target, full=True)
         point = target.mapToScene(QPointF(target.width() / 2, target.height() / 2)).toPoint()
         assert 0 <= point.x() < self.window.width() and 0 <= point.y() < self.window.height(), (
             name,
