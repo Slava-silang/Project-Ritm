@@ -289,6 +289,7 @@ def test_v2_garden_migration_preserves_money_and_time_ledger(tmp_path):
         garden.credit("old", 75)
         before, ledger = garden.snapshot(), garden.reward_snapshot()
     with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE garden_favorites")
         db.execute("DROP TABLE garden_source_binding")
         db.execute("DROP TABLE garden_achievement_state")
         db.execute("DROP TABLE garden_source_state")

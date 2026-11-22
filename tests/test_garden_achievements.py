@@ -229,6 +229,7 @@ def test_v4_upgrade_preserves_money_and_starts_without_historical_rewards(pair, 
     garden.close()
     path = tmp_path / "garden.sqlite3"
     with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE garden_favorites")
         db.execute("DROP TABLE garden_source_binding")
         db.execute("DROP TABLE garden_achievement_state")
         db.execute("PRAGMA user_version=4")

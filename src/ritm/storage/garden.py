@@ -15,13 +15,17 @@ from ritm.domain.garden_achievements import (
     decode_achievements,
     encode_achievements,
 )
+from ritm.domain.garden_archive import GardenArchive, rotate_month, set_favorite
 from ritm.domain.garden_payments import validate_payment_totals
 from ritm.domain.garden_rewards import RewardLedger, decode_ledger, encode_ledger, reconcile_time
 from ritm.storage.garden_source_state import decode_source, empty_source
 from ritm.storage.profile_guard import connect_profile
 
 APPLICATION_ID = 0x52494744
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
+FAVORITES_SCHEMA = (
+    "CREATE TABLE garden_favorites (month TEXT PRIMARY KEY NOT NULL REFERENCES gardens(month))"
+)
 BINDING_SCHEMA = (
     "CREATE TABLE garden_source_binding (id INTEGER PRIMARY KEY CHECK(id=1), identity TEXT)"
 )
@@ -115,11 +119,10 @@ class GardenResult:
 
 
 class GardenStore:
-    """Не открывается обычным приложением до интеграции T39c/T39d.
+    """Отдельная БД сада; экземпляр используется только в создавшем потоке.
 
-    month обязателен при создании. Смена месяца здесь не является командой:
-    будущая ротация T39e не должна сбрасывать имущество/кошелёк неявным open.
-    Экземпляр используется только в создавшем потоке.
+    month обязателен при создании. Открытие никогда не переводит месяц:
+    ротация вызывается явно, внутри отдельной транзакции.
     """
 
     def __init__(self, path: Path, *, month=None):
@@ -158,8 +161,8 @@ class GardenStore:
                 )
                 self._create_achievements()
                 self._create_binding()
-                self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
-                version = SCHEMA_VERSION
+                self._db.execute("PRAGMA user_version=6")
+                version = 6
             if version == 3 and app_id == APPLICATION_ID:
                 self._snapshot()
                 self._reward_snapshot()
@@ -176,8 +179,8 @@ class GardenStore:
                 )
                 self._create_achievements()
                 self._create_binding()
-                self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
-                version = SCHEMA_VERSION
+                self._db.execute("PRAGMA user_version=6")
+                version = 6
             if version == 4 and app_id == APPLICATION_ID:
                 self._snapshot()
                 self._reward_snapshot()
@@ -185,8 +188,8 @@ class GardenStore:
                 self._check_month(month)
                 self._create_achievements()
                 self._create_binding()
-                self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
-                version = SCHEMA_VERSION
+                self._db.execute("PRAGMA user_version=6")
+                version = 6
             if version == 5 and app_id == APPLICATION_ID:
                 self._snapshot()
                 self._reward_snapshot()
@@ -194,10 +197,16 @@ class GardenStore:
                 self._achievement_snapshot()
                 self._check_month(month)
                 self._create_binding()
+                self._db.execute("PRAGMA user_version=6")
+                version = 6
+            if version == 6 and app_id == APPLICATION_ID:
+                self._check_month(month)
+                self._db.execute(FAVORITES_SCHEMA)
+                self._archive_snapshot()
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 version = SCHEMA_VERSION
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
-                self._snapshot()
+                self._archive_snapshot()
                 self._reward_snapshot()
                 self._source_snapshot()
                 self._achievement_snapshot()
@@ -231,6 +240,7 @@ class GardenStore:
             )
             self._create_achievements()
             self._create_binding()
+            self._db.execute(FAVORITES_SCHEMA)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
             self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
@@ -407,6 +417,72 @@ class GardenStore:
             self._db.execute("BEGIN")
             return self._snapshot()
 
+    def _archive_snapshot(self):
+        current = self._snapshot()
+        history = []
+        for month, payload in self._db.execute("SELECT month,payload FROM gardens ORDER BY month"):
+            garden = decode_garden(payload)
+            if garden.month != month:
+                raise ValueError("Месяц снимка не соответствует базе сада.")
+            if month != current.garden.month:
+                history.append(garden)
+        favorites = tuple(
+            row[0] for row in self._db.execute("SELECT month FROM garden_favorites ORDER BY month")
+        )
+        return GardenArchive(current, tuple(history), favorites)
+
+    def archive_snapshot(self):
+        with self._db:
+            self._db.execute("BEGIN")
+            return self._archive_snapshot()
+
+    def _write_archive(self, archive):
+        gardens = (*archive.history, archive.current.garden)
+        self._db.executemany(
+            "INSERT INTO gardens VALUES (?,?) "
+            "ON CONFLICT(month) DO UPDATE SET payload=excluded.payload",
+            [(g.month, encode_garden(g)) for g in gardens],
+        )
+        state = archive.current
+        self._db.execute(
+            "UPDATE garden_state SET month=?,revision=?,numerator=?,denominator=? WHERE id=1",
+            (
+                state.garden.month,
+                state.revision,
+                str(state.balance.numerator),
+                str(state.balance.denominator),
+            ),
+        )
+        self._db.execute("DELETE FROM garden_favorites")
+        self._db.executemany(
+            "INSERT INTO garden_favorites VALUES (?)", [(m,) for m in archive.favorites]
+        )
+        placeholders = ",".join("?" for _ in gardens)
+        self._db.execute(
+            f"DELETE FROM gardens WHERE month NOT IN ({placeholders})", [g.month for g in gardens]
+        )
+
+    def _guard_identity(self, expected_identity):
+        if expected_identity is not None:
+            if (
+                type(expected_identity) is not str
+                or str(UUID(expected_identity)) != expected_identity
+            ):
+                raise ValueError("Некорректное поколение сада.")
+            if self._source_snapshot()["identity"] != expected_identity:
+                raise ValueError("Сад восстановлен или заменён. Обновите снимок перед действием.")
+
+    def rotate_month(self, month, *, expected_identity=None):
+        """Явный монотонный переход; открытие БД и UI его пока не вызывают."""
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            self._guard_identity(expected_identity)
+            current = self._archive_snapshot()
+            updated = rotate_month(current, month)
+            if updated is not current:
+                self._write_archive(updated)
+            return updated
+
     def _receipt(self, key, digest, state):
         row = self._db.execute("SELECT * FROM garden_receipts WHERE key=?", (key,)).fetchone()
         if row is None:
@@ -450,17 +526,20 @@ class GardenStore:
         key = "operation:" + str(identifier)
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
-            if (
-                expected_identity is not None
-                and self._source_snapshot()["identity"] != expected_identity
-            ):
-                raise ValueError("Сад восстановлен или заменён. Обновите снимок перед действием.")
+            self._guard_identity(expected_identity)
             current = self._snapshot()
             replay = self._receipt(key, digest, current)
             if replay:
                 return replay
             if current.revision != expected_revision:
                 raise ValueError("Сад или кошелёк изменились. Обновите снимок перед действием.")
+            if type(command) is dict and command.get("action") == "favorite":
+                _fields(command, {"action", "month", "enabled"})
+                archive = self._archive_snapshot()
+                updated = set_favorite(archive, command["month"], command["enabled"])
+                if updated is not archive:
+                    self._write_archive(updated)
+                return self._write(updated.current, key, digest, None)
             state, item_id = apply_command(current, command, identifier)
             return self._write(state, key, digest, item_id)
 

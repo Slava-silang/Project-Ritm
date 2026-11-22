@@ -27,6 +27,51 @@ from ritm.storage.sqlite import TaskStore
 NOW = datetime(2026, 11, 19, 10, tzinfo=UTC)
 
 
+@pytest.mark.parametrize("legacy", [False, True])
+def test_monthly_archive_backup_keeps_properties_wallet_and_payment_history(tmp_path, legacy):
+    seed(tmp_path)
+    with stores(tmp_path) as (_, garden, _):
+        if not legacy:
+            garden.execute(
+                uuid4(),
+                {"action": "favorite", "month": "2026-11", "enabled": True},
+                expected_revision=garden.snapshot().revision,
+            )
+            garden.rotate_month("2028-01")
+        expected = garden.archive_snapshot()
+        achievements = garden.achievement_snapshot()
+        ledger = garden.reward_snapshot()
+        source = garden.source_snapshot()
+    if legacy:
+        with sqlite3.connect(tmp_path / "garden.sqlite3") as db:
+            db.execute("DROP TABLE garden_favorites")
+            db.execute("PRAGMA user_version=6")
+    original = (tmp_path / "garden.sqlite3").read_bytes()
+    archive = backup.create_backup(tmp_path, tmp_path / "copies", NOW)
+    preview = backup.inspect_backup(archive)
+    assert (tmp_path / "garden.sqlite3").read_bytes() == original
+    with stores(tmp_path) as (_, garden, _):
+        if not legacy:
+            garden.execute(
+                uuid4(),
+                {"action": "favorite", "month": "2026-11", "enabled": False},
+                expected_revision=garden.snapshot().revision,
+            )
+        garden.rotate_month("2030-01")
+    backup.restore_backup(tmp_path, archive, preview["token"])
+    with stores(tmp_path) as (_, garden, service):
+        assert garden.archive_snapshot() == expected
+        assert garden.achievement_snapshot() == achievements
+        assert garden.reward_snapshot() == ledger
+        restored = garden.source_snapshot()
+        assert restored["identity"] != source["identity"]
+        assert restored["payments"] == source["payments"]
+        assert service.drain() == 0
+        assert garden.archive_snapshot() == expected
+        with pytest.raises(ValueError, match="восстановлен"):
+            garden.rotate_month("2030-01", expected_identity=source["identity"])
+
+
 @contextmanager
 def stores(profile):
     with (
@@ -557,6 +602,7 @@ def test_v5_binding_migration_preserves_wallet_claims_and_achievements(tmp_path)
     task = seed(tmp_path)
     expected = state(tmp_path)
     with sqlite3.connect(tmp_path / "garden.sqlite3") as db:
+        db.execute("DROP TABLE garden_favorites")
         db.execute("DROP TABLE garden_source_binding")
         db.execute("PRAGMA user_version=5")
     original = (tmp_path / "garden.sqlite3").read_bytes()

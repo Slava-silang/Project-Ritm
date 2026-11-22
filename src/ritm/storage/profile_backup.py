@@ -96,6 +96,7 @@ def validate_garden(path):
             "garden_source_state": 3,
             "garden_achievement_state": 5,
             "garden_source_binding": 6,
+            "garden_favorites": 7,
         }
         expected = [r for r in expected if version >= introduced.get(r[0], 1)]
         if (
