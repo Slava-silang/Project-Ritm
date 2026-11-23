@@ -9,15 +9,26 @@ ApplicationWindow {
     height: 740
     minimumWidth: 1160
     minimumHeight: 740
-    title: "Ритм — макет тёмной темы"
+    title: lightPreview ? "Ритм — макет светлой темы" : "Ритм — макет тёмной темы"
     color: preview.theme.base
 
     property int variant: 0
+    property bool lightPreview: false
     property bool reduceMotion: false
     property int selectedTask: 1
     property bool editingTask: false
     property string uiFont
-    readonly property var themes: [
+    readonly property var themes: lightPreview ? [
+        {base: "#f4f7f6", side: "#e8efed", panel: "#ffffff", field: "#fcfefd", line: "#cad8d3", control: "#788a84",
+         text: "#182d28", muted: "#4b635c", accent: "#235c49", onAccent: "#ffffff",
+         selected: "#dfefe8", hover: "#d5e9e0", warning: "#923d2e", radius: 12, dialog: 20},
+        {base: "#f8f4ec", side: "#efe7da", panel: "#fffcf6", field: "#fffcf6", line: "#dacdbb", control: "#8c7a67",
+         text: "#362b22", muted: "#67574a", accent: "#7a442b", onAccent: "#ffffff",
+         selected: "#f3e3d4", hover: "#ecdbc9", warning: "#963c36", radius: 12, dialog: 20},
+        {base: "#f1f5fb", side: "#e3ebf7", panel: "#ffffff", field: "#fcfdff", line: "#cbd7e7", control: "#7687a1",
+         text: "#192c47", muted: "#4c6080", accent: "#345689", onAccent: "#ffffff",
+         selected: "#dfeaf9", hover: "#d1e1f5", warning: "#913c53", radius: 12, dialog: 20}
+    ] : [
         {base: "#171b1e", side: "#121618", panel: "#202629", field: "#161b1e", line: "#343d41", control: "#687679",
          text: "#f0f4f3", muted: "#abb8b9", accent: "#9de0c6", onAccent: "#10251e",
          selected: "#253933", hover: "#2a3336", warning: "#ffb5a7", radius: 12, dialog: 20},
@@ -231,15 +242,15 @@ ApplicationWindow {
         background: Rectangle {
             radius: preview.theme.radius
             color: row.current ? preview.theme.selected : row.hovered ? preview.theme.hover
-                : preview.variant === 0 ? preview.theme.panel : "transparent"
-            border.width: row.visualFocus ? 2 : row.current && preview.variant !== 2 ? 1 : 0
-            border.color: row.visualFocus ? preview.theme.accent : preview.theme.line
+                : preview.dividedList || !preview.lightPreview && preview.variant === 1 ? "transparent" : preview.theme.panel
+            border.width: row.visualFocus ? 2 : row.current && !preview.dividedList ? 1 : 0
+            border.color: row.visualFocus || preview.lightPreview && row.current ? preview.theme.accent : preview.theme.line
             Behavior on color {
                 enabled: !preview.reduceMotion
                 ColorAnimation { duration: 120 }
             }
             Rectangle {
-                visible: preview.variant === 2 && !row.current
+                visible: preview.dividedList && !row.current
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
                 anchors.right: parent.right
@@ -280,8 +291,9 @@ ApplicationWindow {
         }
     }
 
-    readonly property bool tabs: variant === 1
-    readonly property int sideWidth: variant === 2 ? 160 : 184
+    readonly property bool tabs: !lightPreview && variant === 1
+    readonly property bool dividedList: variant === (lightPreview ? 1 : 2)
+    readonly property int sideWidth: dividedList ? 160 : 184
 
     Rectangle {
         anchors.left: parent.left
@@ -381,22 +393,23 @@ ApplicationWindow {
             y: 77
             width: parent.width
             height: preview.tabs ? 82 : 68
-            color: preview.variant === 2 ? "transparent" : preview.theme.panel
+            color: preview.dividedList ? "transparent"
+                : preview.lightPreview && preview.variant === 2 ? preview.theme.side : preview.theme.panel
             radius: preview.theme.radius
-            border.width: preview.variant === 2 ? 0 : 1
+            border.width: preview.dividedList ? 0 : 1
             border.color: preview.theme.line
             Rectangle {
-                visible: preview.variant === 2
+                visible: preview.dividedList
                 anchors.bottom: parent.bottom; width: parent.width; height: 1; color: preview.theme.line
             }
             Copy {
-                x: preview.variant === 2 ? 0 : 16
+                x: preview.dividedList ? 0 : 16
                 y: preview.tabs ? 16 : 11
                 text: "Прогресс недели"
                 font.weight: Font.DemiBold
             }
             Copy {
-                x: preview.variant === 2 ? 0 : 16
+                x: preview.dividedList ? 0 : 16
                 y: preview.tabs ? 41 : 34
                 text: "16–22 ноября  ·  4 задачи со сроком"
                 font.pixelSize: 12
@@ -405,7 +418,7 @@ ApplicationWindow {
             Item {
                 width: preview.tabs ? 275 : 182
                 height: 37
-                anchors.right: parent.right; anchors.rightMargin: preview.variant === 2 ? 0 : 16
+                anchors.right: parent.right; anchors.rightMargin: preview.dividedList ? 0 : 16
                 anchors.verticalCenter: parent.verticalCenter
                 Copy { anchors.right: parent.right; text: "65%"; color: preview.theme.accent; font.pixelSize: 16; font.weight: Font.DemiBold }
                 ProgressTrack { width: parent.width; y: 28; percent: 65 }
@@ -442,11 +455,11 @@ ApplicationWindow {
             id: details
             anchors.right: parent.right
             y: listing.y
-            width: preview.variant === 2 ? 366 : preview.tabs ? 360 : 342
+            width: preview.dividedList ? 366 : preview.tabs ? 360 : 342
             height: parent.height - y
             color: preview.theme.panel
             radius: preview.theme.radius
-            border.width: preview.variant === 2 ? 0 : 1
+            border.width: preview.dividedList ? 0 : 1
             border.color: preview.theme.line
             Column {
                 x: 18; y: 15; width: parent.width - 36
@@ -529,14 +542,16 @@ ApplicationWindow {
         }
     }
 
-    Overlay.modal: Rectangle { color: "#980a0b0e" }
+    Overlay.modal: Rectangle { color: preview.lightPreview ? "#62182a33" : "#980a0b0e" }
 
     Popup {
         id: editor
         objectName: "previewEditor"
-        anchors.centerIn: Overlay.overlay
+        parent: Overlay.overlay
+        x: (preview.width - width + (preview.lightPreview ? preview.sideWidth : 0)) / 2
+        y: (preview.height - height) / 2
         padding: 24
-        width: preview.variant === 1 ? 544 : 522
+        width: preview.tabs ? 544 : 522
         height: 621
         modal: true
         focus: true
