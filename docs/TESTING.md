@@ -47,6 +47,11 @@
 - Ubuntu 26.04 WSL, Qt offscreen — 47 passed. Прогон использовал `tests/test_calendar_ui.py tests/test_calendar_events.py tests/test_calendar_drag.py tests/test_planning.py`. Пройдены qmllint, Ruff, Windows smoke-test и проверка пробелов Git. Снимки рабочего QML в Windows Qt offscreen из временного профиля — `artifacts/calendar-scroll/`. Нативная графическая сессия требует отдельной проверки.
 - Windows Qt offscreen, тот же набор — 45 passed, 2 failed. Проверка прокрутки прошла. Сбои `test_hours_atomic_restart_validation_and_failure` и `test_planning_gui_and_restart[restart]` связаны с заменой открытого временного файла рабочих часов (`WinError 32`). Воспроизведены в отдельной копии исходного `cc8dabb`.
 
+## D08 — положение «Помощника»
+
+- Windows Qt offscreen, `tests/test_appearance.py -k dialog-and-garden-layout` — 1 passed. Сравнены положение и размеры при смене темы на масштабах 100%, 125% и 150%. При ширине 1040 проверен зазор до видимой панели, при ширине 1000 проверено центрирование в окне со скрытой панелью.
+- Ubuntu 26.04 WSL, Qt offscreen, `tests/test_appearance.py tests/test_assistant_drafts.py` — 32 passed. Осмотрены снимки рабочего QML в обеих темах из `artifacts/assistant-position/`. Пройдены qmllint, Ruff, Windows smoke-test и проверка пробелов Git.
+
 ## Дерево, выполнение и веса — S02–S03
 
 - Создание задачи только с названием; отсутствие времени/сложности отличается от нулевого значения.

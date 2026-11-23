@@ -40,14 +40,17 @@ def compare_with_mint(gui, percent, destination, *items):
     assert gui.window.color() == QColor("#171b1e")
 
 
-def check_dialog(gui, name, action_names, scale, left_edge=0):
+def check_dialog(gui, name, action_names, scale, left_edge=0, *, left_shift=0):
     popup = gui.item(name)
     frame = popup.property("background")
     bounds = scene_rect(frame)
     assert frame.property("radius") >= 20 * scale
-    assert abs(bounds.center().x() - (gui.window.width() + left_edge) / 2) <= 2
+    expected_center = (gui.window.width() + left_edge) / 2 - left_shift
+    assert abs(bounds.center().x() - expected_center) <= 2
     assert abs(bounds.center().y() - gui.window.height() / 2) <= 2
     assert bounds.left() > left_edge and bounds.top() > 0
+    if left_edge:
+        assert bounds.left() >= left_edge + 24 * scale - 1
     assert bounds.right() < gui.window.width()
     assert popup.property("header").property("background") is None
     actions = [gui.item(action) for action in action_names]
@@ -192,16 +195,29 @@ try:
         gui.click("assistantButton")
         assistant_actions = ("assistantApply", "assistantCancel")
         left_edge = scene_rect(sidebar).right() if sidebar.isVisible() else 0
-        assistant_items = check_dialog(gui, "assistantDialog", assistant_actions, scale, left_edge)
+        left_shift = 24 * scale if sidebar.isVisible() else 0
+        assistant_items = check_dialog(
+            gui, "assistantDialog", assistant_actions, scale, left_edge, left_shift=left_shift
+        )
         assert gui.item("chatSaveHistory").property("indicator").property("radius") == 5 * scale
+        if percent == 100:
+            gui.screenshot(profile / "dark-assistant-100.png")
         compare_with_mint(gui, percent, profile / f"mint-assistant-{percent}.png", *assistant_items)
         if percent == 100:
+            window.resize(1040, height)
+            gui.wait_for(lambda: gui.window.width() == 1040 and sidebar.isVisible())
+            assistant_items = check_dialog(
+                gui, "assistantDialog", assistant_actions, scale, left_edge, left_shift=left_shift
+            )
+            compare_with_mint(gui, percent, None, *assistant_items)
             window.resize(1000, height)
             gui.wait_for(lambda: not sidebar.isVisible(), "sidebar hides on resize")
             check_dialog(gui, "assistantDialog", assistant_actions, scale)
             window.resize(width, height)
             gui.wait_for(sidebar.isVisible, "sidebar returns on resize")
-            check_dialog(gui, "assistantDialog", assistant_actions, scale, left_edge)
+            check_dialog(
+                gui, "assistantDialog", assistant_actions, scale, left_edge, left_shift=left_shift
+            )
         gui.click("assistantCancel")
 
         gui.click("gardenButton")

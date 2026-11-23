@@ -2055,7 +2055,9 @@ ApplicationWindow {
         uiAppearance: window.appearance
         parent: Overlay.overlay
         readonly property real workspaceWidth: parent.width - window.sidebarWidth
-        x: Math.round(window.sidebarWidth + (workspaceWidth - width) / 2)
+        readonly property real offsetFromCenter: window.sidebarVisible ? window.appearance.dp(24) : 0
+        x: Math.round(window.sidebarWidth + Math.max(window.workspaceDialogMargin,
+            (workspaceWidth - width) / 2 - offsetFromCenter))
         y: Math.round((parent.height - height) / 2)
         width: Math.min(window.appearance.dp(760), workspaceWidth - 2 * window.workspaceDialogMargin)
         height: Math.min(window.appearance.dp(680), parent.height - 2 * window.workspaceDialogMargin)
