@@ -1578,6 +1578,9 @@ ApplicationWindow {
         id: appearanceDialog
         property var themeKeys: ["space", "jungle", "light", "dark", "system"]
         property var scales: [100, 125, 150]
+        readonly property string selectedTheme: themeKeys[appearanceTheme.currentIndex] ?? ""
+        readonly property bool themeAvailable: selectedTheme === "space" || selectedTheme === "system"
+            || window.backend.garden.themes.indexOf(selectedTheme) >= 0
         property bool attempted: false
         title: qsTr("Оформление")
         anchors.centerIn: parent
@@ -1604,12 +1607,12 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     text: {
-                        const key = appearanceDialog.themeKeys[appearanceTheme.currentIndex];
-                        if (window.backend.garden.themes.indexOf(key) >= 0 || key === "system")
+                        const key = appearanceDialog.selectedTheme;
+                        if (appearanceDialog.themeAvailable)
                             return qsTr("Тема доступна.");
                         if (key === window.backend.appearance.theme)
                             return qsTr("Ранее выбранная тема сохранена. После смены повторный выбор потребует достижения.");
-                        return key === "space" ? qsTr("Откроется за 30 оплаченных часов в саду.") : qsTr("Откроется за 15 выполненных главных задач в саду.");
+                        return qsTr("Откроется за 15 выполненных главных задач в саду.");
                     }
                 }
                 Caption {
@@ -1648,7 +1651,7 @@ ApplicationWindow {
             AccentButton {
                 objectName: "saveAppearance"
                 text: qsTr("Применить")
-                enabled: !window.backend.busy && (window.backend.garden.themes.indexOf(appearanceDialog.themeKeys[appearanceTheme.currentIndex]) >= 0 || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === "system" || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === window.backend.appearance.theme)
+                enabled: !window.backend.busy && (appearanceDialog.themeAvailable || appearanceDialog.selectedTheme === window.backend.appearance.theme)
                 onClicked: {
                     appearanceDialog.attempted = true;
                     window.backend.saveAppearance(
