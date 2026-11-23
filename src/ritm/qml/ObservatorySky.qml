@@ -54,37 +54,48 @@ Item {
     Item {
         id: flyby
         objectName: "observatoryFlyby"
-        property bool saucer: false
+        property string route: "rightMeteor"
+        readonly property bool saucer: route === "saucer"
+        readonly property bool leftMeteor: route === "leftMeteor"
+        readonly property real startX: leftMeteor ? Math.min(sky.width * 0.34, sky.appearance.dp(315))
+            : sky.width * (saucer ? 0.54 : 0.81)
+        readonly property real endX: leftMeteor ? Math.min(sky.width * 0.055, sky.appearance.dp(42))
+            : sky.width * (saucer ? 0.79 : 0.65)
+        readonly property real startY: sky.appearance.dp(saucer ? 68 : leftMeteor ? 10 : 17)
+        readonly property real endY: sky.appearance.dp(saucer ? 5 : leftMeteor ? 74 : 51)
+        readonly property real angle: Math.atan2(endY - startY, endX - startX) * 180 / Math.PI
         property real progress: 0
         visible: flight.running
-        opacity: Math.min(1, progress * 8, (1 - progress) * 8)
-        x: sky.width * (saucer ? 0.48 + progress * 0.27 : 0.81 - progress * 0.16)
-        y: sky.appearance.dp(17 + (saucer ? Math.sin(progress * 5) * 5 : progress * 34))
-        width: sky.appearance.dp(saucer ? 25 : 34)
-        height: sky.appearance.dp(saucer ? 12 : 2)
-        Canvas {
-            anchors.fill: parent
+        opacity: Math.min(1, progress * 9, (1 - progress) * (saucer ? 2.6 : 5))
+        x: startX + (endX - startX) * progress
+        y: startY + (endY - startY) * progress
+        Image {
+            objectName: "observatorySaucer"
+            anchors.centerIn: parent
             visible: flyby.saucer
-            onPaint: {
-                const ctx = getContext("2d");
-                ctx.reset();
-                ctx.scale(width / 25, height / 12);
-                ctx.fillStyle = "#ada3ed";
-                ctx.beginPath(); ctx.ellipse(8, 1, 9, 7); ctx.fill();
-                ctx.fillStyle = "#706da7";
-                ctx.beginPath(); ctx.ellipse(1, 5, 23, 6); ctx.fill();
-                ctx.fillStyle = "#9de3f3";
-                ctx.fillRect(5, 8, 3, 1); ctx.fillRect(11, 9, 3, 1); ctx.fillRect(17, 8, 3, 1);
-            }
+            source: "observatory/saucer.png"
+            width: sky.appearance.dp(40)
+            height: sky.appearance.dp(20)
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            mipmap: true
+            rotation: flyby.angle
+            scale: 1.15 - flyby.progress * 0.95
         }
         Rectangle {
-            anchors.fill: parent
+            x: -sky.appearance.dp(1.5)
+            y: -height / 2
+            width: sky.appearance.dp(flyby.leftMeteor ? 39 : 34)
+            height: sky.appearance.dp(flyby.leftMeteor ? 3 : 2)
             visible: !flyby.saucer
-            rotation: -17
+            transformOrigin: Item.Left
+            rotation: flyby.angle - 180
+            antialiasing: true
             radius: height / 2
             gradient: Gradient {
                 orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: "#e6f5ff" }
+                GradientStop { position: 0; color: "#f2f8ff" }
+                GradientStop { position: 0.2; color: "#b4dfff" }
                 GradientStop { position: 1; color: "#00999aff" }
             }
         }
@@ -94,16 +105,18 @@ Item {
         target: flyby
         property: "progress"
         from: 0; to: 1
-        duration: flyby.saucer ? 4300 : 750
+        duration: flyby.saucer ? 1550 : 750
+        easing.type: flyby.saucer ? Easing.InQuad : Easing.Linear
     }
     Timer {
         objectName: "observatoryFlightTimer"
+        readonly property var routes: ["rightMeteor", "leftMeteor", "saucer"]
         property int passes: 0
-        interval: passes === 0 ? 8500 : 18000 + (passes % 3) * 4500
+        interval: passes === 0 ? 8500 : 14000 + (passes % routes.length) * 2500
         running: sky.moving
         repeat: true
         onTriggered: {
-            flyby.saucer = passes % 3 === 1;
+            flyby.route = routes[passes % routes.length];
             passes++;
             flight.restart();
         }

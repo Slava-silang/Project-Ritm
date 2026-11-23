@@ -31,6 +31,36 @@ def key(code, modifiers=Qt.KeyboardModifier.ControlModifier):
     gui.idle()
 
 
+def check_observatory(look):
+    sky = gui.item("observatorySky")
+    QTest.mouseMove(window, QPoint(540, 75))
+    gui.wait_for(lambda: sky.property("pointerX") > 0, "sky tracks pointer")
+    gui.screenshot(profile / "observatory-tasks.png")
+    timer = gui.item("observatoryFlightTimer")
+    flyby = gui.item("observatoryFlyby")
+    saucer = gui.item("observatorySaucer")
+    for route in ("rightMeteor", "leftMeteor", "saucer", "rightMeteor"):
+        timer.triggered.emit()
+        assert flyby.property("route") == route
+        gui.wait_for(lambda: 0.25 < flyby.property("progress"), "flyby in motion")
+        assert flyby.isVisible()
+        if route == "saucer":
+            assert saucer.property("sourceSize").width() > 0
+            assert saucer.scale() < 1
+            assert flyby.x() > flyby.property("startX") and flyby.y() < flyby.property("startY")
+            gui.screenshot(profile / "observatory-saucer.png")
+        else:
+            assert not saucer.isVisible()
+            assert flyby.x() < flyby.property("startX") and flyby.y() > flyby.property("startY")
+            assert (flyby.x() < sky.width() / 2) == (route == "leftMeteor")
+            if route == "leftMeteor":
+                gui.screenshot(profile / "observatory-left-meteor.png")
+    look.setProperty("reduceMotion", True)
+    gui.wait_for(lambda: not sky.property("moving"), "static sky")
+    assert not flyby.isVisible() and not timer.property("running")
+    look.setProperty("reduceMotion", False)
+
+
 try:
     gui.idle()
     window.requestActivate()
@@ -52,22 +82,7 @@ try:
             )
             assert look.property("dark") == expected_dark
             if name == "space":
-                sky = gui.item("observatorySky")
-                QTest.mouseMove(window, QPoint(540, 75))
-                gui.wait_for(lambda sky=sky: sky.property("pointerX") > 0, "sky tracks pointer")
-                gui.screenshot(profile / "observatory-tasks.png")
-                timer = gui.item("observatoryFlightTimer")
-                flyby = gui.item("observatoryFlyby")
-                timer.triggered.emit()
-                QTest.qWait(100)
-                assert flyby.isVisible() and not flyby.property("saucer")
-                timer.triggered.emit()
-                QTest.qWait(100)
-                assert flyby.isVisible() and flyby.property("saucer")
-                look.setProperty("reduceMotion", True)
-                gui.wait_for(lambda sky=sky: not sky.property("moving"), "static sky")
-                assert not flyby.isVisible() and not timer.property("running")
-                look.setProperty("reduceMotion", False)
+                check_observatory(look)
         gui.click("appearanceButton")
         gui.choose("appearanceTheme", 2)
         gui.click("saveAppearance")
