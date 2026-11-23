@@ -1,10 +1,23 @@
 """Управление настоящими QML-контролами в тестовом процессе."""
 
+import os
+import sys
 import time
+from pathlib import Path
 
 from PySide6.QtCore import QObject, QPointF, Qt
+from PySide6.QtGui import QFont, QFontDatabase
 from PySide6.QtQuick import QQuickItem
 from PySide6.QtTest import QTest
+
+
+def load_offscreen_fonts(app):
+    if sys.platform == "win32" and app.platformName() == "offscreen":
+        # The offscreen backend does not discover the Windows system fonts.
+        fonts = Path(os.environ["WINDIR"]) / "Fonts"
+        for name in ("segoeui.ttf", "seguisb.ttf", "segoeuib.ttf", "seguisym.ttf"):
+            QFontDatabase.addApplicationFont(str(fonts / name))
+        app.setFont(QFont("Segoe UI"))
 
 
 class GuiHarness:

@@ -5,7 +5,7 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from gui_support import GuiHarness
+from gui_support import GuiHarness, load_offscreen_fonts
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQuickControls2 import QQuickStyle
 
@@ -17,6 +17,7 @@ from ritm.ui.tasks import TaskController
 
 QQuickStyle.setStyle("Basic")
 app = QGuiApplication([])
+load_offscreen_fonts(app)
 profile = Path(sys.argv[1])
 now = [datetime(2026, 11, 8, 12, tzinfo=UTC)]
 restoring = "--restore" in sys.argv

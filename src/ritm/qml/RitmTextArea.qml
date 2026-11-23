@@ -5,10 +5,10 @@ TextArea {
     id: input
     required property var appearance
 
-    background: GraphiteBackground {
+    background: RitmControlBackground {
         appearance: input.appearance
         kind: "field"
-        visible: (appearance.graphite && !input.readOnly)
+        visible: (appearance.usesSharedStyle && !input.readOnly)
             || Application.styleHints.accessibility.contrastPreference === Qt.HighContrast
         focused: input.activeFocus
         available: input.enabled

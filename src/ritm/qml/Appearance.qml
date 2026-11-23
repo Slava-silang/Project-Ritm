@@ -7,8 +7,8 @@ QtObject {
     readonly property bool darkPreference: themeKey === "dark"
         || (themeKey === "system" && Application.styleHints.colorScheme === Qt.Dark)
     readonly property bool dark: darkPreference || themeKey === "space"
-    readonly property bool graphite: darkPreference
-    readonly property var colors: graphite ? ({
+    readonly property bool usesSharedStyle: themeKey === "light" || themeKey === "dark" || themeKey === "system"
+    readonly property var colors: darkPreference ? ({
         background: "#171b1e",
         sidebar: "#121618",
         surface: "#202629",
@@ -34,6 +34,34 @@ QtObject {
         eventAccent: "#d2b6ef",
         warningSurface: "#412d29",
         warning: "#ffb5a7"
+    }) : usesSharedStyle ? ({
+        background: "#f4f7f6",
+        shadow: "#4a655c",
+        sidebar: "#e8efed",
+        surface: "#ffffff",
+        panel: "#ffffff",
+        raised: "#d5e9e0",
+        field: "#fcfefd",
+        text: "#182d28",
+        secondary: "#364f47",
+        muted: "#4b635c",
+        border: "#cad8d3",
+        controlBorder: "#6d8279",
+        scrollbar: "#6d8279",
+        accent: "#235c49",
+        accentFill: "#235c49",
+        accentHover: "#2b7059",
+        accentDown: "#194736",
+        onAccent: "#ffffff",
+        disabled: "#59736a",
+        track: "#cad8d3",
+        selection: "#dfefe8",
+        work: "#dfefe8",
+        event: "#eee7f5",
+        eventHover: "#e4d8ee",
+        eventAccent: "#653d83",
+        warningSurface: "#fbe9e4",
+        warning: "#923d2e"
     }) : dark ? ({
         background: "#171c20",
         sidebar: "#171c20",
@@ -93,10 +121,10 @@ QtObject {
     }
 
     function controlRadius(fallback) {
-        return dp(graphite ? 12 : fallback);
+        return dp(usesSharedStyle ? 12 : fallback);
     }
 
     function dialogRadius(fallback) {
-        return dp(graphite ? 20 : fallback);
+        return dp(usesSharedStyle ? 20 : fallback);
     }
 }

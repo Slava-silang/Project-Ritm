@@ -47,7 +47,7 @@ RitmDialog {
     property bool editing: false
     title: state.provider === "chatgpt" ? qsTr("Помощник — подписка ChatGPT") : qsTr("Тестовый помощник — без сети")
     modal: false
-    dim: dialog.uiAppearance.graphite
+    dim: dialog.uiAppearance.usesSharedStyle
     Overlay.modeless: Rectangle {
         color: "#50101517"
     }
@@ -193,9 +193,11 @@ RitmDialog {
         id: scroll
         clip: true
         contentWidth: availableWidth
-        rightPadding: dialog.uiAppearance.graphite ? dialog.uiAppearance.dp(12) : 0
-        ScrollBar.vertical.policy: dialog.uiAppearance.graphite && assistantForm.implicitHeight > availableHeight + 1
+        rightPadding: dialog.uiAppearance.usesSharedStyle ? dialog.uiAppearance.dp(12) : 0
+        ScrollBar.vertical.policy: dialog.uiAppearance.usesSharedStyle && assistantForm.implicitHeight > availableHeight + 1
             ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
+        ScrollBar.vertical.palette.mid: dialog.uiAppearance.colors.scrollbar ?? dialog.palette.mid
+        ScrollBar.vertical.palette.dark: dialog.uiAppearance.colors.scrollbar ?? dialog.palette.dark
         ColumnLayout {
             id: assistantForm
             width: scroll.availableWidth

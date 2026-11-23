@@ -5,10 +5,10 @@ TextField {
     id: field
     required property var appearance
 
-    background: GraphiteBackground {
+    background: RitmControlBackground {
         appearance: field.appearance
-        implicitWidth: appearance.graphite ? appearance.dp(130) : 200
-        implicitHeight: appearance.graphite ? appearance.dp(32) : 40
+        implicitWidth: appearance.usesSharedStyle ? appearance.dp(130) : 200
+        implicitHeight: appearance.usesSharedStyle ? appearance.dp(32) : 40
         kind: "field"
         focused: field.activeFocus
         available: field.enabled

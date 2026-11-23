@@ -79,7 +79,7 @@ ColumnLayout {
             elide: Text.ElideRight
         }
     }
-    spacing: pane.appearance.dp(pane.appearance.graphite && pane.narrow ? 7 : 12)
+    spacing: pane.appearance.dp(pane.appearance.usesSharedStyle && pane.narrow ? 7 : 12)
 
     function beginCreate(taskId) {
         blockEditor.entry = null;
@@ -253,7 +253,7 @@ ColumnLayout {
         }
         UiButton {
             objectName: "newBlockButton"
-            primary: pane.appearance.graphite
+            primary: pane.appearance.usesSharedStyle
             text: qsTr("+ В расписание")
             enabled: !pane.backend.busy
             onClicked: pane.beginCreate("")
@@ -269,12 +269,12 @@ ColumnLayout {
     }
     Label {
         Layout.fillWidth: true
-        text: pane.appearance.graphite && pane.narrow
+        text: pane.appearance.usesSharedStyle && pane.narrow
             ? qsTr("Блоки и события отмечены счётчиками. ◆ — дедлайн.")
             : qsTr("Зелёный — работа над задачей · Фиолетовый — событие · ◆ — дедлайн. ↔ переносит запись между днями.")
         wrapMode: Text.Wrap
         color: pane.appearance.colors.muted
-        font.pixelSize: pane.appearance.dp(pane.appearance.graphite && pane.narrow ? 11 : 13)
+        font.pixelSize: pane.appearance.dp(pane.appearance.usesSharedStyle && pane.narrow ? 11 : 13)
     }
     Rectangle {
         Layout.fillWidth: true

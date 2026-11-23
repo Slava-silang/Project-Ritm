@@ -465,8 +465,8 @@ Item {
         width: Math.min(pane.appearance.dp(340), parent.width - 24)
         height: parent.height
         modal: true
-        padding: pane.appearance.graphite ? pane.appearance.dp(12) : 0
-        background: GraphiteBackground {
+        padding: pane.appearance.usesSharedStyle ? pane.appearance.dp(12) : 0
+        background: RitmControlBackground {
             appearance: pane.appearance
             kind: "dialog"
             legacyColor: tools.palette.window

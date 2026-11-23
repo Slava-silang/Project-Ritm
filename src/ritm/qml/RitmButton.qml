@@ -11,15 +11,15 @@ Button {
 
     highlighted: primary
     // The Basic style reads brightText for checked and highlighted buttons.
-    palette.brightText: appearance.graphite && highlighted
+    palette.brightText: appearance.usesSharedStyle && highlighted
         ? (primary ? appearance.colors.onAccent : appearance.colors.accent) : appearance.colors.text
-    palette.buttonText: appearance.graphite && primary ? appearance.colors.onAccent : appearance.colors.text
+    palette.buttonText: appearance.usesSharedStyle && primary ? appearance.colors.onAccent : appearance.colors.text
 
-    background: GraphiteBackground {
+    background: RitmControlBackground {
         appearance: button.appearance
-        implicitWidth: appearance.graphite ? 0 : button.compact ? 40 : 100
-        implicitHeight: appearance.graphite ? appearance.dp(30) : 40
-        visible: appearance.graphite || !button.flat || button.down || button.checked || button.highlighted
+        implicitWidth: appearance.usesSharedStyle ? 0 : button.compact ? 40 : 100
+        implicitHeight: appearance.usesSharedStyle ? appearance.dp(30) : 40
+        visible: appearance.usesSharedStyle || !button.flat || button.down || button.checked || button.highlighted
         primary: button.primary
         quiet: button.quiet
         selected: button.highlighted

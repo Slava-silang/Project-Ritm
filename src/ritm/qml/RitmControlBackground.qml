@@ -20,7 +20,7 @@ Rectangle {
 
     radius: style.isDialog ? style.appearance.dialogRadius(0) : style.appearance.controlRadius(0)
     color: {
-        if (!style.appearance.graphite)
+        if (!style.appearance.usesSharedStyle)
             return style.legacyColor;
         if (style.isDialog)
             return style.colors.surface;
@@ -34,12 +34,12 @@ Rectangle {
         return style.hovered && style.available ? style.colors.raised
             : style.quiet ? "transparent" : style.colors.surface;
     }
-    border.width: !style.appearance.graphite ? style.legacyBorderWidth
+    border.width: !style.appearance.usesSharedStyle ? style.legacyBorderWidth
         : style.focused ? 2 : style.primary || style.selected || style.quiet ? 0 : 1
-    border.color: !style.appearance.graphite ? style.legacyBorder : style.focused
+    border.color: !style.appearance.usesSharedStyle ? style.legacyBorder : style.focused
         ? style.colors.accent : style.isDialog || !style.available ? style.colors.border : style.colors.controlBorder
     Behavior on color {
-        enabled: style.appearance.graphite && !style.isDialog
+        enabled: style.appearance.usesSharedStyle && !style.isDialog
         ColorAnimation { duration: 110 }
     }
 }
