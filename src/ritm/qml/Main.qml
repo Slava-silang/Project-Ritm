@@ -21,6 +21,7 @@ ApplicationWindow {
     Appearance {
         id: uiAppearance
         objectName: "uiAppearance"
+        reduceMotion: window.companion ? !!window.companion.state.reduce_motion : false
         themeKey: window.backend.appearance.theme
         scale: window.backend.appearance.scale / 100
     }
@@ -319,10 +320,13 @@ ApplicationWindow {
     component EditorDialog: RitmDialog {
         appearance: window.appearance
         padding: window.appearance.dp(window.appearance.usesSharedStyle ? 20 : 16)
-        background: Rectangle {
-            color: window.appearance.colors.surface
+        background: RitmControlBackground {
+            appearance: window.appearance
+            kind: "dialog"
+            legacyColor: window.appearance.colors.surface
+            legacyBorder: window.appearance.colors.border
+            legacyBorderWidth: 1
             radius: window.appearance.dialogRadius(14)
-            border.color: window.appearance.colors.border
         }
     }
     component Caption: Label {
@@ -557,6 +561,23 @@ ApplicationWindow {
             text: qsTr("Вид")
             enabled: !window.backend.busy
             onClicked: window.openAppearance()
+        }
+    }
+
+    HoverHandler {
+        id: skyPointer
+        enabled: window.appearance.observatory && !window.appearance.reduceMotion
+        blocking: false
+    }
+    Loader {
+        anchors.fill: parent
+        anchors.leftMargin: window.sidebarWidth
+        active: window.appearance.observatory
+        sourceComponent: ObservatorySky {
+            appearance: window.appearance
+            moving: window.active && window.visible && !appearance.reduceMotion
+            pointerX: skyPointer.hovered ? skyPointer.point.position.x - window.sidebarWidth : -1000
+            pointerY: skyPointer.hovered ? skyPointer.point.position.y : -1000
         }
     }
 
@@ -1924,6 +1945,7 @@ ApplicationWindow {
 
     EditorDialog {
         id: companionDialog
+        visitorEnabled: true
         objectName: "companionDialog"
         property var keys: ["dragon", "cat", "dog"]
         property var sizes: [160, 224, 288, 352]
@@ -2038,6 +2060,7 @@ ApplicationWindow {
 
     PlanningDialog {
         id: planningDialog
+        visitorEnabled: true
         planner: window.planner
         taskBackend: window.backend
         appearance: window.appearance
@@ -2049,6 +2072,7 @@ ApplicationWindow {
 
     AssistantDialog {
         id: assistantDialog
+        visitorEnabled: true
         connection: window.connection
         agent: window.assistant
         taskBackend: window.backend

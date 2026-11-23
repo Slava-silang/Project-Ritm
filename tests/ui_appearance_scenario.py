@@ -5,7 +5,7 @@ from pathlib import Path
 
 from garden_support import unlock_themes
 from gui_support import GuiHarness, load_offscreen_fonts
-from PySide6.QtCore import QObject, Qt
+from PySide6.QtCore import QObject, QPoint, Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtTest import QTest
@@ -38,7 +38,7 @@ try:
     look = window.findChild(QObject, "uiAppearance")
     if sys.argv[2] == "reopen":
         assert controller.appearance == {"theme": "space", "scale": 150}
-        assert look.property("dark") and not look.property("usesSharedStyle")
+        assert look.property("dark") and look.property("usesSharedStyle")
         assert len(controller.tasks) == 1
     else:
         for index, name in enumerate(("space", "jungle", "light", "dark", "system")):
@@ -46,11 +46,28 @@ try:
             gui.choose("appearanceTheme", index)
             gui.click("saveAppearance")
             assert controller.appearance["theme"] == name
-            assert look.property("usesSharedStyle") == (name in ("light", "dark", "system"))
+            assert look.property("usesSharedStyle") == (name != "jungle")
             expected_dark = name in ("space", "dark") or (
                 name == "system" and app.styleHints().colorScheme() == Qt.ColorScheme.Dark
             )
             assert look.property("dark") == expected_dark
+            if name == "space":
+                sky = gui.item("observatorySky")
+                QTest.mouseMove(window, QPoint(540, 75))
+                gui.wait_for(lambda sky=sky: sky.property("pointerX") > 0, "sky tracks pointer")
+                gui.screenshot(profile / "observatory-tasks.png")
+                timer = gui.item("observatoryFlightTimer")
+                flyby = gui.item("observatoryFlyby")
+                timer.triggered.emit()
+                QTest.qWait(100)
+                assert flyby.isVisible() and not flyby.property("saucer")
+                timer.triggered.emit()
+                QTest.qWait(100)
+                assert flyby.isVisible() and flyby.property("saucer")
+                look.setProperty("reduceMotion", True)
+                gui.wait_for(lambda sky=sky: not sky.property("moving"), "static sky")
+                assert not flyby.isVisible() and not timer.property("running")
+                look.setProperty("reduceMotion", False)
         gui.click("appearanceButton")
         gui.choose("appearanceTheme", 2)
         gui.click("saveAppearance")

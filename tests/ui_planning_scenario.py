@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Event
 
+from garden_support import unlock_themes
 from gui_support import GuiHarness, load_offscreen_fonts
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QGuiApplication
@@ -37,6 +38,8 @@ if mode in ("run", "scroll-layout"):
         store.create_work_block(
             WorkBlock(title="Пара", starts_at=start, ends_at=start + timedelta(hours=1))
         )
+if mode == "scroll-layout":
+    unlock_themes(profile)
 agent = AssistantController(profile)
 controller = TaskController(profile)
 planner = PlanningController(profile, agent)
@@ -65,7 +68,7 @@ def check_scroll_layout():
     for width, height, percent in ((1480, 930, 100), (1300, 820, 125), (640, 480, 150)):
         window.resize(width, height)
         scale = percent / 100
-        for theme in ("dark", "light"):
+        for theme in ("dark", "light", "space"):
             controller.saveAppearance(theme, percent)
             gui.idle()
             assert controller.appearance == {"theme": theme, "scale": percent}
@@ -87,6 +90,17 @@ def check_scroll_layout():
             check_scrollbar(
                 "planningScrollBar", scale, "workingEnd_3", "planningTask", "planningLast"
             )
+            if theme == "space" and percent == 100:
+                visitor = gui.item("observatoryVisitor")
+                gui.wait_for(
+                    lambda visitor=visitor: not visitor.property("tucked"), "visitor peeks out"
+                )
+                gui.click("observatoryVisitor")
+                assert visitor.property("tucked")
+                gui.wait_for(
+                    lambda visitor=visitor: not visitor.property("tucked"), "visitor returns"
+                )
+                QTest.qWait(320)
             gui.screenshot(profile / f"{theme}-planning-{percent}.png")
             gui.click("planningClose")
 

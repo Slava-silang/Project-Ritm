@@ -53,9 +53,12 @@ RitmDialog {
     }
     closePolicy: state.saving ? Popup.NoAutoClose : Popup.CloseOnEscape
     onClosed: if (agent) { agent.cancel(); agent.media.reset(); mediaEditor.close(); gmailPane.closeSource(); }
-    background: Rectangle {
-        color: dialog.uiAppearance.colors.surface
-        border.color: dialog.uiAppearance.colors.border
+    background: RitmControlBackground {
+        appearance: dialog.uiAppearance
+        kind: "dialog"
+        legacyColor: dialog.uiAppearance.colors.surface
+        legacyBorder: dialog.uiAppearance.colors.border
+        legacyBorderWidth: 1
         radius: dialog.uiAppearance.dialogRadius(14)
     }
     UiDialog {

@@ -6,9 +6,39 @@ QtObject {
     property real scale: 1
     readonly property bool darkPreference: themeKey === "dark"
         || (themeKey === "system" && Application.styleHints.colorScheme === Qt.Dark)
-    readonly property bool dark: darkPreference || themeKey === "space"
-    readonly property bool usesSharedStyle: themeKey === "light" || themeKey === "dark" || themeKey === "system"
-    readonly property var colors: darkPreference ? ({
+    readonly property bool observatory: themeKey === "space"
+    property bool reduceMotion: false
+    readonly property bool dark: darkPreference || observatory
+    readonly property bool usesSharedStyle: observatory || themeKey === "light" || themeKey === "dark" || themeKey === "system"
+    readonly property var colors: observatory ? ({
+        background: "#090e20",
+        sidebar: "#0d1429",
+        surface: "#151d36",
+        panel: "#121a31",
+        raised: "#273452",
+        field: "#10172d",
+        text: "#f1f3ff",
+        secondary: "#d5dbf2",
+        muted: "#aab6d5",
+        border: "#465477",
+        controlBorder: "#7987b5",
+        scrollbar: "#8898c9",
+        shadow: "#060918",
+        accent: "#89e8ef",
+        accentFill: "#8ae1ec",
+        accentHover: "#aff3fa",
+        accentDown: "#65c5d6",
+        onAccent: "#101c31",
+        disabled: "#65728e",
+        track: "#303c60",
+        selection: "#223d54",
+        work: "#193747",
+        event: "#34294b",
+        eventHover: "#49375f",
+        eventAccent: "#d3b7ff",
+        warningSurface: "#412b40",
+        warning: "#ffbabb"
+    }) : darkPreference ? ({
         background: "#171b1e",
         sidebar: "#121618",
         surface: "#202629",
@@ -62,32 +92,6 @@ QtObject {
         eventAccent: "#653d83",
         warningSurface: "#fbe9e4",
         warning: "#923d2e"
-    }) : dark ? ({
-        background: "#171c20",
-        sidebar: "#171c20",
-        surface: "#222a30",
-        panel: "#1d252b",
-        raised: "#2b353d",
-        field: "#222a30",
-        text: "#ecf1ee",
-        secondary: "#b8c7be",
-        muted: "#9faea7",
-        border: "#485a50",
-        controlBorder: "#485a50",
-        accent: "#a0d3b4",
-        accentFill: "#356c51",
-        accentHover: "#427e61",
-        accentDown: "#2a5942",
-        onAccent: "#ffffff",
-        disabled: "#53665a",
-        track: "#36473c",
-        selection: "#314b3b",
-        work: "#293f32",
-        event: "#3c324b",
-        eventHover: "#50405f",
-        eventAccent: "#d2b6ef",
-        warningSurface: "#463126",
-        warning: "#ffc29b"
     }) : ({
         background: "#f4f3ed",
         sidebar: "#f4f3ed",

@@ -31,9 +31,12 @@ RitmDialog {
         planner.load();
     }
     onClosed: if (planner) planner.cancel()
-    background: Rectangle {
-        color: dialog.appearance.colors.surface
-        border.color: dialog.appearance.colors.border
+    background: RitmControlBackground {
+        appearance: dialog.appearance
+        kind: "dialog"
+        legacyColor: dialog.appearance.colors.surface
+        legacyBorder: dialog.appearance.colors.border
+        legacyBorderWidth: 1
         radius: dialog.appearance.dialogRadius(14)
     }
     Connections {

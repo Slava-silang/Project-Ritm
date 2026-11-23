@@ -323,7 +323,7 @@ def test_planning_gui_and_restart(tmp_path, modes):
             env=env,
             capture_output=True,
             text=True,
-            timeout=90 if mode == "scroll-layout" else 45,
+            timeout=180 if mode == "scroll-layout" else 45,
         )
         assert result.returncode == 0, result.stdout + result.stderr
         for warning in ("ReferenceError", "TypeError", "Binding loop", "Cannot assign"):
