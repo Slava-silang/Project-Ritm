@@ -53,10 +53,10 @@ RitmDialog {
             dialog.close();
         }
     }
-    contentItem: ScrollView {
+    contentItem: RitmScrollView {
         id: scroll
-        clip: true
-        contentWidth: availableWidth
+        appearance: dialog.appearance
+        ScrollBar.vertical.objectName: "planningScrollBar"
         ColumnLayout {
             width: scroll.availableWidth
             spacing: dialog.appearance.dp(10)

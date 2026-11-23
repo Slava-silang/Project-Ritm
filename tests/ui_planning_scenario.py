@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Event
 
-from gui_support import GuiHarness
-from PySide6.QtCore import Qt
+from gui_support import GuiHarness, load_offscreen_fonts
+from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtTest import QTest
@@ -24,7 +24,8 @@ from ritm.ui.tasks import TaskController
 profile, mode = Path(sys.argv[1]), sys.argv[2]
 QQuickStyle.setStyle("Basic")
 app = QGuiApplication([])
-if mode == "run":
+load_offscreen_fonts(app)
+if mode in ("run", "scroll-layout"):
     with TaskStore(profile / "tasks.sqlite3") as store:
         start = datetime(2030, 1, 7, 9).astimezone()
         task = Task(
@@ -48,9 +49,59 @@ def ready():
     gui.wait_for(lambda: not planner.state["busy"])
 
 
+def check_scrollbar(name, scale, *controls):
+    bar = gui.item(name)
+    assert 0 < bar.property("size") < 1, name
+    bar.setProperty("active", True)
+    left = bar.mapToScene(QPointF()).x()
+    for control in controls:
+        item = gui.item(control)
+        right = item.mapToScene(QPointF(item.width(), 0)).x()
+        assert left - right >= 5 * scale, (name, control, left, right)
+    return bar
+
+
+def check_scroll_layout():
+    for width, height, percent in ((1480, 930, 100), (1300, 820, 125), (640, 480, 150)):
+        window.resize(width, height)
+        scale = percent / 100
+        for theme in ("dark", "light"):
+            controller.saveAppearance(theme, percent)
+            gui.idle()
+            assert controller.appearance == {"theme": theme, "scale": percent}
+            for period, cell in (("Week", 6), ("Month", 20)):
+                gui.click(f"calendar{period}Button")
+                gui.click(f"calendarDay_{cell}")
+                bar = check_scrollbar(
+                    "calendarScrollBar", scale, f"calendarDrop_{cell}", "calendarDayTimeline"
+                )
+                if period == "Month":
+                    view = gui.item("calendarScroll").property("contentItem")
+                    view.setProperty("contentY", 148 * scale)
+                    gui.wait_for(lambda bar=bar: bar.property("position") > 0)
+                    gui.screenshot(profile / f"{theme}-calendar-{percent}.png")
+
+            gui.click("planningButton")
+            ready()
+            gui.reveal(gui.item("workingEnd_3"))
+            check_scrollbar(
+                "planningScrollBar", scale, "workingEnd_3", "planningTask", "planningLast"
+            )
+            gui.screenshot(profile / f"{theme}-planning-{percent}.png")
+            gui.click("planningClose")
+
+            if percent == 150:
+                gui.click("newBlockButton")
+                check_scrollbar("blockScrollBar", scale, "blockStartInput", "blockEndInput")
+                gui.click("cancelBlockButton")
+
+
 try:
     gui.idle()
     gui.click("calendarPageButton")
+    if mode == "scroll-layout":
+        check_scroll_layout()
+        raise SystemExit(0)
     gui.click("planningButton")
     ready()
     if mode == "run":

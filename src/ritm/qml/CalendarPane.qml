@@ -306,13 +306,13 @@ ColumnLayout {
                 view.contentY = Math.min(Math.max(0, view.contentHeight - view.height), view.contentY + 16);
         }
     }
-    ScrollView {
+    RitmScrollView {
         id: calendarScroll
         objectName: "calendarScroll"
+        appearance: pane.appearance
+        ScrollBar.vertical.objectName: "calendarScrollBar"
         Layout.fillWidth: true
         Layout.fillHeight: true
-        clip: true
-        contentWidth: availableWidth
         ColumnLayout {
             width: calendarScroll.availableWidth
             spacing: pane.appearance.dp(16)
@@ -417,6 +417,7 @@ ColumnLayout {
                 }
             }
             DayTimeline {
+                objectName: "calendarDayTimeline"
                 appearance: pane.appearance
                 backend: pane.backend
                 view: pane.view
@@ -481,10 +482,10 @@ ColumnLayout {
             radius: pane.appearance.dialogRadius(14)
             border.color: pane.appearance.colors.border
         }
-        contentItem: ScrollView {
+        contentItem: RitmScrollView {
             id: blockForm
-            contentWidth: availableWidth
-            clip: true
+            appearance: pane.appearance
+            ScrollBar.vertical.objectName: "blockScrollBar"
             ColumnLayout {
                 width: blockForm.availableWidth
                 spacing: pane.appearance.dp(12)
