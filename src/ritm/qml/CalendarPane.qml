@@ -79,7 +79,7 @@ ColumnLayout {
             elide: Text.ElideRight
         }
     }
-    spacing: pane.appearance.dp(pane.appearance.graphite && pane.narrow ? 7 : 12)
+    spacing: pane.appearance.dp(pane.appearance.usesSharedStyle && pane.narrow ? 7 : 12)
 
     function beginCreate(taskId) {
         blockEditor.entry = null;
@@ -253,7 +253,7 @@ ColumnLayout {
         }
         UiButton {
             objectName: "newBlockButton"
-            primary: pane.appearance.graphite
+            primary: pane.appearance.usesSharedStyle
             text: qsTr("+ В расписание")
             enabled: !pane.backend.busy
             onClicked: pane.beginCreate("")
@@ -269,12 +269,12 @@ ColumnLayout {
     }
     Label {
         Layout.fillWidth: true
-        text: pane.appearance.graphite && pane.narrow
+        text: pane.appearance.usesSharedStyle && pane.narrow
             ? qsTr("Блоки и события отмечены счётчиками. ◆ — дедлайн.")
             : qsTr("Зелёный — работа над задачей · Фиолетовый — событие · ◆ — дедлайн. ↔ переносит запись между днями.")
         wrapMode: Text.Wrap
         color: pane.appearance.colors.muted
-        font.pixelSize: pane.appearance.dp(pane.appearance.graphite && pane.narrow ? 11 : 13)
+        font.pixelSize: pane.appearance.dp(pane.appearance.usesSharedStyle && pane.narrow ? 11 : 13)
     }
     Rectangle {
         Layout.fillWidth: true
@@ -306,13 +306,13 @@ ColumnLayout {
                 view.contentY = Math.min(Math.max(0, view.contentHeight - view.height), view.contentY + 16);
         }
     }
-    ScrollView {
+    RitmScrollView {
         id: calendarScroll
         objectName: "calendarScroll"
+        appearance: pane.appearance
+        ScrollBar.vertical.objectName: "calendarScrollBar"
         Layout.fillWidth: true
         Layout.fillHeight: true
-        clip: true
-        contentWidth: availableWidth
         ColumnLayout {
             width: calendarScroll.availableWidth
             spacing: pane.appearance.dp(16)
@@ -417,6 +417,7 @@ ColumnLayout {
                 }
             }
             DayTimeline {
+                objectName: "calendarDayTimeline"
                 appearance: pane.appearance
                 backend: pane.backend
                 view: pane.view
@@ -481,10 +482,10 @@ ColumnLayout {
             radius: pane.appearance.dialogRadius(14)
             border.color: pane.appearance.colors.border
         }
-        contentItem: ScrollView {
+        contentItem: RitmScrollView {
             id: blockForm
-            contentWidth: availableWidth
-            clip: true
+            appearance: pane.appearance
+            ScrollBar.vertical.objectName: "blockScrollBar"
             ColumnLayout {
                 width: blockForm.availableWidth
                 spacing: pane.appearance.dp(12)

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 
 Rectangle {
@@ -20,7 +21,7 @@ Rectangle {
 
     radius: style.isDialog ? style.appearance.dialogRadius(0) : style.appearance.controlRadius(0)
     color: {
-        if (!style.appearance.graphite)
+        if (!style.appearance.usesSharedStyle)
             return style.legacyColor;
         if (style.isDialog)
             return style.colors.surface;
@@ -34,12 +35,37 @@ Rectangle {
         return style.hovered && style.available ? style.colors.raised
             : style.quiet ? "transparent" : style.colors.surface;
     }
-    border.width: !style.appearance.graphite ? style.legacyBorderWidth
+    border.width: !style.appearance.usesSharedStyle ? style.legacyBorderWidth
         : style.focused ? 2 : style.primary || style.selected || style.quiet ? 0 : 1
-    border.color: !style.appearance.graphite ? style.legacyBorder : style.focused
+    border.color: !style.appearance.usesSharedStyle ? style.legacyBorder : style.focused
         ? style.colors.accent : style.isDialog || !style.available ? style.colors.border : style.colors.controlBorder
+    Loader {
+        anchors.fill: parent
+        active: style.appearance.observatory && (style.isDialog || style.primary || style.hovered && !style.quiet)
+        sourceComponent: Item {
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: style.isDialog ? 3 : 1
+                radius: Math.max(0, style.radius - anchors.margins)
+                color: "transparent"
+                border.color: style.isDialog ? "#6b9c92d9" : "#558ae1ec"
+            }
+            Rectangle {
+                visible: style.isDialog
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.max(0, parent.width - 2 * style.radius)
+                height: 1
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: "transparent" }
+                    GradientStop { position: 0.65; color: "#c2b4ff" }
+                    GradientStop { position: 1; color: "transparent" }
+                }
+            }
+        }
+    }
     Behavior on color {
-        enabled: style.appearance.graphite && !style.isDialog
+        enabled: style.appearance.usesSharedStyle && !style.isDialog && !style.appearance.reduceMotion
         ColorAnimation { duration: 110 }
     }
 }

@@ -1,12 +1,14 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 
 Dialog {
     id: dialog
     required property var appearance
-    padding: appearance.graphite ? appearance.dp(20) : 12
+    property bool visitorEnabled: false
+    padding: appearance.usesSharedStyle ? appearance.dp(20) : 12
 
-    background: GraphiteBackground {
+    background: RitmControlBackground {
         appearance: dialog.appearance
         kind: "dialog"
         legacyColor: dialog.palette.window
@@ -14,15 +16,27 @@ Dialog {
         legacyBorder: dialog.palette.dark
     }
     header: Label {
+        id: heading
         visible: dialog.title.length > 0
         text: dialog.title
-        leftPadding: dialog.appearance.graphite ? dialog.appearance.dp(20) : 12
+        leftPadding: dialog.appearance.usesSharedStyle ? dialog.appearance.dp(20) : 12
         rightPadding: leftPadding
-        topPadding: dialog.appearance.graphite ? dialog.appearance.dp(16) : 12
-        bottomPadding: dialog.appearance.graphite ? dialog.appearance.dp(6) : 12
+        topPadding: dialog.appearance.usesSharedStyle ? dialog.appearance.dp(16) : 12
+        bottomPadding: dialog.appearance.usesSharedStyle ? dialog.appearance.dp(6) : 12
         elide: Text.ElideRight
-        font.pixelSize: dialog.appearance.graphite ? dialog.appearance.dp(22) : dialog.font.pixelSize
-        font.weight: dialog.appearance.graphite ? Font.DemiBold : Font.Bold
+        font.pixelSize: dialog.appearance.usesSharedStyle ? dialog.appearance.dp(22) : dialog.font.pixelSize
+        font.weight: dialog.appearance.usesSharedStyle ? Font.DemiBold : Font.Bold
         color: dialog.appearance.colors.text
+        Loader {
+            anchors.right: parent.right
+            anchors.rightMargin: dialog.appearance.dp(22)
+            width: dialog.appearance.dp(58)
+            height: width * 0.55
+            // On short screens the visitor peeks over the header's inner ledge.
+            y: dialog.y >= height ? -height + dialog.appearance.dp(4) : dialog.appearance.dp(2)
+            active: dialog.visible && dialog.visitorEnabled && dialog.appearance.observatory
+                && (dialog.y >= height || heading.contentWidth + width + dialog.appearance.dp(54) < heading.width)
+            sourceComponent: ObservatoryVisitor { reduceMotion: dialog.appearance.reduceMotion }
+        }
     }
 }

@@ -49,15 +49,18 @@ RitmDialog {
         : state.provider === "copilot" ? qsTr("Помощник — GitHub Copilot")
         : qsTr("Тестовый помощник — без сети")
     modal: false
-    dim: dialog.uiAppearance.graphite
+    dim: dialog.uiAppearance.usesSharedStyle
     Overlay.modeless: Rectangle {
         color: "#50101517"
     }
     closePolicy: state.saving ? Popup.NoAutoClose : Popup.CloseOnEscape
     onClosed: if (agent) { agent.cancel(); agent.media.reset(); mediaEditor.close(); gmailPane.closeSource(); }
-    background: Rectangle {
-        color: dialog.uiAppearance.colors.surface
-        border.color: dialog.uiAppearance.colors.border
+    background: RitmControlBackground {
+        appearance: dialog.uiAppearance
+        kind: "dialog"
+        legacyColor: dialog.uiAppearance.colors.surface
+        legacyBorder: dialog.uiAppearance.colors.border
+        legacyBorderWidth: 1
         radius: dialog.uiAppearance.dialogRadius(14)
     }
     UiDialog {
@@ -195,9 +198,11 @@ RitmDialog {
         id: scroll
         clip: true
         contentWidth: availableWidth
-        rightPadding: dialog.uiAppearance.graphite ? dialog.uiAppearance.dp(12) : 0
-        ScrollBar.vertical.policy: dialog.uiAppearance.graphite && assistantForm.implicitHeight > availableHeight + 1
+        rightPadding: dialog.uiAppearance.usesSharedStyle ? dialog.uiAppearance.dp(12) : 0
+        ScrollBar.vertical.policy: dialog.uiAppearance.usesSharedStyle && assistantForm.implicitHeight > availableHeight + 1
             ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
+        ScrollBar.vertical.palette.mid: dialog.uiAppearance.colors.scrollbar ?? dialog.palette.mid
+        ScrollBar.vertical.palette.dark: dialog.uiAppearance.colors.scrollbar ?? dialog.palette.dark
         ColumnLayout {
             id: assistantForm
             width: scroll.availableWidth

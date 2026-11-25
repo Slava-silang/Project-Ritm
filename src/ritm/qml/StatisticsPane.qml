@@ -45,9 +45,9 @@ ScrollView {
 
         Pane {
             Layout.fillWidth: true
-            padding: pane.appearance.graphite ? pane.appearance.dp(16) : 0
+            padding: pane.appearance.usesSharedStyle ? pane.appearance.dp(16) : 0
             background: Rectangle {
-                visible: pane.appearance.graphite
+                visible: pane.appearance.usesSharedStyle
                 color: pane.appearance.colors.surface
                 border.color: pane.appearance.colors.border
                 radius: pane.appearance.controlRadius(12)

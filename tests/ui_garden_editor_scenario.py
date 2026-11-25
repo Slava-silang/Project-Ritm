@@ -44,6 +44,7 @@ ui_tasks.load_garden_assets = load
 controller = TaskController(profile, clock=lambda: now, zone=UTC)
 engine = load_window(controller)
 window = engine.rootObjects()[0]
+window.resize(1280, 820)
 gui = GuiHarness(app, window, controller)
 pane = gui.item("gardenPane")
 
@@ -134,6 +135,7 @@ try:
     assert not loads and not controller.gardenScene
     if mode == "edit":
         gui.click("gardenButton")
+        assert not pane.property("narrow")
         assert not gui.item("gardenWorld").property("active")
         assert not (profile / "garden.sqlite3").exists()
         gui.click("gardenEnabled")

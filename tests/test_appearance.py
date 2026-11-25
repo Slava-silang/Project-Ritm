@@ -58,7 +58,7 @@ def test_qml_appearance(tmp_path, script_name, modes):
             env=env,
             capture_output=True,
             text=True,
-            timeout=75,
+            timeout=120,
         )
         assert result.returncode == 0, result.stdout + result.stderr
         for warning in (

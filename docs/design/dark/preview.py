@@ -1,4 +1,4 @@
-"""Open or render the independent dark theme mockups with the project Qt."""
+"""Open or render the independent theme mockups with the project Qt."""
 
 import argparse
 import os
@@ -18,14 +18,14 @@ def capture(window: QQuickWindow, destination: Path) -> None:
         raise RuntimeError(f"Failed to capture {destination}")
 
 
-def render(window: QQuickWindow, output: Path) -> None:
+def render(window: QQuickWindow, output: Path, names: tuple[str, ...]) -> None:
     output.mkdir(parents=True, exist_ok=True)
     button = window.findChild(QQuickItem, "newTask")
     editor = window.findChild(QObject, "previewEditor")
     title = window.findChild(QQuickItem, "previewTitle")
     if button is None or editor is None or title is None:
         raise RuntimeError("Could not find the new task button, editor, or title field")
-    for variant, name in enumerate(("graphite", "dusk", "notebook")):
+    for variant, name in enumerate(names):
         window.setProperty("variant", variant)
         QTest.qWait(200)
         capture(window, output / f"{name}-tasks.png")
@@ -34,6 +34,8 @@ def render(window: QQuickWindow, output: Path) -> None:
         QTest.qWait(220)
         if not editor.property("opened") or not title.hasActiveFocus():
             raise RuntimeError(f"Task title did not receive focus in {name}")
+        if window.property("lightPreview") and editor.property("x") <= window.property("sideWidth"):
+            raise RuntimeError(f"The editor crossed the navigation boundary in {name}")
         QTest.mouseMove(window, QPoint(10, 75))
         capture(window, output / f"{name}-dialog.png")
         QTest.keyClick(window, Qt.Key.Key_Escape)
@@ -73,6 +75,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--render", type=Path, metavar="DIRECTORY")
     parser.add_argument("--variant", choices=("1", "2", "3"), default="1")
+    parser.add_argument("--theme", choices=("dark", "light"), default="dark")
     options = parser.parse_args()
     if options.render:
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -84,6 +87,7 @@ def main() -> int:
     engine.setInitialProperties(
         {
             "variant": int(options.variant) - 1,
+            "lightPreview": options.theme == "light",
             "uiFont": render_font(app) if options.render else app.font().family(),
             "visible": True,
         }
@@ -92,7 +96,12 @@ def main() -> int:
     if not engine.rootObjects():
         return 1
     if options.render:
-        render(engine.rootObjects()[0], options.render)
+        names = (
+            ("mint", "linen", "sky")
+            if options.theme == "light"
+            else ("graphite", "dusk", "notebook")
+        )
+        render(engine.rootObjects()[0], options.render, names)
         return 0
     return app.exec()
 

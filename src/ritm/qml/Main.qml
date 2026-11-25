@@ -21,6 +21,7 @@ ApplicationWindow {
     Appearance {
         id: uiAppearance
         objectName: "uiAppearance"
+        reduceMotion: window.companion ? !!window.companion.state.reduce_motion : false
         themeKey: window.backend.appearance.theme
         scale: window.backend.appearance.scale / 100
     }
@@ -45,18 +46,18 @@ ApplicationWindow {
     palette.light: window.appearance.colors.raised
     palette.mid: window.appearance.colors.border
     palette.dark: window.appearance.colors.border
-    palette.shadow: window.appearance.colors.background
+    palette.shadow: window.appearance.colors.shadow ?? window.appearance.colors.background
     palette.base: window.appearance.colors.surface
     palette.window: window.appearance.colors.surface
     palette.placeholderText: window.appearance.colors.muted
     property var current: window.backend.detail
     property var activeFocus: window.backend.focus
     property bool hasTask: !!current.id
-    readonly property bool sidebarVisible: appearance.graphite && !appearance.dusk && width >= appearance.dp(1040) && height >= appearance.dp(510)
+    readonly property bool sidebarVisible: appearance.usesSharedStyle && !appearance.dusk && width >= appearance.dp(1040) && height >= appearance.dp(510)
     readonly property real sidebarWidth: sidebarVisible ? appearance.dp(184) : 0
     property bool narrow: width - sidebarWidth < appearance.dp(850)
-    readonly property bool compactGraphite: appearance.graphite && narrow
-    readonly property bool inlinePomodoro: compactGraphite && width - appearance.dp(24) < appearance.dp(700)
+    readonly property bool compactLayout: appearance.usesSharedStyle && narrow
+    readonly property bool inlinePomodoro: compactLayout && width - appearance.dp(24) < appearance.dp(700)
     readonly property real workspaceDialogMargin: appearance.dp(narrow ? 12 : 24)
     property bool detailOpen: true
     property string page: "tasks"
@@ -130,7 +131,7 @@ ApplicationWindow {
         ToolTip.text: text
         Accessible.name: text
         width: window.sidebarVisible ? window.sidebarWidth - window.appearance.dp(24) : implicitWidth
-        implicitHeight: window.compactGraphite ? window.appearance.dp(26)
+        implicitHeight: window.compactLayout ? window.appearance.dp(26)
             : Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding)
         horizontalPadding: window.sidebarVisible ? window.appearance.dp(12) : 8
         contentItem: RowLayout {
@@ -148,7 +149,7 @@ ApplicationWindow {
                 elide: Text.ElideRight
                 horizontalAlignment: window.sidebarVisible ? Text.AlignLeft : Text.AlignHCenter
                 color: !navButton.enabled ? window.appearance.colors.muted
-                    : navButton.highlighted && window.appearance.graphite
+                    : navButton.highlighted && window.appearance.usesSharedStyle
                         ? window.appearance.colors.accent : window.appearance.colors.text
             }
         }
@@ -286,7 +287,7 @@ ApplicationWindow {
     component AccentButton: Button {
         id: actionButton
         horizontalPadding: window.appearance.dp(18)
-        verticalPadding: window.appearance.dp(window.compactGraphite ? 7 : 11)
+        verticalPadding: window.appearance.dp(window.compactLayout ? 7 : 11)
         contentItem: Label {
             text: actionButton.text
             color: window.appearance.colors.onAccent
@@ -297,7 +298,7 @@ ApplicationWindow {
             radius: window.appearance.controlRadius(9)
             color: !actionButton.enabled ? window.appearance.colors.disabled : actionButton.down ? window.appearance.colors.accentDown : actionButton.hovered ? window.appearance.colors.accentHover : window.appearance.colors.accentFill
             border.width: actionButton.visualFocus ? 2 : 0
-            border.color: window.appearance.graphite ? window.appearance.colors.controlBorder : window.appearance.colors.border
+            border.color: window.appearance.usesSharedStyle ? window.appearance.colors.controlBorder : window.appearance.colors.border
         }
     }
     component TaskProgress: ProgressBar {
@@ -322,11 +323,14 @@ ApplicationWindow {
     }
     component EditorDialog: RitmDialog {
         appearance: window.appearance
-        padding: window.appearance.dp(window.appearance.graphite ? 20 : 16)
-        background: Rectangle {
-            color: window.appearance.colors.surface
+        padding: window.appearance.dp(window.appearance.usesSharedStyle ? 20 : 16)
+        background: RitmControlBackground {
+            appearance: window.appearance
+            kind: "dialog"
+            legacyColor: window.appearance.colors.surface
+            legacyBorder: window.appearance.colors.border
+            legacyBorderWidth: 1
             radius: window.appearance.dialogRadius(14)
-            border.color: window.appearance.colors.border
         }
     }
     component Caption: Label {
@@ -539,7 +543,7 @@ ApplicationWindow {
                 y: parent.height
                 width: window.appearance.dp(220)
                 padding: window.appearance.dp(10)
-                background: GraphiteBackground {
+                background: RitmControlBackground {
                     appearance: window.appearance
                     kind: "dialog"
                     legacyColor: window.appearance.colors.surface
@@ -594,14 +598,31 @@ ApplicationWindow {
         }
     }
 
+    HoverHandler {
+        id: skyPointer
+        enabled: window.appearance.observatory && !window.appearance.reduceMotion
+        blocking: false
+    }
+    Loader {
+        anchors.fill: parent
+        anchors.leftMargin: window.sidebarWidth
+        active: window.appearance.observatory
+        sourceComponent: ObservatorySky {
+            appearance: window.appearance
+            moving: window.active && window.visible && !appearance.reduceMotion
+            pointerX: skyPointer.hovered ? skyPointer.point.position.x - window.sidebarWidth : -1000
+            pointerY: skyPointer.hovered ? skyPointer.point.position.y : -1000
+        }
+    }
+
     Rectangle {
-        objectName: "graphiteSidebar"
+        objectName: "workspaceSidebar"
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: window.sidebarWidth
         visible: window.sidebarVisible
-        color: window.appearance.graphite ? window.appearance.colors.sidebar : "transparent"
+        color: window.appearance.usesSharedStyle ? window.appearance.colors.sidebar : "transparent"
         Rectangle {
             anchors.right: parent.right
             height: parent.height
@@ -647,9 +668,9 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: window.appearance.dp(window.compactGraphite ? 12 : window.narrow ? 16 : window.appearance.dusk ? 34 : 24)
+        anchors.margins: window.appearance.dp(window.compactLayout ? 12 : window.narrow ? 16 : window.appearance.dusk ? 34 : 24)
         anchors.leftMargin: window.sidebarWidth + anchors.margins
-        spacing: window.appearance.dp(window.compactGraphite ? 7 : window.appearance.graphite ? 12 : 16)
+        spacing: window.appearance.dp(window.compactLayout ? 7 : window.appearance.usesSharedStyle ? 12 : 16)
         RowLayout {
             visible: window.appearance.dusk
             Layout.fillWidth: true
@@ -685,7 +706,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             Rectangle {
                 visible: !window.sidebarVisible && !window.appearance.dusk
-                implicitWidth: window.appearance.dp(window.compactGraphite ? 26 : 44)
+                implicitWidth: window.appearance.dp(window.compactLayout ? 26 : 44)
                 implicitHeight: implicitWidth
                 radius: window.appearance.dp(14)
                 color: window.appearance.colors.accentFill
@@ -693,7 +714,7 @@ ApplicationWindow {
                     anchors.centerIn: parent
                     text: "Р"
                     color: window.appearance.colors.onAccent
-                    font.pixelSize: window.appearance.dp(window.compactGraphite ? 17 : 26)
+                    font.pixelSize: window.appearance.dp(window.compactLayout ? 17 : 26)
                 }
             }
             ColumnLayout {
@@ -705,16 +726,16 @@ ApplicationWindow {
                     text: window.page === "tasks" ? qsTr("Мои задачи")
                         : window.page === "calendar" ? qsTr("Календарь")
                         : window.page === "statistics" ? qsTr("Статистика") : window.page === "garden" ? qsTr("Сад") : qsTr("Материалы")
-                    font.pixelSize: window.appearance.dp(window.compactGraphite ? 22 : window.appearance.graphite ? 30 : 25)
+                    font.pixelSize: window.appearance.dp(window.compactLayout ? 22 : window.appearance.usesSharedStyle ? 30 : 25)
                     font.weight: Font.DemiBold
                     color: window.appearance.colors.text
                 }
                 Caption {
-                    visible: window.appearance.graphite && window.page === "tasks" && !window.narrow
+                    visible: window.appearance.usesSharedStyle && window.page === "tasks" && !window.narrow
                     text: new Date().toLocaleDateString(Qt.locale("ru_RU"), "dddd, d MMMM")
                 }
                 Caption {
-                    visible: !window.narrow && !window.appearance.graphite
+                    visible: !window.narrow && !window.appearance.usesSharedStyle
                     text: qsTr("Большая работа начинается с маленького шага")
                 }
             }
@@ -756,7 +777,7 @@ ApplicationWindow {
             implicitHeight: errorRow.implicitHeight + window.appearance.dp(20)
             radius: window.appearance.dp(10)
             color: window.appearance.colors.warningSurface
-            visible: window.backend.error.length > 0 && !(window.appearance.graphite && taskEditor.visible)
+            visible: window.backend.error.length > 0 && !(window.appearance.usesSharedStyle && taskEditor.visible)
             RowLayout {
                 id: errorRow
                 anchors.fill: parent
@@ -842,7 +863,7 @@ ApplicationWindow {
             id: taskWeek
             objectName: "taskWeekSummary"
             readonly property var week: window.backend.statistics.currentWeek || ({})
-            visible: window.appearance.graphite && window.page === "tasks"
+            visible: window.appearance.usesSharedStyle && window.page === "tasks"
                 && !window.narrow && window.height >= window.appearance.dp(620)
             Layout.fillWidth: true
             implicitHeight: weekRow.implicitHeight + window.appearance.dp(20)
@@ -889,7 +910,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             visible: window.page === "tasks" && (!window.narrow || !window.hasTask || !window.detailOpen)
             enabled: !window.backend.busy
-            columns: window.appearance.graphite && !window.narrow ? 2 : 1
+            columns: window.appearance.usesSharedStyle && !window.narrow ? 2 : 1
             columnSpacing: window.appearance.dp(8)
             rowSpacing: window.appearance.dp(8)
             UiField {
@@ -949,9 +970,9 @@ ApplicationWindow {
             Pane {
                 visible: window.backend.materials.length === 0
                 Layout.fillWidth: true
-                padding: window.appearance.graphite ? window.appearance.dp(14) : 0
+                padding: window.appearance.usesSharedStyle ? window.appearance.dp(14) : 0
                 background: Rectangle {
-                    visible: window.appearance.graphite
+                    visible: window.appearance.usesSharedStyle
                     color: window.appearance.colors.surface
                     border.color: window.appearance.colors.border
                     radius: window.appearance.controlRadius(12)
@@ -959,7 +980,7 @@ ApplicationWindow {
                 contentItem: RowLayout {
                     spacing: window.appearance.dp(9)
                     NavIcon {
-                        visible: window.appearance.graphite
+                        visible: window.appearance.usesSharedStyle
                         symbol: "book"
                         ink: window.appearance.colors.accent
                     }
@@ -980,9 +1001,9 @@ ApplicationWindow {
                     id: materialRow
                     required property var modelData
                     width: ListView.view.width - window.appearance.dp(12)
-                    padding: window.appearance.graphite ? window.appearance.dp(10) : 0
+                    padding: window.appearance.usesSharedStyle ? window.appearance.dp(10) : 0
                     background: Rectangle {
-                        visible: window.appearance.graphite
+                        visible: window.appearance.usesSharedStyle
                         color: window.appearance.colors.surface
                         radius: window.appearance.controlRadius(12)
                         border.color: window.appearance.colors.border
@@ -1053,21 +1074,21 @@ ApplicationWindow {
             enabled: !window.backend.busy
             Rectangle {
                 objectName: "listPanel"
-                Layout.preferredWidth: window.appearance.dp(window.appearance.dusk && !window.narrow ? 680 : window.appearance.graphite && !window.narrow ? 520 : 310)
-                Layout.fillWidth: window.narrow || window.appearance.graphite
+                Layout.preferredWidth: window.appearance.dp(window.appearance.dusk && !window.narrow ? 680 : window.appearance.usesSharedStyle && !window.narrow ? 520 : 310)
+                Layout.fillWidth: window.narrow || window.appearance.usesSharedStyle
                 Layout.fillHeight: true
                 visible: !window.narrow || !window.hasTask || !window.detailOpen
-                color: window.appearance.graphite ? "transparent" : window.appearance.colors.panel
+                color: window.appearance.usesSharedStyle ? "transparent" : window.appearance.colors.panel
                 radius: window.appearance.dp(16)
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: window.appearance.dp(window.appearance.graphite ? 0 : 12)
-                    spacing: window.appearance.dp(window.appearance.graphite ? 8 : 12)
+                    anchors.margins: window.appearance.dp(window.appearance.usesSharedStyle ? 0 : 12)
+                    spacing: window.appearance.dp(window.appearance.usesSharedStyle ? 8 : 12)
                     RowLayout {
                         Layout.fillWidth: true
                         Caption {
-                            text: window.appearance.graphite ? qsTr("Задачи") : qsTr("ЗАДАЧИ")
-                            font.letterSpacing: window.appearance.graphite ? 0 : 1
+                            text: window.appearance.usesSharedStyle ? qsTr("Задачи") : qsTr("ЗАДАЧИ")
+                            font.letterSpacing: window.appearance.usesSharedStyle ? 0 : 1
                         }
                         Item {
                             Layout.fillWidth: true
@@ -1107,13 +1128,13 @@ ApplicationWindow {
                             }
                             background: Rectangle {
                                 radius: window.appearance.controlRadius(12)
-                                color: window.appearance.graphite
+                                color: window.appearance.usesSharedStyle
                                     ? (taskRow.selected ? window.appearance.colors.selection : taskRow.hovered
                                         ? window.appearance.colors.raised : window.appearance.dusk ? "transparent" : window.appearance.colors.surface)
                                     : taskRow.modelData.overdue ? window.appearance.colors.warningSurface
                                         : taskRow.selected ? window.appearance.colors.surface
                                         : taskRow.hovered ? window.appearance.colors.raised : "transparent"
-                                border.color: taskRow.visualFocus && window.appearance.graphite ? window.appearance.colors.accent
+                                border.color: taskRow.visualFocus && window.appearance.usesSharedStyle ? window.appearance.colors.accent
                                     : taskRow.selected ? window.appearance.colors.border : "transparent"
                             }
                             contentItem: ColumnLayout {
@@ -1135,7 +1156,7 @@ ApplicationWindow {
                                     color: window.appearance.colors.text
                                 }
                                 GridLayout {
-                                    visible: window.appearance.graphite
+                                    visible: window.appearance.usesSharedStyle
                                     Layout.fillWidth: true
                                     columns: 2
                                     columnSpacing: window.appearance.dp(10)
@@ -1156,7 +1177,7 @@ ApplicationWindow {
                                         Caption {
                                             Layout.alignment: Qt.AlignRight
                                             text: taskRow.modelData.completed ? qsTr("Выполнено") : taskRow.modelData.progressText + "%"
-                                            color: taskRow.selected && window.appearance.graphite ? window.appearance.colors.accent : window.appearance.colors.muted
+                                            color: taskRow.selected && window.appearance.usesSharedStyle ? window.appearance.colors.accent : window.appearance.colors.muted
                                         }
                                         TaskProgress {
                                             Layout.fillWidth: true
@@ -1166,23 +1187,23 @@ ApplicationWindow {
                                     }
                                 }
                                 Caption {
-                                    visible: !window.appearance.graphite
+                                    visible: !window.appearance.usesSharedStyle
                                     Layout.fillWidth: true
                                     text: (taskRow.modelData.overdue ? qsTr("Просрочено · ") : taskRow.modelData.deadline ? qsTr("До ") : "") + (taskRow.modelData.deadline || qsTr("Без дедлайна"))
                                     wrapMode: Text.Wrap
                                 }
                                 Caption {
-                                    visible: !window.appearance.graphite && !!taskRow.modelData.category
+                                    visible: !window.appearance.usesSharedStyle && !!taskRow.modelData.category
                                     textFormat: Text.PlainText
                                     text: taskRow.modelData.category
                                 }
                                 TaskProgress {
-                                    visible: !window.appearance.graphite
+                                    visible: !window.appearance.usesSharedStyle
                                     Layout.fillWidth: true
                                     value: taskRow.modelData.progress
                                 }
                                 Caption {
-                                    visible: !window.appearance.graphite
+                                    visible: !window.appearance.usesSharedStyle
                                     text: taskRow.modelData.completed ? qsTr("Выполнено") : taskRow.modelData.progressText + qsTr("% · В работе")
                                 }
                                 UiButton {
@@ -1225,13 +1246,13 @@ ApplicationWindow {
             }
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredWidth: window.appearance.graphite ? window.appearance.dp(342) : -1
+                Layout.preferredWidth: window.appearance.usesSharedStyle ? window.appearance.dp(342) : -1
                 Layout.fillHeight: true
                 objectName: "detailPanel"
                 visible: !window.narrow || (window.hasTask && window.detailOpen)
                 color: window.appearance.colors.surface
                 radius: window.appearance.controlRadius(18)
-                border.color: window.appearance.graphite ? window.appearance.colors.border : "transparent"
+                border.color: window.appearance.usesSharedStyle ? window.appearance.colors.border : "transparent"
                 Label {
                     anchors.centerIn: parent
                     width: parent.width - window.appearance.dp(40)
@@ -1250,12 +1271,14 @@ ApplicationWindow {
                     visible: window.hasTask
                     clip: true
                     contentWidth: availableWidth
-                    rightPadding: window.appearance.graphite ? window.appearance.dp(16) : 0
+                    rightPadding: window.appearance.usesSharedStyle ? window.appearance.dp(16) : 0
                     ScrollBar.vertical.objectName: "detailScrollBar"
+                    ScrollBar.vertical.palette.mid: window.appearance.colors.scrollbar ?? window.palette.mid
+                    ScrollBar.vertical.palette.dark: window.appearance.colors.scrollbar ?? window.palette.dark
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                     ColumnLayout {
                         width: detailScroll.availableWidth
-                        spacing: window.appearance.dp(window.appearance.graphite ? 12 : 16)
+                        spacing: window.appearance.dp(window.appearance.usesSharedStyle ? 12 : 16)
                         RowLayout {
                             Layout.fillWidth: true
                             UiButton {
@@ -1266,10 +1289,10 @@ ApplicationWindow {
                             }
                             Caption {
                                 color: window.backend.selectedOverdue ? window.appearance.colors.warning : window.appearance.colors.muted
-                                text: window.appearance.graphite
+                                text: window.appearance.usesSharedStyle
                                     ? (window.backend.selectedOverdue ? qsTr("Просрочено") : window.current.completed ? qsTr("Выполнено") : qsTr("В работе"))
                                     : (window.backend.selectedOverdue ? qsTr("ПРОСРОЧЕНО") : window.current.completed ? qsTr("ВЫПОЛНЕНО") : qsTr("В РАБОТЕ"))
-                                font.letterSpacing: window.appearance.graphite ? 0 : 1
+                                font.letterSpacing: window.appearance.usesSharedStyle ? 0 : 1
                             }
                             Item {
                                 Layout.fillWidth: true
@@ -1295,7 +1318,7 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             textFormat: Text.PlainText
                             text: window.current.title || ""
-                            font.pixelSize: window.appearance.dp(window.appearance.graphite ? 22 : 27)
+                            font.pixelSize: window.appearance.dp(window.appearance.usesSharedStyle ? 22 : 27)
                             font.weight: Font.DemiBold
                             wrapMode: Text.Wrap
                             color: window.appearance.colors.text
@@ -1624,7 +1647,7 @@ ApplicationWindow {
         }
         Caption {
             Layout.fillWidth: true
-            visible: !window.appearance.graphite
+            visible: !window.appearance.usesSharedStyle
             text: qsTr("В своём темпе. Шаг за шагом.")
             horizontalAlignment: Text.AlignHCenter
         }
@@ -1634,6 +1657,9 @@ ApplicationWindow {
         id: appearanceDialog
         property var themeKeys: ["space", "jungle", "light", "dark", "system", "dusk"]
         property var scales: [100, 125, 150]
+        readonly property string selectedTheme: themeKeys[appearanceTheme.currentIndex] ?? ""
+        readonly property bool themeAvailable: selectedTheme === "space" || selectedTheme === "system" || selectedTheme === "dusk"
+            || window.backend.garden.themes.indexOf(selectedTheme) >= 0
         property bool attempted: false
         title: qsTr("Оформление")
         anchors.centerIn: parent
@@ -1660,12 +1686,12 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     text: {
-                        const key = appearanceDialog.themeKeys[appearanceTheme.currentIndex];
-                        if (window.backend.garden.themes.indexOf(key) >= 0 || (key === "system" || key === "dusk"))
+                        const key = appearanceDialog.selectedTheme;
+                        if (appearanceDialog.themeAvailable)
                             return qsTr("Тема доступна.");
                         if (key === window.backend.appearance.theme)
                             return qsTr("Ранее выбранная тема сохранена. После смены повторный выбор потребует достижения.");
-                        return key === "space" ? qsTr("Откроется за 30 оплаченных часов в саду.") : qsTr("Откроется за 15 выполненных главных задач в саду.");
+                        return qsTr("Откроется за 15 выполненных главных задач в саду.");
                     }
                 }
                 Caption {
@@ -1704,7 +1730,7 @@ ApplicationWindow {
             AccentButton {
                 objectName: "saveAppearance"
                 text: qsTr("Применить")
-                enabled: !window.backend.busy && (window.backend.garden.themes.indexOf(appearanceDialog.themeKeys[appearanceTheme.currentIndex]) >= 0 || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === "system" || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === "dusk" || appearanceDialog.themeKeys[appearanceTheme.currentIndex] === window.backend.appearance.theme)
+                enabled: !window.backend.busy && (appearanceDialog.themeAvailable || appearanceDialog.selectedTheme === window.backend.appearance.theme)
                 onClicked: {
                     appearanceDialog.attempted = true;
                     window.backend.saveAppearance(
@@ -2001,6 +2027,7 @@ ApplicationWindow {
 
     EditorDialog {
         id: companionDialog
+        visitorEnabled: true
         objectName: "companionDialog"
         property var keys: ["dragon", "cat", "dog"]
         property var sizes: [160, 224, 288, 352]
@@ -2014,9 +2041,11 @@ ApplicationWindow {
             id: petScroll
             contentWidth: availableWidth
             clip: true
-            rightPadding: window.appearance.graphite ? window.appearance.dp(12) : 0
-            ScrollBar.vertical.policy: window.appearance.graphite && petForm.implicitHeight > availableHeight + 1
+            rightPadding: window.appearance.usesSharedStyle ? window.appearance.dp(12) : 0
+            ScrollBar.vertical.policy: window.appearance.usesSharedStyle && petForm.implicitHeight > availableHeight + 1
                 ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
+            ScrollBar.vertical.palette.mid: window.appearance.colors.scrollbar ?? window.palette.mid
+            ScrollBar.vertical.palette.dark: window.appearance.colors.scrollbar ?? window.palette.dark
             ColumnLayout {
                 id: petForm
                 width: petScroll.availableWidth
@@ -2113,6 +2142,7 @@ ApplicationWindow {
 
     PlanningDialog {
         id: planningDialog
+        visitorEnabled: true
         planner: window.planner
         taskBackend: window.backend
         appearance: window.appearance
@@ -2124,13 +2154,16 @@ ApplicationWindow {
 
     AssistantDialog {
         id: assistantDialog
+        visitorEnabled: true
         connection: window.connection
         agent: window.assistant
         taskBackend: window.backend
         uiAppearance: window.appearance
         parent: Overlay.overlay
         readonly property real workspaceWidth: parent.width - window.sidebarWidth
-        x: Math.round(window.sidebarWidth + (workspaceWidth - width) / 2)
+        readonly property real offsetFromCenter: window.sidebarVisible ? window.appearance.dp(24) : 0
+        x: Math.round(window.sidebarWidth + Math.max(window.workspaceDialogMargin,
+            (workspaceWidth - width) / 2 - offsetFromCenter))
         y: Math.round((parent.height - height) / 2)
         width: Math.min(window.appearance.dp(760), workspaceWidth - 2 * window.workspaceDialogMargin)
         height: Math.min(window.appearance.dp(680), parent.height - 2 * window.workspaceDialogMargin)
@@ -2148,9 +2181,11 @@ ApplicationWindow {
             id: systemScroll
             contentWidth: availableWidth
             clip: true
-            rightPadding: window.appearance.graphite ? window.appearance.dp(12) : 0
-            ScrollBar.vertical.policy: window.appearance.graphite && systemForm.implicitHeight > availableHeight + 1
+            rightPadding: window.appearance.usesSharedStyle ? window.appearance.dp(12) : 0
+            ScrollBar.vertical.policy: window.appearance.usesSharedStyle && systemForm.implicitHeight > availableHeight + 1
                 ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
+            ScrollBar.vertical.palette.mid: window.appearance.colors.scrollbar ?? window.palette.mid
+            ScrollBar.vertical.palette.dark: window.appearance.colors.scrollbar ?? window.palette.dark
             ColumnLayout {
                 id: systemForm
                 width: systemScroll.availableWidth
@@ -2452,7 +2487,7 @@ ApplicationWindow {
         title: taskId ? qsTr("Изменить задачу") : qsTr("Новая задача")
         anchors.centerIn: parent
         width: Math.min(window.appearance.dp(550), window.width - 32)
-        height: Math.min(window.appearance.dp(window.appearance.graphite ? 595 : 680), window.height - 32)
+        height: Math.min(window.appearance.dp(window.appearance.usesSharedStyle ? 595 : 680), window.height - 32)
         modal: true
         closePolicy: window.backend.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
         contentItem: ScrollView {
@@ -2475,7 +2510,7 @@ ApplicationWindow {
                 }
                 Label {
                     Layout.fillWidth: true
-                    visible: window.appearance.graphite && window.backend.error.length > 0
+                    visible: window.appearance.usesSharedStyle && window.backend.error.length > 0
                     text: window.backend.error
                     color: window.appearance.colors.warning
                     wrapMode: Text.Wrap
@@ -2506,12 +2541,12 @@ ApplicationWindow {
                     Layout.preferredHeight: window.appearance.dp(95)
                     wrapMode: TextEdit.Wrap
                     background: Rectangle {
-                        color: window.appearance.graphite ? window.appearance.colors.field : window.appearance.colors.raised
+                        color: window.appearance.usesSharedStyle ? window.appearance.colors.field : window.appearance.colors.raised
                         radius: window.appearance.controlRadius(6)
-                        border.width: window.appearance.graphite ? (descriptionInput.activeFocus ? 2 : 1) : 0
-                        border.color: window.appearance.graphite && descriptionInput.activeFocus
+                        border.width: window.appearance.usesSharedStyle ? (descriptionInput.activeFocus ? 2 : 1) : 0
+                        border.color: window.appearance.usesSharedStyle && descriptionInput.activeFocus
                             ? window.appearance.colors.accent
-                            : window.appearance.graphite ? window.appearance.colors.controlBorder : "transparent"
+                            : window.appearance.usesSharedStyle ? window.appearance.colors.controlBorder : "transparent"
                     }
                 }
                 RowLayout {
@@ -2561,7 +2596,7 @@ ApplicationWindow {
                 }
                 Label {
                     Layout.fillWidth: true
-                    visible: !window.appearance.graphite && window.backend.error.length > 0
+                    visible: !window.appearance.usesSharedStyle && window.backend.error.length > 0
                     text: window.backend.error
                     color: window.appearance.colors.warning
                     wrapMode: Text.Wrap

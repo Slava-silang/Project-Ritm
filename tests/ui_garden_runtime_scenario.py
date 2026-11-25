@@ -78,7 +78,7 @@ try:
     controller.selectTask(str(task.id))
     if mode == "live":
         assert not controller.garden["enabled"] and not (profile / "garden.sqlite3").exists()
-        controller.saveAppearance("space", 100)
+        controller.saveAppearance("jungle", 100)
         gui.idle()
         assert "достижение" in controller.error
         assert controller.appearance["theme"] == "light"
@@ -156,9 +156,9 @@ try:
         gui.screenshot(profile / "garden-settings-narrow.png")
         gui.click("closeGarden")
         gui.click("appearanceButton")
-        gui.choose("appearanceTheme", 0)
+        gui.choose("appearanceTheme", 1)
         assert not gui.item("saveAppearance").isEnabled()
-        assert "30" in gui.item("themeUnlockHint").property("text")
+        assert "15" in gui.item("themeUnlockHint").property("text")
         gui.screenshot(profile / "garden-theme-locked.png")
         gui.click("cancelAppearance")
     elif mode == "recovery":
@@ -201,10 +201,11 @@ try:
         idle()
         controller.saveAppearance("dark", 100)
         idle()
-        controller.saveAppearance("space", 100)
-        gui.idle()
-        assert "достижение" in controller.error
-        assert controller.appearance["theme"] == "dark"
+        gui.click("appearanceButton")
+        gui.choose("appearanceTheme", 0)
+        gui.click("saveAppearance")
+        assert controller.appearance["theme"] == "space"
+        assert "space" not in controller.garden["themes"]
         assert not (profile / "garden.sqlite3").exists()
     else:
         controller.setGardenEnabled(True)

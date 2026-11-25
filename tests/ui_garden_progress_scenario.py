@@ -60,7 +60,11 @@ try:
     gui.click("gardenButton")
     gui.idle()
     if mode == "view":
-        gui.click("gardenProgressButton")
+        gui.click(
+            "gardenProgressWhenOff"
+            if gui.item("gardenProgressWhenOff").isVisible()
+            else "gardenProgressButton"
+        )
     else:
         assert not controller.garden["enabled"]
         gui.click("gardenProgressWhenOff")

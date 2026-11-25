@@ -79,7 +79,7 @@ try:
     if mode == "reopen":
         assert backend.appearance == {"theme": "dusk", "scale": 150}
         assert appearance.property("dusk")
-        assert not gui.item("graphiteSidebar").isVisible()
+        assert not gui.item("workspaceSidebar").isVisible()
         assert colors()["accent"] == "#c4ccff"
     else:
         backend.selectTask(str(task.id))
@@ -101,7 +101,7 @@ try:
             backend.saveAppearance("dusk", scale)
             gui.idle()
             QTest.qWait(120)
-            assert not gui.item("graphiteSidebar").isVisible()
+            assert not gui.item("workspaceSidebar").isVisible()
             assert gui.item("duskNavigation").isVisible()
             gui.item("parametersButton").forceActiveFocus()
             QTest.keyClick(window, Qt.Key.Key_Space)
@@ -179,10 +179,10 @@ try:
         gui.idle()
         window.resize(1160, 800)
         QTest.qWait(100)
-        assert gui.item("graphiteSidebar").isVisible()
+        assert gui.item("workspaceSidebar").isVisible()
         backend.saveAppearance("dusk", 150)
         gui.idle()
-        assert not gui.item("graphiteSidebar").isVisible()
+        assert not gui.item("workspaceSidebar").isVisible()
 finally:
     planner.close()
     agent.close()

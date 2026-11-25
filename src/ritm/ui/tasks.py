@@ -1227,12 +1227,8 @@ class TaskController(QObject):
                     previous = load_appearance(self._profile)
                 except ValueError:
                     previous = dict(DEFAULT)
-                if data["theme"] not in (
-                    *garden_state["themes"],
-                    "system",
-                    "dusk",
-                    previous["theme"],
-                ):
+                available = (*garden_state["themes"], "system", "dusk", "space", previous["theme"])
+                if data["theme"] not in available:
                     raise ValueError("Эта тема откроется за достижение сада.")
                 appearance_state = save_appearance(self._profile, data["theme"], data["scale"])
                 self._ready.emit(appearance_state, "", action)

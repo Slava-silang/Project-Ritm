@@ -301,15 +301,19 @@ def test_chatgpt_schedule_uses_same_transport_and_restricted_context(setup):
     assert json.loads(response) == {"blocks": []}
 
 
-def test_planning_gui_and_restart(tmp_path):
+@pytest.mark.parametrize(
+    "modes", [("run", "restart"), ("scroll-layout",)], ids=["restart", "scroll"]
+)
+def test_planning_gui_and_restart(tmp_path, modes):
     env = {
         **os.environ,
         "QT_QPA_PLATFORM": os.environ.get("RITM_UI_PLATFORM", "offscreen"),
+        "QT_QUICK_BACKEND": "software",
         "XDG_CONFIG_HOME": str(tmp_path / "config"),
         "XDG_DATA_HOME": str(tmp_path / "data"),
         "XDG_CACHE_HOME": str(tmp_path / "cache"),
     }
-    for mode in ("run", "restart"):
+    for mode in modes:
         result = subprocess.run(
             [
                 sys.executable,
@@ -320,7 +324,7 @@ def test_planning_gui_and_restart(tmp_path):
             env=env,
             capture_output=True,
             text=True,
-            timeout=45,
+            timeout=180 if mode == "scroll-layout" else 45,
         )
         assert result.returncode == 0, result.stdout + result.stderr
         for warning in ("ReferenceError", "TypeError", "Binding loop", "Cannot assign"):
