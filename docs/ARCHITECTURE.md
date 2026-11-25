@@ -1,5 +1,19 @@
 # Архитектурная основа
 
+## T40b1 — адаптер Copilot
+
+`integrations/copilot.py` — синхронный Adapter для worker помощника,
+внутри одного запроса отдельный asyncio loop/SDK-клиент/сессия. Общий
+prepare_text, только text capabilities, JSON проверяется прежними парсерами.
+SDK 0.1.32 — optional extra copilot, импортируется лениво; ошибки — ValueError,
+которые уже обрабатывает AssistantController. Отмена/общий timeout охватывают
+start/auth/create/send; finally удаляет только свою сессию и останавливает
+клиент, при неуспехе stop вызывает force_stop. Временные cwd/config_dir,
+пустой available_tools и запрет permission/pre-tool, без BYOK.
+Контракт/ограничения/официальные исходники — COPILOT.md. UI не переключён,
+реальный CLI не запускался; вход и изоляция конфигурации остаются T40b2.
+Схемы БД прежние.
+
 ## T40a — общий контекст помощника
 
 `integrations/assistant_prompt.py` готовит пару JSON-контекст/инструкции

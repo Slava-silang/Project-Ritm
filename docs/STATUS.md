@@ -2,6 +2,39 @@
 
 Обновлено: 25 ноября 2026 года.
 
+## T40b1 — текстовый адаптер Copilot
+
+Готов следующий ограниченный шаг desktop: integrations/copilot.py использует
+официальный optional github-copilot-sdk==0.1.32 (pyproject/uv.lock). Общий
+контекст пяти операций, только текст, явно выбранная модель; результат
+остаётся предложением для существующих парсеров/подтверждения. UI и БД
+не менялись; вход и выбор Copilot ещё не доступны.
+
+Реализованы отмена/общий timeout, проверка входа до отправки, запрет
+инструментов (available_tools/permission/pre-tool), временные cwd/config_dir,
+попытка abort/delete_session/stop и force_stop при отказе/таймауте stop.
+Детали и непроверенные ограничения — COPILOT.md. Внешние ошибки не выводятся
+с исходным текстом; ambient API-токены не подставляются в SDK-окружение.
+Реальный CLI/аккаунт не запускался, квоты/подписка не расходовались.
+
+Проверки: финальные 77 passed (20,72 с), /tmp/ritm-t40b1-regression.log:
+fake lifecycle/отмена/таймаут/ошибки, установленный SDK через stub JSON-RPC,
+общий контекст, файлы и правки задач. Ruff check/format трёх Python-файлов,
+diff passed. Установка extra из lock проверена. Offline sync без packaging
+убрал четыре прежних пакета; последующий sync --group packaging восстановил
+nuitka 4.2.2, ordered-set 4.1.0, patchelf 0.19.3.0, zstandard 0.25.0.
+Новые зависимости скачивались из реестра, запросов к модели не было.
+Windows, ручной UI и настоящий CLI не проверены; это не аудит безопасности.
+
+Изменены pyproject.toml/uv.lock; новые integrations/copilot.py,
+tests/test_copilot.py, tests/test_copilot_sdk.py, docs/COPILOT.md; обновлены
+ARCHITECTURE/DEVELOPMENT/TASKS/TESTING/STATUS. Пользовательские assets/theme_*
+не затронуты. Локальный коммит `feat: add optional text-only Copilot adapter`
+(ID — git log). T40b остаётся in_progress: следующий T40b2 — изоляция и
+проверка CLI-конфигурации без запросов к модели, официальный вход/модели,
+затем UI выбора подключения с отдельным диалогом и fake-проверками.
+Безопасность/выпуск по-прежнему отложены до готовности desktop.
+
 ## T40a — общая подготовка запросов помощника
 
 По просьбе пользователя проверки безопасности/оптимизации R02–R04 и

@@ -1,5 +1,13 @@
 # Проверка «Ритма»
 
+## T40b1 — адаптер Copilot, 25 ноября
+
+- Финальный набор `.venv/bin/pytest -q tests/test_copilot.py tests/test_copilot_sdk.py tests/test_assistant_prompt.py tests/test_file_context.py tests/test_task_updates.py`: **77 passed (20,72 с)**, /tmp/ritm-t40b1-regression.log.
+- Отмена/таймаут на start/auth/create/send; отказ входа до отправки; ошибка каждого этапа; cleanup/force_stop при ошибке или таймауте; пустой/слишком большой ответ; бинарный или уже отменённый запрос не создаёт клиента; неверная/отсутствующая optional SDK и параметры; контекст пяти операций, разбор в черновик, исключение ambient-токенов.
+- Установленный SDK 0.1.32 сериализует ограниченную сессию через stub JSON-RPC: пустой availableTools, requestPermission/hooks, replace systemMessage, model, configDir/workingDirectory, infiniteSessions disabled. Никаких CLI-процессов, настоящего входа, запросов к модели и личного профиля.
+- Первые fake-тесты: 28 passed (0,91 с), затем fake/SDK/prompt: 45 passed (1,16 с); после параметризации проверки версии и расширения регрессии — финальные 77 выше. Ruff check/format трёх Python-файлов и git diff --check passed.
+- uv add закрепил optional dependency; offline sync extra copilot прошёл. Он убрал четыре невыбранных инструмента packaging; группа восстановлена отдельным sync (результат STATUS). Windows, ручной UI, настоящий CLI/вход/квоты не проверялись. Это не аудит безопасности и не готовый пункт T40b целиком.
+
 ## T40a — общий контекст помощника, 25 ноября
 
 - `.venv/bin/pytest -q tests/test_assistant_prompt.py tests/test_file_context.py tests/test_media.py tests/test_skills.py tests/test_planning.py tests/test_task_updates.py tests/test_mail_assistant.py`: 95 passed / 2 failed, 65,07 с; /tmp/ritm-t40a-tests.log.
