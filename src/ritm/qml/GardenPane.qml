@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs as Dialogs
 
 Item {
     id: pane
@@ -34,7 +35,7 @@ Item {
     readonly property var board: backend.gardenBoard
     readonly property var scene: backend.gardenScene
     readonly property bool narrow: width < appearance.dp(900)
-    readonly property bool dialogsOpen: tools.visible || sale.visible || progress.visible
+    readonly property bool dialogsOpen: tools.visible || sale.visible || progress.visible || exportMenu.visible || exportFile.visible
     readonly property bool viewingArchive: archiveTab !== "current" || !!board.readOnly
     readonly property bool shopVisible: !viewingArchive && tab === "shop"
     readonly property var archive: backend.gardenArchive
@@ -50,6 +51,7 @@ Item {
     property string placingId: ""
     property string mode: "select"
     property string localError: ""
+    property string exportNotice: ""
     property string sourceIdentity: ""
     property string sourceMonth: ""
     property var hover: ({
@@ -78,6 +80,19 @@ Item {
         const rows = kind === "favorites" ? archive.favorites : archive.recent;
         const month = kind === "current" || !rows.length ? "" : rows[kind === "recent" && rows.length > 1 ? 1 : 0].month;
         backend.setGardenMonth(month);
+    }
+    function beginExport(kind) {
+        const offer = backend.prepareGardenExport(kind);
+        if (!offer.token)
+            return;
+        exportNotice = "";
+        exportFile.token = offer.token;
+        exportFile.month = offer.month;
+        exportFile.title = qsTr("Сохранить сад · %1").arg(offer.month);
+        exportFile.nameFilters = kind === "html" ? [qsTr("Автономный сад (*.html)")] : [qsTr("Изображение PNG (*.png)")];
+        exportFile.defaultSuffix = kind;
+        exportFile.selectedFile = offer.file;
+        exportFile.open();
     }
     function cancelPlacement() {
         placingId = "";
@@ -180,6 +195,10 @@ Item {
         worldLoader.item.repaint()
     Connections {
         target: pane.backend
+        function onActionSucceeded(action: string) {
+            if (action === "garden_export")
+                pane.exportNotice = qsTr("Сад %1 сохранён.").arg(exportFile.month);
+        }
         function onGardenCommandDone(identifier: string) {
             pane.placingId = "";
             pane.localError = "";
@@ -322,6 +341,34 @@ Item {
                 enabled: pane.canNavigate && pane.board.ready
                 onClicked: pane.backend.setGardenFavorite(!pane.favorite)
             }
+            UiTool {
+                id: exportButton
+                objectName: "gardenExport"
+                visible: !pane.hideArchiveField
+                text: pane.narrow ? "↓" : qsTr("Экспорт")
+                enabled: pane.canNavigate && pane.board.ready
+                Accessible.name: qsTr("Экспорт выбранного сада")
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Сохранить выбранный сад в HTML или PNG")
+                onClicked: exportMenu.open()
+                Menu {
+                    id: exportMenu
+                    objectName: "gardenExportMenu"
+                    width: Math.min(pane.appearance.dp(300), pane.width - 24)
+                    x: Math.min(0, pane.width - exportButton.x - width)
+                    y: exportButton.height
+                    MenuItem {
+                        objectName: "gardenExportHtml"
+                        text: qsTr("Сад для браузера (HTML)…")
+                        onTriggered: pane.beginExport("html")
+                    }
+                    MenuItem {
+                        objectName: "gardenExportPng"
+                        text: qsTr("Изображение PNG…")
+                        onTriggered: pane.beginExport("png")
+                    }
+                }
+            }
         }
         Label {
             objectName: "gardenFavoritesEmpty"
@@ -348,6 +395,14 @@ Item {
             visible: !!text
             text: pane.backend.garden.error || pane.board.error || pane.localError || pane.backend.error || (pane.placingId ? pane.preview.error : "")
             color: pane.appearance.colors.warning
+            wrapMode: Text.Wrap
+        }
+        Label {
+            objectName: "gardenExportNotice"
+            Layout.fillWidth: true
+            visible: !!pane.exportNotice && !pane.backend.error && !pane.backend.garden.error
+            text: pane.exportNotice
+            color: pane.appearance.colors.secondary
             wrapMode: Text.Wrap
         }
         Flow {
@@ -835,6 +890,15 @@ Item {
                 }
             }
         }
+    }
+    Dialogs.FileDialog {
+        id: exportFile
+        objectName: "gardenExportFile"
+        property string token: ""
+        property string month: ""
+        fileMode: Dialogs.FileDialog.SaveFile
+        onAccepted: pane.backend.exportGarden(selectedFile, token)
+        onRejected: pane.backend.cancelGardenExport(token)
     }
     GardenProgress {
         id: progress

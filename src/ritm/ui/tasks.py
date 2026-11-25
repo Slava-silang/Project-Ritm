@@ -12,7 +12,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfoNotFoundError
 
-from PySide6.QtCore import Property, QObject, QTimer, QTimeZone, QUrl, Signal, Slot
+from PySide6.QtCore import Property, QObject, QStandardPaths, QTimer, QTimeZone, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 
 from ritm.application.calendar import CalendarService
@@ -306,6 +306,8 @@ class TaskController(QObject):
         self._garden_scene = {}
         self._garden_preview_state = None
         self._garden_pending = None
+        self._garden_export_garden = None
+        self._garden_export_offer = None
         self._garden_graphics_error = ""
         self._garden_asset_cache = None
         self._garden_shape_key = None
@@ -406,6 +408,56 @@ class TaskController(QObject):
     def gardenCommandPending(self):
         return self._garden_pending is not None
 
+    @Slot(str, result="QVariantMap")
+    def prepareGardenExport(self, kind):
+        if kind not in ("html", "png") or self.busy or self._closing or self._garden_pending:
+            return {}
+        garden = self._garden_export_garden
+        if garden is None:
+            return {}
+        token = str(uuid4())
+        self._garden_export_offer = {"token": token, "kind": kind, "garden": garden}
+        folder = Path(
+            QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation)
+        )
+        if not folder.is_dir():
+            folder = Path.home()
+        return {
+            "token": token,
+            "month": garden.month,
+            "file": QUrl.fromLocalFile(str(folder / f"ritm-garden-{garden.month}.{kind}")),
+        }
+
+    @Slot(str)
+    def cancelGardenExport(self, token):
+        if self._garden_export_offer and self._garden_export_offer["token"] == token:
+            self._garden_export_offer = None
+
+    @Slot(QUrl, str)
+    def exportGarden(self, url, token):
+        if self._closing:
+            return
+        if self.busy or self._garden_pending:
+            self._error = "Дождитесь завершения текущего действия и повторите экспорт."
+            self.stateChanged.emit()
+            return
+        offer = self._garden_export_offer
+        if not offer or offer["token"] != token:
+            return
+        if not url.isLocalFile() or url.hasQuery() or url.hasFragment():
+            self._error = "Выберите локальный файл для сохранения сада."
+            self.stateChanged.emit()
+            return
+        self._submit(
+            "garden_export",
+            {
+                "garden": offer["garden"],
+                "kind": offer["kind"],
+                "path": url.toLocalFile(),
+            },
+        )
+        self._garden_export_offer = None
+
     @Slot(bool)
     def setGardenVisible(self, visible):
         if self._garden_visible != visible:
@@ -460,6 +512,7 @@ class TaskController(QObject):
     @Slot(object)
     def _set_garden_board(self, payload):
         self._garden_preview_state = payload["snapshot"]
+        self._garden_export_garden = payload.get("export")
         metadata = payload.get("archive", empty_archive())
         board_changed = self._garden_board != payload["board"]
         archive_changed = self._garden_archive != metadata
@@ -509,6 +562,7 @@ class TaskController(QObject):
                     "scene": self._garden_scene_cache,
                     "snapshot": None if read_only else state,
                     "archive": metadata,
+                    "export": state.garden,
                 }
             except Exception:
                 self._garden_graphics_error = (
@@ -1129,6 +1183,22 @@ class TaskController(QObject):
         focus_settings = None
         focus_settings_error = ""
         try:
+            if action == "garden_export":
+                from ritm.ui.garden_export import export_garden
+
+                try:
+                    export_garden(data["garden"], data["path"], data["kind"])
+                except (OSError, ValueError) as error:
+                    self._ready.emit(
+                        None,
+                        str(error)
+                        if isinstance(error, ValueError)
+                        else "Не удалось сохранить сад. Проверьте папку и свободное место.",
+                        action,
+                    )
+                else:
+                    self._ready.emit(None, "", action)
+                return
             if action == "focus_settings":
                 try:
                     saved = save_focus_settings(self._profile, data["pause_on_system"])
