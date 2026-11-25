@@ -20,11 +20,32 @@ htmlcov/
 *.log
 
 # Local secrets and user profiles
+# The cloud server belongs in a separate private repository.
+/server/
+/backend/
+/profiles/
+/logs/
+/attachments/
+/auth.json
+/credentials.json
+/tokens.json
+/chatgpt-registration.json
+/chat-history.json
+/skills.json
+/companion.json
+/appearance.json
+/focus-settings.json
+/working-hours.json
+/backup-settings.json
+/backup-last-day
+/backup-profile-id
 .env
 .env.*
 !.env.example
 *.pem
 *.key
+*.p12
+*.pfx
 client_secret*.json
 gmail-client*.json
 gmail-tokens*.json
