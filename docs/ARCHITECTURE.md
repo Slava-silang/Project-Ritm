@@ -1,5 +1,16 @@
 # Архитектурная основа
 
+## T40d1 — локальный текстовый адаптер
+
+`integrations/ollama.py` содержит OllamaTransport (только loopback и три API-
+операции), список установленных моделей и OllamaAdapter. Перед prepare_text
+и /api/chat проверяются метаданные /api/show; remote и не-completion модели
+не получают задачи. HTTP чтение в отдельном потоке, shutdown сокета
+прерывает ожидание при отмене/deadline, включая HTTP/1.0 тело. Никаких
+инструментов/загрузок моделей/ключей. Пять операций, text capabilities,
+прежние парсеры/подтверждение. UI ещё не подключён — T40d2.
+Контракт/лимиты/официальные источники — OLLAMA.md. Зависимости/БД прежние.
+
 ## T40b2 — вход и панель Copilot
 
 `integrations/copilot_account.py` владеет isolated COPILOT_HOME/config-dir

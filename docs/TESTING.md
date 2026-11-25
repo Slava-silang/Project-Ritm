@@ -1,5 +1,12 @@
 # Проверка «Ритма»
 
+## T40d1 — локальный адаптер Ollama, 25 ноября
+
+- `.venv/bin/pytest -q tests/test_ollama.py tests/test_ollama_http.py tests/test_assistant_prompt.py tests/test_file_context.py tests/test_task_updates.py`: **79 passed (23,14 с)**; /tmp/ritm-t40d1-final-timeout.log. До уточнения сообщения socket-timeout тот же набор 79 passed (23,42 с), /tmp/ritm-t40d1-final.log; первоначальные fake-тесты 32 passed (0,05 с).
+- Пять операций с общим контекстом; результат разбирается прежним парсером в черновик. Нет инструментов/ключей/автозагрузки модели. Перед задачей проверяются remote_host/remote_model/:cloud, формат и completion; remote/embedding/повреждённые метаданные не получают prompt. Проверены неполный/слишком большой/чужой/инструментальный ответ, отмена до запроса/после show и фильтр списка.
+- Loopback HTTP-сервер: proxy/OLLAMA_API_KEY из окружения не используются, redirect не выполняется; отказ повреждённого/слишком большого JSON. Отмена и timeout отдельно при ожидании заголовков и HTTP/1.0 тела возвращаются меньше чем за секунду, поток чтения завершён. Установленная Ollama и настоящая модель не используются.
+- Ruff check/format трёх Python-файлов и diff passed. Схемы/зависимости/lock и UI прежние. Windows, настоящий сервер/инференс, GUI выбора локальной модели не проверялись (панель остаётся T40d2). Сетевые проверки работали только с подменным локальным сервером.
+
 ## T40b2 — вход/выбор Copilot, 25 ноября
 
 - `.venv/bin/pytest -q tests/test_copilot*.py tests/test_chatgpt.py tests/test_assistant_prompt.py tests/test_assistant_drafts.py tests/test_file_context.py tests/test_task_updates.py`: **140 passed (39,11 с)**; /tmp/ritm-t40b2-final.log. Первый прогон 137 passed/2 failed (40,38 с), /tmp/ritm-t40b2-regression.log: TypeError новой панели при connection=None в assistant/file-context GUI. Исправлены null bindings, полный набор повторён и пройден.
