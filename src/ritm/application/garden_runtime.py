@@ -87,4 +87,5 @@ def sync_garden(source, profile, now, *, zone, enabled=None, checkpoint=False, w
         if with_state:
             view["_state"] = state
             view["_identity"] = garden.source_snapshot()["identity"]
+            view["_archive"] = garden.archive_snapshot()
         return view

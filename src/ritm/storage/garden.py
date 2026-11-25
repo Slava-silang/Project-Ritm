@@ -507,7 +507,13 @@ class GardenStore:
         return GardenResult(state, item_id)
 
     def execute(
-        self, identifier: UUID, command: dict, *, expected_revision: int, expected_identity=None
+        self,
+        identifier: UUID,
+        command: dict,
+        *,
+        expected_revision: int,
+        expected_identity=None,
+        expected_month=None,
     ):
         if not isinstance(identifier, UUID):
             raise ValueError("Нужен UUID операции сада.")
@@ -533,6 +539,8 @@ class GardenStore:
                 return replay
             if current.revision != expected_revision:
                 raise ValueError("Сад или кошелёк изменились. Обновите снимок перед действием.")
+            if expected_month is not None and expected_month != current.garden.month:
+                raise ValueError("Архивный сад доступен только для просмотра.")
             if type(command) is dict and command.get("action") == "favorite":
                 _fields(command, {"action", "month", "enabled"})
                 archive = self._archive_snapshot()

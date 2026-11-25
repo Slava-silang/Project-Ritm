@@ -52,9 +52,10 @@ try:
     assert not pane.property("selectedId") and not pane.property("placingId")
     assert controller.garden["balance"] == "20.00"
     gui.screenshot(profile / "garden-new-month.png")
+    gui.idle()  # Screenshot/window events can enqueue another garden-view refresh.
     controller._submit("garden_command", stale)
     gui.idle()
-    assert "изменились" in controller.error
+    assert "изменились" in controller.error, controller.error
     with GardenStore(profile / "garden.sqlite3") as garden:
         archive = garden.archive_snapshot()
         assert len(archive.history) == 1 and len(archive.history[0].items) == 1

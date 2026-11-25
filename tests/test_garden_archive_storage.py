@@ -17,6 +17,25 @@ def favorite(store, month, enabled=True, *, identifier=None):
     )
 
 
+def test_month_guard_is_transactional_and_does_not_block_old_receipts(tmp_path):
+    with GardenStore(tmp_path / "garden.sqlite3", month="2026-11") as store:
+        store.credit("seed", 100)
+        identifier = uuid4()
+        command = {"action": "buy", "kind": "daisy"}
+        store.execute(identifier, command, expected_revision=store.snapshot().revision)
+        rotated = store.rotate_month("2026-12")
+        replay = store.execute(identifier, command, expected_revision=0, expected_month="2026-11")
+        assert replay.replayed and replay.state == rotated.current
+        with pytest.raises(ValueError, match="просмотра"):
+            store.execute(
+                uuid4(),
+                {"action": "terrain", "x": 0, "y": 0, "terrain": "water"},
+                expected_revision=rotated.current.revision,
+                expected_month="2026-11",
+            )
+        assert store.archive_snapshot() == rotated
+
+
 def financial_rows(store):
     names = (
         "garden_receipts",

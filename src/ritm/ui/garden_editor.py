@@ -19,10 +19,11 @@ def empty_editor(error=""):
         "plantedCells": 0,
         "matureCells": 0,
         "milestone": False,
+        "readOnly": False,
     }
 
 
-def editor_view(state, identity, sprites):
+def editor_view(state, identity, sprites, *, read_only=False):
     garden = state.garden
     items = []
     for item in garden.items:
@@ -40,7 +41,7 @@ def editor_view(state, identity, sprites):
                 "y": item.y if item.placed else -1,
                 "growing": p.growing,
                 "dose": dose,
-                "canGrow": bool(dose and garden.fertilizer >= dose),
+                "canGrow": bool(not read_only and dose and garden.fertilizer >= dose),
                 "growReason": "Растение взрослое"
                 if p.growing and not dose
                 else "Недостаточно удобрения"
@@ -52,17 +53,20 @@ def editor_view(state, identity, sprites):
         )
     return {
         "ready": True,
+        "readOnly": read_only,
         "error": "",
         "revision": state.revision,
         "identity": identity,
         "month": garden.month,
         "items": items,
         "fertilizer": garden.fertilizer,
-        "fertilizerMax": str(state.balance // 10),
+        "fertilizerMax": "0" if read_only else str(state.balance // 10),
         "plantedCells": garden.planted_cells,
         "matureCells": garden.mature_cells,
         "milestone": garden.milestone,
-        "catalog": [
+        "catalog": []
+        if read_only
+        else [
             {
                 "kind": p.id,
                 "title": p.title,

@@ -4,6 +4,7 @@ import re
 import sqlite3
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from decimal import Decimal, InvalidOperation
 from fractions import Fraction
@@ -19,6 +20,7 @@ from ritm.application.garden_runtime import empty_view, sync_garden
 from ritm.application.tasks import TaskService
 from ritm.domain.calendar import from_instant_us, instant_us, planned_duration
 from ritm.domain.focus import focus_by_day
+from ritm.domain.garden_archive import view_month
 from ritm.domain.pomodoro import Pomodoro
 from ritm.domain.statistics import week_start, weekly_statistics
 from ritm.domain.task_list import is_overdue, query_tasks
@@ -52,6 +54,7 @@ from ritm.ui.calendar import (
     local_instant,
     shift_period,
 )
+from ritm.ui.garden_archive import archive_view, empty_archive
 from ritm.ui.garden_editor import editor_view, empty_editor, fertilizer_quote, placement_preview
 from ritm.ui.garden_scene import cell_at, garden_scene
 
@@ -250,6 +253,7 @@ class TaskController(QObject):
     focusSettingsChanged = Signal()
     gardenChanged = Signal()
     gardenBoardChanged = Signal()
+    gardenArchiveChanged = Signal()
     gardenSceneChanged = Signal()
     gardenCommandDone = Signal(str)
     _gardenBoardReady = Signal(object)
@@ -296,6 +300,9 @@ class TaskController(QObject):
         self._garden_visible = False
         self._garden_wants_view = False
         self._garden_board = empty_editor()
+        self._garden_archive = empty_archive()
+        self._garden_view_month = ""  # Worker-owned, empty means follow the current plot.
+        self._garden_view_identity = None
         self._garden_scene = {}
         self._garden_preview_state = None
         self._garden_pending = None
@@ -372,6 +379,25 @@ class TaskController(QObject):
     def gardenBoard(self):
         return self._garden_board
 
+    @Property("QVariantMap", notify=gardenArchiveChanged)
+    def gardenArchive(self):
+        return self._garden_archive
+
+    @Slot(str)
+    def setGardenMonth(self, month):
+        if not self._garden_pending:
+            self._submit("garden_month", {"month": month})
+
+    @Slot(bool)
+    def setGardenFavorite(self, enabled):
+        self.gardenCommand(
+            {
+                "action": "favorite",
+                "month": self._garden_archive["selectedMonth"],
+                "enabled": enabled,
+            }
+        )
+
     @Property("QVariantMap", notify=gardenSceneChanged)
     def gardenScene(self):
         return self._garden_scene
@@ -415,11 +441,14 @@ class TaskController(QObject):
             return
         if not self._garden_board["ready"]:
             return
+        if self._garden_board["readOnly"] and command.get("action") != "favorite":
+            return
         self._garden_pending = {
             "operation": str(uuid4()),
             "command": dict(command),
             "revision": self._garden_board["revision"],
             "identity": self._garden_board["identity"],
+            "month": self._garden_board["month"],
         }
         self._submit("garden_command", dict(self._garden_pending))
 
@@ -431,15 +460,33 @@ class TaskController(QObject):
     @Slot(object)
     def _set_garden_board(self, payload):
         self._garden_preview_state = payload["snapshot"]
-        if self._garden_board != payload["board"]:
+        metadata = payload.get("archive", empty_archive())
+        board_changed = self._garden_board != payload["board"]
+        archive_changed = self._garden_archive != metadata
+        if board_changed:
             self._garden_board = payload["board"]
+        if archive_changed:
+            self._garden_archive = metadata
+            self.gardenArchiveChanged.emit()
+        if board_changed:
             self.gardenBoardChanged.emit()
         if self._garden_scene != payload["scene"]:
             self._garden_scene = payload["scene"]
             self.gardenSceneChanged.emit()
 
-    def _prepare_garden_board(self, state, identity, summary):
-        payload = {"board": empty_editor(), "scene": {}, "snapshot": None}
+    def _prepare_garden_board(self, state, identity, summary, archive=None):
+        metadata = empty_archive()
+        read_only = False
+        if archive is not None:
+            if identity != self._garden_view_identity:
+                self._garden_view_month = ""
+                self._garden_view_identity = identity
+            metadata = archive_view(archive, self._garden_view_month)
+            selected = metadata["selectedMonth"]
+            read_only = selected != archive.current.garden.month
+            self._garden_view_month = selected if read_only else ""
+            state = replace(state, garden=view_month(archive, selected))
+        payload = {"board": empty_editor(), "scene": {}, "snapshot": None, "archive": metadata}
         if (
             self._garden_wants_view
             and not self._closing
@@ -456,9 +503,12 @@ class TaskController(QObject):
                     self._garden_scene_cache = garden_scene(state.garden, self._garden_asset_cache)
                     self._garden_shape_key = shape
                 payload = {
-                    "board": editor_view(state, identity, self._garden_asset_cache),
+                    "board": editor_view(
+                        state, identity, self._garden_asset_cache, read_only=read_only
+                    ),
                     "scene": self._garden_scene_cache,
-                    "snapshot": state,
+                    "snapshot": None if read_only else state,
+                    "archive": metadata,
                 }
             except Exception:
                 self._garden_graphics_error = (
@@ -483,6 +533,9 @@ class TaskController(QObject):
                     data["command"],
                     expected_revision=data["revision"],
                     expected_identity=data["identity"],
+                    expected_month=(data.get("month") or self._garden_view_month or None)
+                    if data["command"].get("action") != "favorite"
+                    else None,
                 )
             outcome, error = (
                 {"resolved": True, "itemId": str(result.item_id) if result.item_id else ""},
@@ -528,7 +581,7 @@ class TaskController(QObject):
         self.gardenChanged.emit()
         self._update_garden_timer()
 
-    def _sync_garden(self, store, *, checkpoint=False, enabled=None):
+    def _sync_garden(self, store, *, checkpoint=False, enabled=None, month=None):
         try:
             state = sync_garden(
                 store,
@@ -539,6 +592,14 @@ class TaskController(QObject):
                 enabled=enabled,
                 with_state=self._garden_wants_view,
             )
+            if month is not None:
+                archive = state.get("_archive")
+                if archive is None:
+                    raise ValueError("Откройте сад перед выбором месяца.")
+                selected = month or archive.current.garden.month
+                view_month(archive, selected)
+                self._garden_view_month = selected
+                self._garden_view_identity = state["_identity"]
         except Exception as error:
             # Optional delivery must never misreport an already committed task as lost.
             try:
@@ -558,7 +619,8 @@ class TaskController(QObject):
                 ),
             }
         snapshot, identity = state.pop("_state", None), state.pop("_identity", None)
-        self._prepare_garden_board(snapshot, identity, state)
+        archive = state.pop("_archive", None)
+        self._prepare_garden_board(snapshot, identity, state, archive)
         self._gardenReady.emit(state)
         return state
 
@@ -1125,14 +1187,17 @@ class TaskController(QObject):
                 if action == "garden_command":
                     self._run_garden_command(store, data)
                     return
-                if action in ("garden_settings", "garden_tick", "garden_view"):
+                if action in ("garden_settings", "garden_tick", "garden_view", "garden_month"):
                     state = self._sync_garden(
                         store,
-                        checkpoint=live_focus and action != "garden_view",
+                        checkpoint=live_focus and action not in ("garden_view", "garden_month"),
                         enabled=data["enabled"] if action == "garden_settings" else None,
+                        month=data["month"] if action == "garden_month" else None,
                     )
                     self._ready.emit(
-                        None, state["error"] if action == "garden_settings" else "", action
+                        None,
+                        state["error"] if action in ("garden_settings", "garden_month") else "",
+                        action,
                     )
                     return
                 if (

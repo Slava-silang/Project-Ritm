@@ -5,13 +5,29 @@ import QtQuick.Layouts
 
 Item {
     id: pane
-    component UiCheck: RitmCheckBox { appearance: pane.appearance }
-    component UiTool: RitmButton { appearance: pane.appearance; compact: true; quiet: true }
-    component UiButton: RitmButton { appearance: pane.appearance }
-    component UiCombo: RitmComboBox { appearance: pane.appearance }
-    component UiField: RitmTextField { appearance: pane.appearance }
-    component UiDialog: RitmDialog { appearance: pane.appearance }
-    component UiFooter: RitmDialogFooter { appearance: pane.appearance }
+    component UiCheck: RitmCheckBox {
+        appearance: pane.appearance
+    }
+    component UiTool: RitmButton {
+        appearance: pane.appearance
+        compact: true
+        quiet: true
+    }
+    component UiButton: RitmButton {
+        appearance: pane.appearance
+    }
+    component UiCombo: RitmComboBox {
+        appearance: pane.appearance
+    }
+    component UiField: RitmTextField {
+        appearance: pane.appearance
+    }
+    component UiDialog: RitmDialog {
+        appearance: pane.appearance
+    }
+    component UiFooter: RitmDialogFooter {
+        appearance: pane.appearance
+    }
     required property var backend
     required property var appearance
     property bool active: visible
@@ -19,8 +35,17 @@ Item {
     readonly property var scene: backend.gardenScene
     readonly property bool narrow: width < appearance.dp(900)
     readonly property bool dialogsOpen: tools.visible || sale.visible || progress.visible
-    readonly property bool writable: board.ready && backend.garden.enabled && !backend.busy &&
-                                     !backend.gardenCommandPending
+    readonly property bool viewingArchive: archiveTab !== "current" || !!board.readOnly
+    readonly property bool shopVisible: !viewingArchive && tab === "shop"
+    readonly property var archive: backend.gardenArchive
+    readonly property var archiveRows: archiveTab === "favorites" ? archive.favorites : archive.recent
+    readonly property bool emptyFavorites: archiveTab === "favorites" && !archive.favorites.length
+    readonly property bool hasArchiveSelection: archiveTab === "current" || archiveRows.some(m => m.month === archive.selectedMonth)
+    readonly property bool hideArchiveField: emptyFavorites || !hasArchiveSelection
+    readonly property bool favorite: archive.favorites.some(m => m.month === archive.selectedMonth)
+    readonly property bool canNavigate: !backend.busy && !backend.gardenCommandPending
+    property string archiveTab: "current"
+    readonly property bool writable: !viewingArchive && board.ready && backend.garden.enabled && !backend.busy && !backend.gardenCommandPending
     property string selectedId: ""
     property string placingId: ""
     property string mode: "select"
@@ -28,8 +53,8 @@ Item {
     property string sourceIdentity: ""
     property string sourceMonth: ""
     property var hover: ({
-                             valid: false
-                         })
+            valid: false
+        })
     property int zoom: 1
     property string tab: "shop"
     property int oldOriginX: 0
@@ -39,12 +64,21 @@ Item {
     readonly property var preview: {
         const revision = board.revision;
         return placingId && hover.valid ? backend.gardenPlacement(placingId, hover.x, hover.y) : ({
-                                                                                                      error: "",
-                                                                                                      cells: []
-                                                                                                  });
+                error: "",
+                cells: []
+            });
     }
     signal leave
 
+    function openArchive(kind) {
+        cancelPlacement();
+        tools.close();
+        sale.close();
+        archiveTab = kind;
+        const rows = kind === "favorites" ? archive.favorites : archive.recent;
+        const month = kind === "current" || !rows.length ? "" : rows[kind === "recent" && rows.length > 1 ? 1 : 0].month;
+        backend.setGardenMonth(month);
+    }
     function cancelPlacement() {
         placingId = "";
         mode = "select";
@@ -65,8 +99,14 @@ Item {
     }
     function clickCell(px, py) {
         hover = backend.gardenCellAt(px, py);
-        if (!hover.valid || !writable)
+        if (!hover.valid)
             return;
+        if (!writable) {
+            selectedId = hover.itemId;
+            if (selectedId && narrow)
+                tools.open();
+            return;
+        }
         localError = "";
         if (placingId) {
             if (preview.error) {
@@ -74,22 +114,22 @@ Item {
                 return;
             }
             backend.gardenCommand({
-                                      action: "place",
-                                      id: placingId,
-                                      x: hover.x,
-                                      y: hover.y
-                                  });
+                action: "place",
+                id: placingId,
+                x: hover.x,
+                y: hover.y
+            });
         } else if (mode !== "select") {
             if (hover.itemId) {
                 localError = qsTr("Грунт меняется только на свободной клетке.");
                 return;
             }
             backend.gardenCommand({
-                                      action: "terrain",
-                                      x: hover.x,
-                                      y: hover.y,
-                                      terrain: mode
-                                  });
+                action: "terrain",
+                x: hover.x,
+                y: hover.y,
+                terrain: mode
+            });
         } else {
             selectedId = hover.itemId;
             if (selectedId && narrow)
@@ -98,10 +138,8 @@ Item {
         viewport.forceActiveFocus();
     }
     function clampView() {
-        viewport.contentX = Math.max(0, Math.min(viewport.contentX, viewport.contentWidth
-                                                 - viewport.width));
-        viewport.contentY = Math.max(0, Math.min(viewport.contentY, viewport.contentHeight
-                                                 - viewport.height));
+        viewport.contentX = Math.max(0, Math.min(viewport.contentX, viewport.contentWidth - viewport.width));
+        viewport.contentY = Math.max(0, Math.min(viewport.contentY, viewport.contentHeight - viewport.height));
     }
     function centerView() {
         viewport.contentX = Math.max(0, (viewport.contentWidth - viewport.width) / 2);
@@ -129,17 +167,17 @@ Item {
         clampView();
     }
     onVisibleChanged: if (!visible) {
-                          tools.close();
-                          sale.close();
-                          progress.close();
-                          cancelPlacement();
-                      }
+        tools.close();
+        sale.close();
+        progress.close();
+        cancelPlacement();
+    }
     onPreviewChanged: if (worldLoader.item)
-                          worldLoader.item.repaint()
+        worldLoader.item.repaint()
     onHoverChanged: if (worldLoader.item)
-                        worldLoader.item.repaint()
+        worldLoader.item.repaint()
     onSelectedChanged: if (worldLoader.item)
-                           worldLoader.item.repaint()
+        worldLoader.item.repaint()
     Connections {
         target: pane.backend
         function onGardenCommandDone(identifier: string) {
@@ -204,8 +242,7 @@ Item {
             }
             Label {
                 objectName: "gardenBalance"
-                text: pane.backend.garden.error ? qsTr("Монеты: —") : qsTr("Монеты: %1").arg(
-                                                      pane.backend.garden.balance)
+                text: pane.backend.garden.error ? qsTr("Монеты: —") : (pane.viewingArchive ? qsTr("Монеты сейчас: %1") : qsTr("Монеты: %1")).arg(pane.backend.garden.balance)
                 padding: pane.appearance.dp(8)
             }
             Label {
@@ -215,40 +252,107 @@ Item {
             }
             UiButton {
                 objectName: "gardenProgressWhenOff"
-                visible: pane.backend.garden.subscribed && (!pane.backend.garden.enabled ||
-                                                            !pane.board.ready || pane.narrow)
+                visible: pane.backend.garden.subscribed && (!pane.backend.garden.enabled || !pane.board.ready || pane.narrow)
                 text: qsTr("Прогресс")
                 onClicked: progress.open()
             }
             UiButton {
-                objectName: "closeGarden"
+                objectName: !pane.narrow || !pane.board.ready || pane.hideArchiveField ? "closeGarden" : ""
+                visible: !pane.narrow || !pane.board.ready || pane.hideArchiveField
                 text: qsTr("К задачам")
                 onClicked: pane.leave()
             }
         }
+        Flow {
+            Layout.fillWidth: true
+            visible: pane.backend.garden.enabled && !!pane.archive.currentMonth
+            spacing: pane.appearance.dp(6)
+            UiButton {
+                objectName: "gardenCurrentTab"
+                visible: !pane.narrow
+                text: qsTr("Текущий")
+                highlighted: pane.archiveTab === "current"
+                enabled: pane.canNavigate
+                onClicked: pane.openArchive("current")
+            }
+            UiButton {
+                objectName: "gardenArchiveTab"
+                visible: !pane.narrow
+                text: qsTr("Архив")
+                highlighted: pane.archiveTab === "recent"
+                enabled: pane.canNavigate
+                onClicked: pane.openArchive("recent")
+            }
+            UiButton {
+                objectName: "gardenFavoritesTab"
+                visible: !pane.narrow
+                text: qsTr("Избранное · %1/20").arg(pane.archive.count)
+                highlighted: pane.archiveTab === "favorites"
+                enabled: pane.canNavigate
+                onClicked: pane.openArchive("favorites")
+            }
+            UiCombo {
+                objectName: "gardenArchiveSection"
+                visible: pane.narrow
+                width: pane.appearance.dp(130)
+                model: [qsTr("Текущий"), qsTr("Архив"), qsTr("Избранное")]
+                currentIndex: ["current", "recent", "favorites"].indexOf(pane.archiveTab)
+                enabled: pane.canNavigate
+                onActivated: index => pane.openArchive(["current", "recent", "favorites"][index])
+                Accessible.name: qsTr("Раздел сада")
+            }
+            UiCombo {
+                objectName: "gardenArchiveMonth"
+                visible: pane.archiveTab !== "current" && pane.archiveRows.length > 0
+                width: pane.appearance.dp(pane.narrow ? 120 : 240)
+                model: pane.archiveRows
+                textRole: "title"
+                currentIndex: pane.archiveRows.findIndex(m => m.month === pane.archive.selectedMonth)
+                enabled: pane.canNavigate
+                onActivated: index => pane.backend.setGardenMonth(pane.archiveRows[index].month)
+                Accessible.name: qsTr("Месяц сада")
+            }
+            UiTool {
+                objectName: "gardenFavorite"
+                visible: !pane.hideArchiveField
+                text: pane.narrow ? (pane.favorite ? "★" : "☆") : pane.favorite ? qsTr("★ Убрать отметку") : qsTr("☆ В избранное")
+                Accessible.name: pane.favorite ? qsTr("Убрать сад из избранного") : qsTr("Добавить сад в избранное")
+                ToolTip.visible: hovered
+                ToolTip.text: pane.favorite ? qsTr("Убрать отметку · %1/20").arg(pane.archive.count) : qsTr("В избранное · %1/20").arg(pane.archive.count)
+                enabled: pane.canNavigate && pane.board.ready
+                onClicked: pane.backend.setGardenFavorite(!pane.favorite)
+            }
+        }
+        Label {
+            objectName: "gardenFavoritesEmpty"
+            Layout.fillWidth: true
+            visible: pane.backend.garden.enabled && pane.emptyFavorites
+            text: qsTr("Избранное пока пусто. Выберите сад в архиве и нажмите «В избранное».")
+            wrapMode: Text.Wrap
+        }
         Label {
             Layout.fillWidth: true
-            visible: pane.board.ready
-            text: pane.narrow ? qsTr("Взрослых: %1 / 80 · Занято: %2 / 80").arg(
-                                    pane.board.matureCells).arg(pane.board.plantedCells) : qsTr(
-                                    "%1 · Взрослых клеток: %2 / 80 · Растениями занято: %3 / 80").arg(
-                                    pane.board.month).arg(pane.board.matureCells).arg(
-                                    pane.board.plantedCells)
+            visible: pane.backend.garden.enabled && !pane.hasArchiveSelection && !pane.emptyFavorites
+            text: qsTr("Выберите месяц из списка или вернитесь в текущий сад.")
+            wrapMode: Text.Wrap
+        }
+        Label {
+            Layout.fillWidth: true
+            visible: pane.board.ready && !pane.hideArchiveField
+            text: (pane.viewingArchive ? qsTr("Только просмотр · ") : "") + (pane.narrow ? qsTr("Взрослых: %1 / 80 · Занято: %2 / 80").arg(pane.board.matureCells).arg(pane.board.plantedCells) : qsTr("%1 · Взрослых клеток: %2 / 80 · Растениями занято: %3 / 80").arg(pane.board.month).arg(pane.board.matureCells).arg(pane.board.plantedCells))
             wrapMode: Text.Wrap
         }
         Label {
             objectName: "gardenError"
             Layout.fillWidth: true
             visible: !!text
-            text: pane.backend.garden.error || pane.board.error || pane.localError || (
-                      pane.placingId ? pane.preview.error : "")
+            text: pane.backend.garden.error || pane.board.error || pane.localError || pane.backend.error || (pane.placingId ? pane.preview.error : "")
             color: pane.appearance.colors.warning
             wrapMode: Text.Wrap
         }
         Flow {
             Layout.fillWidth: true
-            visible: !!pane.backend.garden.error || !!pane.board.error
-                     || pane.backend.gardenCommandPending
+            visible: !!pane.backend.garden.error || !!pane.board.error || pane.backend.gardenCommandPending
             spacing: pane.appearance.dp(6)
             UiButton {
                 objectName: "retryGarden"
@@ -267,16 +371,16 @@ Item {
         Label {
             Layout.fillWidth: true
             visible: !pane.backend.garden.enabled
-            text: qsTr(
-                      "Учёт выключен. Включите его, чтобы открыть участок. Монеты и достижения сохраняются; выключенный промежуток не начисляется.")
+            text: qsTr("Учёт выключен. Включите его, чтобы открыть участок. Монеты и достижения сохраняются; выключенный промежуток не начисляется.")
             wrapMode: Text.Wrap
         }
         Flow {
             Layout.fillWidth: true
-            visible: pane.board.ready
+            visible: pane.board.ready && !pane.hideArchiveField
             spacing: pane.appearance.dp(4)
             UiCombo {
                 objectName: "gardenMode"
+                visible: !pane.viewingArchive
                 width: pane.appearance.dp(pane.narrow ? 130 : 170)
                 model: [qsTr("Выбор"), qsTr("Трава"), qsTr("Грядка"), qsTr("Вода")]
                 currentIndex: ["select", "grass", "tilled_soil", "water"].indexOf(pane.mode)
@@ -312,6 +416,12 @@ Item {
                 onClicked: tools.open()
             }
             UiButton {
+                objectName: pane.narrow && pane.board.ready && !pane.hideArchiveField ? "closeGarden" : ""
+                visible: pane.narrow
+                text: qsTr("К задачам")
+                onClicked: pane.leave()
+            }
+            UiButton {
                 objectName: "gardenCancelPlacement"
                 visible: !!pane.placingId || pane.mode !== "select"
                 text: qsTr("Отмена · Esc")
@@ -321,14 +431,13 @@ Item {
         Label {
             Layout.fillWidth: true
             visible: !!pane.placingId
-            text: pane.narrow ? qsTr("Посадка: %1 · Esc — отмена").arg(pane.selected.title || "") : qsTr(
-                                    "Выберите свободное основание для «%1». Предмет останется в инвентаре до размещения.").arg(
-                                    pane.selected.title || "")
+            text: pane.narrow ? qsTr("Посадка: %1 · Esc — отмена").arg(pane.selected.title || "") : qsTr("Выберите свободное основание для «%1». Предмет останется в инвентаре до размещения.").arg(pane.selected.title || "")
             wrapMode: Text.Wrap
         }
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            visible: !pane.hideArchiveField
             spacing: pane.appearance.dp(10)
             Rectangle {
                 Layout.fillWidth: true
@@ -366,9 +475,7 @@ Item {
                         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                             if (!pane.hover.valid)
                                 pane.keyboardCell(0, 0);
-                            const cell = (pane.scene.cells || []).find(c => c.x === pane.hover.x
-                                                                            && c.y
-                                                                            === pane.hover.y);
+                            const cell = (pane.scene.cells || []).find(c => c.x === pane.hover.x && c.y === pane.hover.y);
                             if (cell)
                                 pane.clickCell(cell.centerX, cell.centerY);
                             event.accepted = true;
@@ -401,14 +508,13 @@ Item {
                         pane.clampView();
                         event.accepted = true;
                     }
-                    Accessible.name: qsTr(
-                                         "Поле сада. Стрелки — прокрутка, Shift и стрелки — выбор клетки, Enter — действие, Escape — отмена.")
+                    Accessible.name: qsTr("Поле сада. Стрелки — прокрутка, Shift и стрелки — выбор клетки, Enter — действие, Escape — отмена.")
                     Loader {
                         id: worldLoader
                         objectName: "gardenWorld"
                         x: Math.max(0, (viewport.width - (pane.scene.width || 0) * pane.zoom) / 2)
                         y: Math.max(0, (viewport.height - (pane.scene.height || 0) * pane.zoom) / 2)
-                        active: pane.active && pane.backend.garden.enabled && pane.board.ready
+                        active: pane.active && pane.backend.garden.enabled && pane.board.ready && !pane.hideArchiveField
                         sourceComponent: Item {
                             id: world
                             width: pane.scene.width || 0
@@ -445,14 +551,12 @@ Item {
                                         cells = pane.preview.cells;
                                     else if (pane.selected.id && pane.selected.placed)
                                         cells = pane.selected.offsets.map(p => ({
-                                            x: pane.selected.x + p[0],
-                                            y: pane.selected.y + p[1]
-                                        }));
+                                                    x: pane.selected.x + p[0],
+                                                    y: pane.selected.y + p[1]
+                                                }));
                                     else if (pane.hover.valid)
                                         cells = [pane.hover];
-                                    ctx.strokeStyle = pane.preview.error
-                                            ? pane.appearance.colors.warning :
-                                              pane.appearance.colors.accent;
+                                    ctx.strokeStyle = pane.preview.error ? pane.appearance.colors.warning : pane.appearance.colors.accent;
                                     ctx.fillStyle = pane.preview.error ? "#55cc5555" : "#4477bb77";
                                     ctx.lineWidth = 2;
                                     for (const cell of cells) {
@@ -472,7 +576,7 @@ Item {
                             MouseArea {
                                 objectName: "gardenFieldMouse"
                                 anchors.fill: parent
-                                enabled: pane.writable
+                                enabled: pane.board.ready
                                 hoverEnabled: true
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                                 onPositionChanged: mouse => {
@@ -492,7 +596,7 @@ Item {
             Loader {
                 Layout.preferredWidth: pane.appearance.dp(290)
                 Layout.fillHeight: true
-                visible: !pane.narrow && pane.board.ready
+                visible: !pane.narrow && pane.board.ready && !pane.hideArchiveField
                 active: visible && pane.active
                 sourceComponent: panel
             }
@@ -519,8 +623,7 @@ Item {
                 Layout.fillWidth: true
                 Label {
                     Layout.fillWidth: true
-                    text: qsTr("Монеты: %1 · Удобрение: %2").arg(pane.backend.garden.balance).arg(
-                              pane.board.fertilizer)
+                    text: qsTr("Монеты: %1 · Удобрение: %2").arg(pane.backend.garden.balance).arg(pane.board.fertilizer)
                     wrapMode: Text.Wrap
                 }
                 UiTool {
@@ -532,12 +635,14 @@ Item {
             RowLayout {
                 UiButton {
                     objectName: "gardenShopTab"
+                    visible: !pane.viewingArchive
                     text: qsTr("Магазин")
-                    highlighted: pane.tab === "shop"
+                    highlighted: pane.shopVisible
                     onClicked: pane.tab = "shop"
                 }
                 UiButton {
                     objectName: "gardenInventoryTab"
+                    visible: !pane.viewingArchive
                     text: qsTr("Инвентарь")
                     highlighted: pane.tab === "inventory"
                     onClicked: pane.tab = "inventory"
@@ -565,11 +670,11 @@ Item {
                         wrapMode: Text.Wrap
                     }
                     Label {
-                        text: pane.selected.growing ? qsTr("Стадия %1 / 4").arg(
-                                                          pane.selected.stage) : qsTr("Украшение")
+                        text: pane.selected.growing ? qsTr("Стадия %1 / 4").arg(pane.selected.stage) : qsTr("Украшение")
                     }
                     Flow {
                         Layout.fillWidth: true
+                        visible: !pane.viewingArchive
                         spacing: pane.appearance.dp(4)
                         UiButton {
                             objectName: "gardenMove"
@@ -583,9 +688,9 @@ Item {
                             visible: !!pane.selected.placed
                             enabled: pane.writable
                             onClicked: pane.backend.gardenCommand({
-                                                                      action: "stash",
-                                                                      id: pane.selectedId
-                                                                  })
+                                action: "stash",
+                                id: pane.selectedId
+                            })
                         }
                         UiButton {
                             objectName: "gardenGrow"
@@ -593,9 +698,9 @@ Item {
                             visible: !!pane.selected.growing && pane.selected.stage < 4
                             enabled: pane.writable && !!pane.selected.canGrow
                             onClicked: pane.backend.gardenCommand({
-                                                                      action: "grow",
-                                                                      id: pane.selectedId
-                                                                  })
+                                action: "grow",
+                                id: pane.selectedId
+                            })
                         }
                         UiButton {
                             objectName: "gardenSell"
@@ -612,7 +717,7 @@ Item {
                     }
                     Label {
                         Layout.fillWidth: true
-                        visible: !!pane.selected.growing && !!pane.selected.growReason
+                        visible: !pane.viewingArchive && !!pane.selected.growing && !!pane.selected.growReason
                         text: pane.selected.growReason || ""
                         wrapMode: Text.Wrap
                     }
@@ -628,7 +733,7 @@ Item {
                     width: listScroll.availableWidth
                     spacing: pane.appearance.dp(8)
                     Repeater {
-                        model: pane.tab === "shop" ? pane.board.catalog : pane.board.items
+                        model: pane.shopVisible ? pane.board.catalog : pane.board.items
                         delegate: Rectangle {
                             id: card
                             required property var modelData
@@ -656,47 +761,26 @@ Item {
                                     }
                                     Label {
                                         Layout.fillWidth: true
-                                        text: pane.tab === "shop" ? qsTr("%1 монет · %2 кл.").arg(
-                                                                        card.modelData.price).arg(
-                                                                        card.modelData.cells) :
-                                                                    card.modelData.growing ? qsTr(
-                                                                                                 "Стадия %1/4 · %2").arg(
-                                                                                                 card.modelData.stage).arg(
-                                                                                                 card.modelData.placed
-                                                                                                 ? qsTr("На поле") :
-                                                                                                   qsTr("В запасе")) :
-                                                                                             card.modelData.placed
-                                                                                             ? qsTr("На поле") :
-                                                                                               qsTr("В запасе")
+                                        text: pane.shopVisible ? qsTr("%1 монет · %2 кл.").arg(card.modelData.price).arg(card.modelData.cells) : card.modelData.growing ? qsTr("Стадия %1/4 · %2").arg(card.modelData.stage).arg(card.modelData.placed ? qsTr("На поле") : qsTr("В запасе")) : card.modelData.placed ? qsTr("На поле") : qsTr("В запасе")
                                         wrapMode: Text.Wrap
                                     }
                                     Label {
                                         Layout.fillWidth: true
-                                        visible: pane.tab === "shop"
-                                        text: pane.tab === "shop" ? (card.modelData.growing ? qsTr(
-                                                                                                  "Побег 1/4 · ") :
-                                                                                              "") + card.modelData.terrain :
-                                                                    ""
+                                        visible: pane.shopVisible
+                                        text: pane.shopVisible ? (card.modelData.growing ? qsTr("Побег 1/4 · ") : "") + card.modelData.terrain : ""
                                         wrapMode: Text.Wrap
                                         font.pixelSize: pane.appearance.dp(12)
                                     }
                                     UiButton {
-                                        objectName: pane.tab === "shop" ? "gardenBuy_"
-                                                                          + card.modelData.kind :
-                                                                          "gardenChoose_"
-                                                                          + card.modelData.id
-                                        text: pane.tab === "shop" ? (card.modelData.canBuy ? qsTr(
-                                                                                                 "Купить") :
-                                                                                             qsTr("Не хватает монет")) :
-                                                                    qsTr("Выбрать")
-                                        enabled: pane.writable && (pane.tab !== "shop" || !
-                                                                   !card.modelData.canBuy)
+                                        objectName: pane.shopVisible ? "gardenBuy_" + card.modelData.kind : "gardenChoose_" + card.modelData.id
+                                        text: pane.shopVisible ? (card.modelData.canBuy ? qsTr("Купить") : qsTr("Не хватает монет")) : qsTr("Выбрать")
+                                        enabled: pane.board.ready && pane.canNavigate && (!pane.shopVisible || !!card.modelData.canBuy)
                                         onClicked: {
-                                            if (pane.tab === "shop")
+                                            if (pane.shopVisible)
                                                 pane.backend.gardenCommand({
-                                                                               action: "buy",
-                                                                               kind: card.modelData.kind
-                                                                           });
+                                                    action: "buy",
+                                                    kind: card.modelData.kind
+                                                });
                                             else
                                                 pane.chooseItem(card.modelData.id);
                                         }
@@ -707,13 +791,13 @@ Item {
                     }
                     Label {
                         Layout.fillWidth: true
-                        visible: pane.tab === "inventory" && !pane.board.items.length
-                        text: qsTr("Предметов пока нет. Купите побег в магазине.")
+                        visible: !pane.shopVisible && !pane.board.items.length
+                        text: pane.viewingArchive ? qsTr("В этом месяце предметов нет.") : qsTr("Предметов пока нет. Купите побег в магазине.")
                         wrapMode: Text.Wrap
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
-                        visible: pane.tab === "shop"
+                        visible: pane.shopVisible
                         Label {
                             text: qsTr("Удобрение · 10 монет за единицу")
                         }
@@ -743,9 +827,9 @@ Item {
                             text: qsTr("Купить удобрение")
                             enabled: pane.writable && quote.canBuy
                             onClicked: pane.backend.gardenCommand({
-                                                                      action: "buy_fertilizer",
-                                                                      quantity: quote.quantity
-                                                                  })
+                                action: "buy_fertilizer",
+                                quantity: quote.quantity
+                            })
                         }
                     }
                 }
@@ -769,9 +853,7 @@ Item {
         title: qsTr("Продать растение?")
         modal: true
         contentItem: Label {
-            text: qsTr(
-                      "«%1»: вернётся %2 монет — половина цены растения. Потраченное удобрение не возвращается.").arg(
-                      sale.itemTitle).arg(sale.refund)
+            text: qsTr("«%1»: вернётся %2 монет — половина цены растения. Потраченное удобрение не возвращается.").arg(sale.itemTitle).arg(sale.refund)
             textFormat: Text.PlainText
             wrapMode: Text.Wrap
         }
@@ -788,9 +870,9 @@ Item {
                 enabled: pane.writable
                 onClicked: {
                     pane.backend.gardenCommand({
-                                                   action: "sell",
-                                                   id: sale.itemId
-                                               });
+                        action: "sell",
+                        id: sale.itemId
+                    });
                     sale.close();
                 }
             }
