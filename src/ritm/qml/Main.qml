@@ -1500,6 +1500,11 @@ ApplicationWindow {
                                             color: window.appearance.colors.text
                                             font.weight: Font.Medium
                                         }
+                                    }
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: window.appearance.dp(38)
+                                        spacing: window.appearance.dp(6)
                                         Caption {
                                             text: branch.modelData.weight + "%"
                                         }
@@ -1524,42 +1529,50 @@ ApplicationWindow {
                                     }
                                     Repeater {
                                         model: branch.modelData.items
-                                        delegate: RowLayout {
+                                        delegate: ColumnLayout {
                                             id: leaf
                                             required property var modelData
                                             required property int index
                                             Layout.fillWidth: true
                                             Layout.leftMargin: window.appearance.dp(23)
-                                            UiCheck {
-                                                objectName: "itemCheck_" + branch.index + "_" + leaf.index
-                                                checked: leaf.modelData.completed
-                                                nextCheckState: () => leaf.modelData.completed ? Qt.Checked : Qt.Unchecked
-                                                onClicked: window.backend.setCompleted(leaf.modelData.id, !leaf.modelData.completed)
-                                            }
-                                            Label {
+                                            RowLayout {
                                                 Layout.fillWidth: true
-                                                textFormat: Text.PlainText
-                                                text: leaf.modelData.title
-                                                wrapMode: Text.Wrap
-                                                color: window.appearance.colors.secondary
+                                                UiCheck {
+                                                    objectName: "itemCheck_" + branch.index + "_" + leaf.index
+                                                    checked: leaf.modelData.completed
+                                                    nextCheckState: () => leaf.modelData.completed ? Qt.Checked : Qt.Unchecked
+                                                    onClicked: window.backend.setCompleted(leaf.modelData.id, !leaf.modelData.completed)
+                                                }
+                                                Label {
+                                                    Layout.fillWidth: true
+                                                    textFormat: Text.PlainText
+                                                    text: leaf.modelData.title
+                                                    wrapMode: Text.Wrap
+                                                    color: window.appearance.colors.secondary
+                                                }
                                             }
-                                            UiTool {
-                                                text: "⋯"
-                                                objectName: "renameItem_" + branch.index + "_" + leaf.index
-                                                Accessible.name: qsTr("Переименовать пункт")
-                                                onClicked: window.renameNode(leaf.modelData)
-                                            }
-                                            UiTool {
-                                                objectName: "itemAttachments_" + branch.index + "_" + leaf.index
-                                                text: qsTr("Файлы")
-                                                Accessible.name: qsTr("Вложения пункта")
-                                                onClicked: window.showAttachments(leaf.modelData)
-                                            }
-                                            UiTool {
-                                                objectName: "deleteItem_" + branch.index + "_" + leaf.index
-                                                text: "×"
-                                                Accessible.name: qsTr("Удалить пункт")
-                                                onClicked: window.askDelete(leaf.modelData)
+                                            Flow {
+                                                Layout.fillWidth: true
+                                                Layout.leftMargin: window.appearance.dp(38)
+                                                spacing: window.appearance.dp(6)
+                                                UiTool {
+                                                    text: "⋯"
+                                                    objectName: "renameItem_" + branch.index + "_" + leaf.index
+                                                    Accessible.name: qsTr("Переименовать пункт")
+                                                    onClicked: window.renameNode(leaf.modelData)
+                                                }
+                                                UiTool {
+                                                    objectName: "itemAttachments_" + branch.index + "_" + leaf.index
+                                                    text: qsTr("Файлы")
+                                                    Accessible.name: qsTr("Вложения пункта")
+                                                    onClicked: window.showAttachments(leaf.modelData)
+                                                }
+                                                UiTool {
+                                                    objectName: "deleteItem_" + branch.index + "_" + leaf.index
+                                                    text: "×"
+                                                    Accessible.name: qsTr("Удалить пункт")
+                                                    onClicked: window.askDelete(leaf.modelData)
+                                                }
                                             }
                                         }
                                     }

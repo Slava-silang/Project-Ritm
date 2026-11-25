@@ -1010,3 +1010,7 @@ Native Linux/Cinnamon/X11: исходные dusk 2 passed (27,96 с), итого
 Полный pytest всего проекта не повторялся для этой локальной правки навигации.
 Windows/Wayland/самостоятельная сборка отдельно не проверялись. Правила задач,
 SQLite v13/v6, зависимости и личные данные не менялись.
+
+## D09 — компоновка подзадач
+
+25 ноября: `.venv/bin/pytest -q tests/test_task_ui.py` — 15 passed (10,92 с). Native xcb test_qml_task_scenario_and_restart — 1 passed (8,19 с), /tmp/ritm-subtask-layout-native.log. Снимок wide.png осмотрен; заголовки и нижние панели действий разделены. qmllint всех QML без предупреждений, diff passed. Windows/полный pytest не запускались.
