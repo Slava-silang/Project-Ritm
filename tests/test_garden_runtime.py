@@ -167,7 +167,7 @@ def test_first_enable_failure_retries_from_durable_subscription(runtime, monkeyp
     assert sync()["balance"] == "100.00"
 
 
-def test_creation_uses_local_month_without_rotating_existing_garden(runtime):
+def test_creation_and_rotation_use_local_month(runtime):
     _, _, sync, now, profile = runtime
     now[0] = datetime(2026, 11, 30, 22, tzinfo=UTC)
     sync(enabled=True)
@@ -176,7 +176,7 @@ def test_creation_uses_local_month_without_rotating_existing_garden(runtime):
     now[0] += timedelta(days=40)
     sync()
     with GardenStore(profile / "garden.sqlite3") as garden:
-        assert garden.snapshot().garden.month == "2026-12"  # rotation belongs to T39e
+        assert garden.snapshot().garden.month == "2027-01"
 
 
 @pytest.mark.parametrize(

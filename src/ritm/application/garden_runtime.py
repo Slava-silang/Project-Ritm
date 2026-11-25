@@ -27,6 +27,7 @@ def empty_view():
         "months": [],
         "welcomed": False,
         "firstTask": False,
+        "currentMonth": "",
         "progress": {"currentMonth": "", "periods": [], "permanent": []},
     }
 
@@ -41,9 +42,10 @@ def sync_garden(source, profile, now, *, zone, enabled=None, checkpoint=False, w
         return empty_view()
     if status["subscribed"] and not path.is_file():
         raise ValueError("База сада отсутствует. Восстановите парную копию; новый сад не создан.")
+    local_month = now.astimezone(ZoneInfo(zone)).strftime("%Y-%m")
     with GardenStore(
         path,
-        **({} if path.exists() else {"month": now.astimezone(ZoneInfo(zone)).strftime("%Y-%m")}),
+        **({} if path.exists() else {"month": local_month}),
     ) as garden:
         service = GardenEventService(source, garden, zone=zone, award_achievements=True)
         if not status["subscribed"]:
@@ -56,6 +58,10 @@ def sync_garden(source, profile, now, *, zone, enabled=None, checkpoint=False, w
             if enabled is not None and enabled != status["enabled"]:
                 source.set_garden_source_enabled(enabled, now)
         service.drain()
+        # Delivery/checkpoint precede the visual transition. Financial history remains
+        # independent of snapshots; disabled periods need no background rotation.
+        if source.garden_source_status()["enabled"]:
+            garden.rotate_month(local_month, expected_identity=garden.source_snapshot()["identity"])
         state, achievements = garden.snapshot(), garden.achievement_snapshot()
         view = {
             **source.garden_source_status(),
@@ -75,9 +81,8 @@ def sync_garden(source, profile, now, *, zone, enabled=None, checkpoint=False, w
             ],
             "welcomed": achievements.welcomed,
             "firstTask": achievements.first_task,
-            "progress": achievement_view(
-                achievements, now.astimezone(ZoneInfo(zone)).strftime("%Y-%m")
-            ),
+            "currentMonth": state.garden.month,
+            "progress": achievement_view(achievements, max(local_month, state.garden.month)),
         }
         if with_state:
             view["_state"] = state

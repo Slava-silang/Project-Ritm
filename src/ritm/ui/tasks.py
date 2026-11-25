@@ -510,10 +510,13 @@ class TaskController(QObject):
             and not self._garden["error"]
             and self._focus_loaded
             and self._recovering is None
-            and active is not None
-            and active.running_since_us is not None
             and not self._closing
         )
+        # While idle, check the calendar at most once a minute. Confirmed live
+        # focus retains its five-second financial checkpoint cadence.
+        interval = 5000 if active is not None and active.running_since_us is not None else 60000
+        if self._garden_timer.interval() != interval:
+            self._garden_timer.setInterval(interval)
         if running and not self._garden_timer.isActive():
             self._garden_timer.start()
         elif not running:

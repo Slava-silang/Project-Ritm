@@ -26,6 +26,7 @@ Item {
     property string mode: "select"
     property string localError: ""
     property string sourceIdentity: ""
+    property string sourceMonth: ""
     property var hover: ({
                              valid: false
                          })
@@ -150,11 +151,12 @@ Item {
             }
         }
         function onGardenBoardChanged() {
-            if (pane.board.identity !== pane.sourceIdentity) {
+            if (pane.board.identity !== pane.sourceIdentity || pane.board.month !== pane.sourceMonth) {
                 pane.selectedId = "";
                 pane.cancelPlacement();
                 sale.close();
                 pane.sourceIdentity = pane.board.identity;
+                pane.sourceMonth = pane.board.month;
             }
             if (!pane.board.items.some(item => item.id === pane.selectedId))
                 pane.selectedId = "";

@@ -1,5 +1,16 @@
 # Окружение, запуск и выпуск
 
+## Проверка автоматической смены месяца T39e2a
+
+```bash
+uv run --locked --no-sync pytest -q tests/test_garden*.py tests/test_profile_backup.py tests/test_backup.py tests/test_focus_stability.py
+RITM_UI_PLATFORM=xcb uv run --locked --no-sync pytest -q tests/test_garden_month.py::test_month_rollover_worker_and_editor_gui
+```
+
+Фиксированные часы/временные профили, платные запросы и настоящие аккаунты не
+используются. Новый тест проверяет смену месяца без фокуса, очистку размещения,
+отказ старой команды, интервал timer 60/5 секунд и выключенный промежуток.
+
 ## Проверка хранения архива T39e1b
 
 ```bash
@@ -8,7 +19,7 @@ uv run --locked --no-sync pytest -q tests/test_garden*.py tests/test_profile_bac
 
 Все профили временные, внешние сервисы не используются. Схема сада теперь v7;
 миграция существующей базы выполняется автоматически без смены месяца.
-Просмотр архива и ротация из worker ещё не подключены (T39e2).
+Ротация из worker подключена в T39e2a; просмотр архива ещё впереди (T39e2b).
 
 ## Проверка модели месячного архива T39e1a
 
