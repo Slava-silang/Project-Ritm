@@ -1014,3 +1014,7 @@ SQLite v13/v6, зависимости и личные данные не меня
 ## D09 — компоновка подзадач
 
 25 ноября: `.venv/bin/pytest -q tests/test_task_ui.py` — 15 passed (10,92 с). Native xcb test_qml_task_scenario_and_restart — 1 passed (8,19 с), /tmp/ritm-subtask-layout-native.log. Снимок wide.png осмотрен; заголовки и нижние панели действий разделены. qmllint всех QML без предупреждений, diff passed. Windows/полный pytest не запускались.
+
+## План выпуска, 25 ноября
+
+Согласованы R01–R04, уточнения T30/T31/T41/T42 и RELEASE_CHECKS.md. Это будущие критерии, а не результаты аудита. В этом изменении проверены только согласованность ссылок/задач и git diff --check; тесты приложения не повторялись, код не менялся.
