@@ -1,4 +1,4 @@
-"""Управление аккаунтом без передачи токенов в QML или историю задач."""
+"""Управление подключениями без передачи токенов в QML или историю задач."""
 
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
@@ -10,6 +10,7 @@ from ritm.integrations.assistant import MockAdapter
 from ritm.integrations.chatgpt import DIRECT, ChatGPTAdapter, ChatGPTError, ChatGPTSession
 from ritm.integrations.copilot import CopilotError
 from ritm.integrations.copilot_account import CopilotAccount
+from ritm.integrations.ollama import OllamaAdapter, OllamaError, OllamaTransport, list_models
 from ritm.platform.credentials import CredentialVault
 
 
@@ -19,11 +20,13 @@ class ConnectionController(QObject):
     _browser = Signal(str)
     _code = Signal(str)
 
-    def __init__(self, profile, assistant, session=None, copilot=None):
+    def __init__(self, profile, assistant, session=None, copilot=None, ollama_transport=None):
         super().__init__()
         self.assistant = assistant
         self.session = session or ChatGPTSession(CredentialVault(profile))
         self.copilot = copilot or CopilotAccount(profile)
+        self._ollama_transport = ollama_transport or OllamaTransport()
+        self._ollama_models, self._ollama_model = [], ""
         self._login_code = ""
         self._code.connect(self._show_code)
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ritm-auth")
@@ -45,6 +48,7 @@ class ConnectionController(QObject):
             "model": self.session.model,
             "verified": self.session.verified,
             "warning": self.session.vault.warning,
+            "ollama": {"models": self._ollama_models, "model": self._ollama_model},
             "copilot": {
                 "installed": self.copilot.installed,
                 "connected": self.copilot.connected,
@@ -142,6 +146,44 @@ class ConnectionController(QObject):
         self.copilot.disconnect()
         self.changed.emit()
 
+    @Slot()
+    def ollamaModels(self):
+        def discover():
+            models = list_models(self._cancelled, transport=self._ollama_transport)
+            if self._cancelled.is_set():
+                raise OllamaError("cancelled")
+            self._ollama_models = models
+            if self._ollama_model not in {item["slug"] for item in models}:
+                self._ollama_model = ""
+
+        self._run(discover)
+
+    @Slot(str)
+    def selectOllamaModel(self, slug):
+        if self._busy or self.assistant.state["busy"] or self._closed:
+            return
+        if slug in {item["slug"] for item in self._ollama_models}:
+            self._ollama_model = slug
+            if self.assistant.adapter.connection.provider == "ollama":
+                self._activate(OllamaAdapter(slug, transport=self._ollama_transport))
+            self.changed.emit()
+
+    @Slot()
+    def useOllama(self):
+        if self._busy or self.assistant.state["busy"] or self._closed:
+            return
+        if self._ollama_model in {item["slug"] for item in self._ollama_models}:
+            self._activate(OllamaAdapter(self._ollama_model, transport=self._ollama_transport))
+
+    @Slot()
+    def disconnectOllama(self):
+        if self._busy or self.assistant.state["busy"] or self._closed:
+            return
+        if self.assistant.adapter.connection.provider == "ollama":
+            self.useMock()
+        self._ollama_models, self._ollama_model = [], ""
+        self.changed.emit()
+
     @Slot(str)
     def _show_code(self, code):
         if not self._closed and self._busy and not self._cancelled.is_set():
@@ -182,7 +224,7 @@ class ConnectionController(QObject):
             try:
                 operation()
                 error = ""
-            except (ChatGPTError, CopilotError) as failure:
+            except (ChatGPTError, CopilotError, OllamaError) as failure:
                 error = str(failure)
             except Exception:
                 error = "Не удалось выполнить подключение. Повторите попытку позже."
@@ -198,6 +240,12 @@ class ConnectionController(QObject):
         self.assistant._connecting = False
         if self.assistant.adapter.connection.provider == "copilot" and not self.copilot.connected:
             self._activate(MockAdapter())
+        if self.assistant.adapter.connection.provider == "ollama" and not self._ollama_model:
+            self._activate(MockAdapter())
+            self._error = error or (
+                "Выбранная локальная модель больше недоступна. Выберите другую; "
+                "сейчас включён тест без модели."
+            )
         self.changed.emit()
         self.assistant.changed.emit()
 

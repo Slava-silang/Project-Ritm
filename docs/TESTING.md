@@ -1,5 +1,12 @@
 # Проверка «Ритма»
 
+## T40d2 — панель локальных моделей, 26 ноября
+
+- Исходный набор `tests/test_ollama*.py tests/test_copilot*.py tests/test_chatgpt.py tests/test_assistant_prompt.py tests/test_assistant_drafts.py tests/test_file_context.py tests/test_task_updates.py` содержит 182 случая. Первый запуск прерван SIGTERM (143) без итогового отчёта, /tmp/ritm-t40d2-regression.log; причина не установлена.
+- Все случаи затем проверены отдельными завершёнными частями: `tests/test_ollama*.py tests/test_copilot*.py` — **92 passed (18,33 с)**, /tmp/ritm-t40d2-connections.log; `tests/test_chatgpt.py::test_connection_gui_with_fake_account` — **1 passed (5,56 с)**, /tmp/ritm-t40d2-chatgpt-gui.log; остальные пять файлов с `-k 'not test_connection_gui_with_fake_account'` — **89 passed, 1 deselected (27,22 с)**, /tmp/ritm-t40d2-context.log. Все 182 прошли по совокупности, единый законченный запуск не утверждается.
+- Новый `tests/test_ollama_ui.py`: отдельно **1 passed (6,32 с)**, /tmp/ritm-t40d2-gui.log; native xcb **1 passed (6,62 с)**, /tmp/ritm-t40d2-native.log. Реальные QML-контролы, fake-транспорт: на старте нет запросов, список не отправляет задачи, облачная запись скрыта; отказ сервера/отмена, явная активация, черновик без записи, отдельный scope/метка, смена модели и ChatGPT, отмена сохраняет выбор, неактивное отключение сохраняет провайдера, исчезнувшая модель отключена с сообщением, закрытие ожидающей операции. В «Космосе» при 640×480/150% нажатиями проверены отключение/список/активация, снимок осмотрен.
+- Ruff check/format 4 Python-файлов, qmllint LocalModelPane/ConnectionPane/AssistantDialog и diff passed. Временные профили/подменные серверы, без настоящей Ollama/генерации/CLI-входа/платных запросов. Windows и standalone не проверялись. Схемы/зависимости прежние; выпускной аудит не выполнялся.
+
 ## M01 — слияние дизайна «Космос», 26 ноября
 
 - `tests/test_appearance.py tests/test_focus_stability.py tests/test_garden_progress.py tests/test_garden_archive_ui.py tests/test_copilot_ui.py`: 15 passed/1 failed (163,50 с), /tmp/ritm-space-merge-tests.log. Единственный отказ — gardenProgressButton отсутствует в неактивном Loader: общая боковая панель «Мяты» переводит сад в компактную раскладку. Тест теперь использует видимую gardenProgressWhenOff. Повтор `tests/test_garden_progress.py`: 4 passed (38,55 с), /tmp/ritm-space-merge-progress-retry.log. Подробное окно достижений сохранено, не заменено старой краткой версией из дизайна.

@@ -28,13 +28,20 @@ ColumnLayout {
         UiCombo {
             objectName: "connectionProvider"
             Layout.fillWidth: true
-            model: [qsTr("ChatGPT"), qsTr("GitHub Copilot")]
+            model: [qsTr("ChatGPT"), qsTr("GitHub Copilot"), qsTr("Локальная модель (Ollama)")]
             enabled: pane.available
             onActivated: pane.providerIndex = currentIndex
         }
         CopilotPane {
             Layout.fillWidth: true
             visible: pane.providerIndex === 1
+            connection: pane.connection
+            agent: pane.agent
+            uiAppearance: pane.uiAppearance
+        }
+        LocalModelPane {
+            Layout.fillWidth: true
+            visible: pane.providerIndex === 2
             connection: pane.connection
             agent: pane.agent
             uiAppearance: pane.uiAppearance

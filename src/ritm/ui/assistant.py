@@ -167,6 +167,7 @@ class AssistantController(QObject):
                 "mock": "Тестовый помощник",
                 "chatgpt": "ChatGPT",
                 "copilot": "GitHub Copilot",
+                "ollama": "Локальная Ollama",
             }.get(self.adapter.connection.provider, self.adapter.connection.provider),
         }
         if self._skills.selected:

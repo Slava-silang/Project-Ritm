@@ -1,10 +1,13 @@
 # Окружение, запуск и выпуск
 
-## Локальная Ollama — T40d1
+## Локальная Ollama — T40d
 
 Адаптер реализован на стандартной библиотеке Python, отдельные зависимости
-не нужны. Ничего не устанавливает/не запускает автоматически. Панель будет
-в T40d2. Проверки: `.venv/bin/pytest -q tests/test_ollama.py tests/test_ollama_http.py`.
+не нужны. Ничего не устанавливает/не запускает автоматически. Панель доступна
+в «Помощнике» → «Подключения ИИ» → «Локальная модель (Ollama)».
+Запуск «Ритма» прежний; Ollama/модель пользователь устанавливает отдельно.
+GUI-проверка: `.venv/bin/pytest -q tests/test_ollama_ui.py`; native Linux —
+`RITM_UI_PLATFORM=xcb .venv/bin/pytest -q tests/test_ollama_ui.py`. Проверки: `.venv/bin/pytest -q tests/test_ollama.py tests/test_ollama_http.py`.
 Второй файл поднимает временный loopback-сервер; не требует установленной
 Ollama и не отправляет запросы настоящей модели. Детали — OLLAMA.md.
 

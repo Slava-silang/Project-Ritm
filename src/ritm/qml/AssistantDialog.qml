@@ -47,6 +47,7 @@ RitmDialog {
     property bool editing: false
     title: state.provider === "chatgpt" ? qsTr("Помощник — подписка ChatGPT")
         : state.provider === "copilot" ? qsTr("Помощник — GitHub Copilot")
+        : state.provider === "ollama" ? qsTr("Помощник — локальная Ollama")
         : qsTr("Тестовый помощник — без сети")
     modal: false
     dim: dialog.uiAppearance.usesSharedStyle
@@ -214,6 +215,8 @@ RitmDialog {
                     ? qsTr("Запрос и выбранная задача отправятся в OpenAI по вашему действию. Используется подписка ChatGPT. Изменения сохраняются после подтверждения.")
                     : dialog.state.provider === "copilot"
                     ? qsTr("Запрос и выбранные данные отправятся в GitHub Copilot по вашему действию. Используются лимиты вашего аккаунта. Изменения сохраняются после подтверждения.")
+                    : dialog.state.provider === "ollama"
+                    ? qsTr("Выбранные данные передаются установленной на этом компьютере Ollama. Используйте локальную модель с отключёнными облачными функциями. Изменения сохраняются после подтверждения.")
                     : qsTr("Сейчас используется локальный шаблон. Текст запроса и задач не передаётся модели. Подключение аккаунта — ниже.")
             }
             ConnectionPane {
