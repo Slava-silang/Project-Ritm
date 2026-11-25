@@ -45,7 +45,9 @@ RitmDialog {
     }
     property bool dirty: false
     property bool editing: false
-    title: state.provider === "chatgpt" ? qsTr("Помощник — подписка ChatGPT") : qsTr("Тестовый помощник — без сети")
+    title: state.provider === "chatgpt" ? qsTr("Помощник — подписка ChatGPT")
+        : state.provider === "copilot" ? qsTr("Помощник — GitHub Copilot")
+        : qsTr("Тестовый помощник — без сети")
     modal: false
     dim: dialog.uiAppearance.graphite
     Overlay.modeless: Rectangle {
@@ -205,6 +207,8 @@ RitmDialog {
                 wrapMode: Text.Wrap
                 text: dialog.state.provider === "chatgpt"
                     ? qsTr("Запрос и выбранная задача отправятся в OpenAI по вашему действию. Используется подписка ChatGPT. Изменения сохраняются после подтверждения.")
+                    : dialog.state.provider === "copilot"
+                    ? qsTr("Запрос и выбранные данные отправятся в GitHub Copilot по вашему действию. Используются лимиты вашего аккаунта. Изменения сохраняются после подтверждения.")
                     : qsTr("Сейчас используется локальный шаблон. Текст запроса и задач не передаётся модели. Подключение аккаунта — ниже.")
             }
             ConnectionPane {
@@ -432,7 +436,7 @@ RitmDialog {
             }
             UiButton {
                 objectName: "assistantGenerate"
-                text: dialog.state.busy ? qsTr("Подготовка…") : (dialog.state.provider === "chatgpt" ? qsTr("Отправить сообщение") : qsTr("Отправить в тестовый чат"))
+                text: dialog.state.busy ? qsTr("Подготовка…") : (dialog.state.provider === "mock" ? qsTr("Отправить в тестовый чат") : qsTr("Отправить сообщение"))
                 enabled: !dialog.state.busy && !dialog.state.hasDraft && !dialog.taskBackend.busy
                     && !dialog.state.filesLoading && (!dialog.agent || !dialog.agent.media.state.busy)
                     && (!dialog.agent || !dialog.agent.skills.state.busy)

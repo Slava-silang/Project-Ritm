@@ -14,127 +14,146 @@ ColumnLayout {
     component UiButton: RitmButton { appearance: pane.uiAppearance }
     component UiCombo: RitmComboBox { appearance: pane.uiAppearance }
     property var accountState: connection ? connection.state : ({busy: false})
+    property int providerIndex: 0
     property bool available: !!connection && !accountState.busy && !agent.state.busy
     UiButton {
         objectName: "connectionExpand"
-        text: controls.visible ? qsTr("Скрыть подключение") : qsTr("Подключение ChatGPT")
+        text: controls.visible ? qsTr("Скрыть подключение") : qsTr("Подключения ИИ")
         onClicked: controls.visible = !controls.visible
     }
     ColumnLayout {
         id: controls
         visible: false
         Layout.fillWidth: true
-        Label {
-            Layout.fillWidth: true
-            textFormat: Text.PlainText
-            wrapMode: Text.Wrap
-            text: pane.accountState.connected ? qsTr("Аккаунт: ") + (pane.accountState.email || qsTr("ChatGPT")) : qsTr("Аккаунт не подключён. Вход откроется в браузере. Нужен подходящий план; доступ проверяется у OpenAI.")
-        }
-        Label {
-            Layout.fillWidth: true
-            visible: !!pane.accountState.connected
-            wrapMode: Text.Wrap
-            text: pane.accountState.sharing ? qsTr("Разрешение использовать подписку получено.") : qsTr("Разрешение использовать подписку не получено. Запросы недоступны.")
-        }
-        Label {
-            Layout.fillWidth: true
-            visible: !!pane.accountState.warning || !!pane.accountState.error
-            text: pane.accountState.error || pane.accountState.warning || ""
-            textFormat: Text.PlainText
-            wrapMode: Text.Wrap
-            color: pane.uiAppearance.colors.warning
-        }
-        Flow {
-            Layout.fillWidth: true
-            spacing: pane.uiAppearance.dp(8)
-            UiButton {
-                objectName: "chatgptLogin"
-                text: qsTr("Continue with ChatGPT")
-                enabled: pane.available
-                onClicked: pane.connection.login()
-            }
-            UiButton {
-                objectName: "chatgptRestore"
-                text: qsTr("Восстановить сохранённый вход")
-                enabled: pane.available
-                onClicked: pane.connection.restore()
-            }
-            UiButton {
-                objectName: "chatgptModels"
-                text: qsTr("Загрузить доступные модели")
-                enabled: pane.available && !!pane.accountState.sharing
-                onClicked: pane.connection.models()
-            }
-        }
         UiCombo {
-            objectName: "chatgptModel"
+            objectName: "connectionProvider"
             Layout.fillWidth: true
-            model: pane.accountState.models || []
-            textRole: "display_name"
-            valueRole: "slug"
+            model: [qsTr("ChatGPT"), qsTr("GitHub Copilot")]
             enabled: pane.available
-            currentIndex: (pane.accountState.models || []).findIndex(x => x.slug === pane.accountState.model)
-            onActivated: pane.connection.selectModel(currentValue)
+            onActivated: pane.providerIndex = currentIndex
         }
-        Flow {
+        CopilotPane {
             Layout.fillWidth: true
-            spacing: pane.uiAppearance.dp(8)
-            UiButton {
-                objectName: "chatgptUse"
-                text: qsTr("Использовать ChatGPT")
-                enabled: pane.available && !!pane.accountState.model && !!pane.accountState.sharing
-                onClicked: pane.connection.useChatGPT()
-            }
-            UiButton {
-                objectName: "chatgptMock"
-                text: qsTr("Локальный тест без сети")
-                enabled: pane.available
-                onClicked: pane.connection.useMock()
-            }
-            UiButton {
-                objectName: "chatgptLogout"
-                text: qsTr("Выйти из аккаунта")
-                enabled: pane.available
-                onClicked: pane.connection.logout()
-            }
-            UiButton {
-                text: qsTr("Отменить подключение")
-                enabled: !!pane.accountState.busy
-                onClicked: pane.connection.cancel()
-            }
-            UiButton {
-                text: qsTr("Открыть ChatGPT для проверки лимитов")
-                onClicked: Qt.openUrlExternally("https://chatgpt.com/")
-            }
+            visible: pane.providerIndex === 1
+            connection: pane.connection
+            agent: pane.agent
+            uiAppearance: pane.uiAppearance
         }
-        UiCheck {
-            id: consent
-            objectName: "chatgptProbeConsent"
+        ColumnLayout {
             Layout.fillWidth: true
-            text: qsTr("Разрешаю тестовый запрос без моих задач; он расходует лимит подписки")
-            enabled: pane.available && !!pane.accountState.sharing && !!pane.accountState.model
-            contentItem: Label {
-                text: consent.text
-                leftPadding: consent.indicator.width + consent.spacing
+            visible: pane.providerIndex === 0
+            Label {
+                Layout.fillWidth: true
+                textFormat: Text.PlainText
+                wrapMode: Text.Wrap
+                text: pane.accountState.connected ? qsTr("Аккаунт: ") + (pane.accountState.email || qsTr("ChatGPT")) : qsTr("Аккаунт не подключён. Вход откроется в браузере. Нужен подходящий план; доступ проверяется у OpenAI.")
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: !!pane.accountState.connected
+                wrapMode: Text.Wrap
+                text: pane.accountState.sharing ? qsTr("Разрешение использовать подписку получено.") : qsTr("Разрешение использовать подписку не получено. Запросы недоступны.")
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: !!pane.accountState.warning || !!pane.accountState.error
+                text: pane.accountState.error || pane.accountState.warning || ""
+                textFormat: Text.PlainText
+                wrapMode: Text.Wrap
+                color: pane.uiAppearance.colors.warning
+            }
+            Flow {
+                Layout.fillWidth: true
+                spacing: pane.uiAppearance.dp(8)
+                UiButton {
+                    objectName: "chatgptLogin"
+                    text: qsTr("Continue with ChatGPT")
+                    enabled: pane.available
+                    onClicked: pane.connection.login()
+                }
+                UiButton {
+                    objectName: "chatgptRestore"
+                    text: qsTr("Восстановить сохранённый вход")
+                    enabled: pane.available
+                    onClicked: pane.connection.restore()
+                }
+                UiButton {
+                    objectName: "chatgptModels"
+                    text: qsTr("Загрузить доступные модели")
+                    enabled: pane.available && !!pane.accountState.sharing
+                    onClicked: pane.connection.models()
+                }
+            }
+            UiCombo {
+                objectName: "chatgptModel"
+                Layout.fillWidth: true
+                model: pane.accountState.models || []
+                textRole: "display_name"
+                valueRole: "slug"
+                enabled: pane.available
+                currentIndex: (pane.accountState.models || []).findIndex(x => x.slug === pane.accountState.model)
+                onActivated: pane.connection.selectModel(currentValue)
+            }
+            Flow {
+                Layout.fillWidth: true
+                spacing: pane.uiAppearance.dp(8)
+                UiButton {
+                    objectName: "chatgptUse"
+                    text: qsTr("Использовать ChatGPT")
+                    enabled: pane.available && !!pane.accountState.model && !!pane.accountState.sharing
+                    onClicked: pane.connection.useChatGPT()
+                }
+                UiButton {
+                    objectName: "chatgptMock"
+                    text: qsTr("Локальный тест без сети")
+                    enabled: pane.available
+                    onClicked: pane.connection.useMock()
+                }
+                UiButton {
+                    objectName: "chatgptLogout"
+                    text: qsTr("Выйти из аккаунта")
+                    enabled: pane.available
+                    onClicked: pane.connection.logout()
+                }
+                UiButton {
+                    text: qsTr("Отменить подключение")
+                    enabled: !!pane.accountState.busy
+                    onClicked: pane.connection.cancel()
+                }
+                UiButton {
+                    text: qsTr("Открыть ChatGPT для проверки лимитов")
+                    onClicked: Qt.openUrlExternally("https://chatgpt.com/")
+                }
+            }
+            UiCheck {
+                id: consent
+                objectName: "chatgptProbeConsent"
+                Layout.fillWidth: true
+                text: qsTr("Разрешаю тестовый запрос без моих задач; он расходует лимит подписки")
+                enabled: pane.available && !!pane.accountState.sharing && !!pane.accountState.model
+                contentItem: Label {
+                    text: consent.text
+                    leftPadding: consent.indicator.width + consent.spacing
+                    wrapMode: Text.Wrap
+                }
+            }
+            UiButton {
+                objectName: "chatgptProbe"
+                text: qsTr("Проверить запрос по подписке")
+                enabled: consent.enabled && consent.checked
+                onClicked: { consent.checked = false; pane.connection.probe(); }
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: !!pane.accountState.verified
+                text: qsTr("Запрос по подписке завершён успешно.")
                 wrapMode: Text.Wrap
             }
-        }
-        UiButton {
-            objectName: "chatgptProbe"
-            text: qsTr("Проверить запрос по подписке")
-            enabled: consent.enabled && consent.checked
-            onClicked: { consent.checked = false; pane.connection.probe(); }
-        }
-        Label {
-            Layout.fillWidth: true
-            visible: !!pane.accountState.verified
-            text: qsTr("Запрос по подписке завершён успешно.")
-            wrapMode: Text.Wrap
-        }
-        Label {
-            Layout.fillWidth: true
-            text: qsTr("Вход и список моделей ещё не подтверждают доступ к запросам. При лимите платный API не включается. Сейчас поддерживается одна активная регистрация аккаунта.")
-            wrapMode: Text.Wrap
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Вход и список моделей ещё не подтверждают доступ к запросам. При лимите платный API не включается. Сейчас поддерживается одна активная регистрация аккаунта.")
+                wrapMode: Text.Wrap
+            }
         }
     }
 }

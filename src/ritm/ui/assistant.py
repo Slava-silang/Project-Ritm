@@ -163,9 +163,11 @@ class AssistantController(QObject):
             "text": text,
             "time": datetime.now().astimezone().isoformat(),
             "scope": json.dumps(self._scope) if self._scope else "",
-            "label": "Тестовый помощник"
-            if self.adapter.connection.provider == "mock"
-            else "ChatGPT",
+            "label": {
+                "mock": "Тестовый помощник",
+                "chatgpt": "ChatGPT",
+                "copilot": "GitHub Copilot",
+            }.get(self.adapter.connection.provider, self.adapter.connection.provider),
         }
         if self._skills.selected:
             row["label"] += " · Навык: " + self._skills.selected.name

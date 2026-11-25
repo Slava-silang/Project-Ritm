@@ -1,5 +1,22 @@
 # Архитектурная основа
 
+## T40b2 — вход и панель Copilot
+
+`integrations/copilot_account.py` владеет isolated COPILOT_HOME/config-dir
+в profile/copilot-cli, официальным login subprocess и SDK discovery без
+создания сессии/запроса модели. stdout ограничен, в Qt передаётся только
+проверенный код входа. Авторизация остаётся в CLI/системном хранилище,
+stdin DEVNULL не разрешает plaintext fallback. GH_CONFIG_DIR отдельный;
+SDK-клиенты получают disable-builtin-mcps/no-custom-instructions.
+`CopilotAccount.adapter()` связывает генерацию с тем же home/config.
+Общие _watch/_cleanup вынесены из класса адаптера для discovery.
+ConnectionController использует свой последовательный worker/отмену и
+сигнал кода. При активации очищает черновик/контекст; неактивный ChatGPT
+не сбрасывает Copilot при смене модели/выходе. Локальное отключение не
+удаляет глобальный keychain CLI. CopilotPane — отдельная панель в списке
+подключений; safe bindings работают и без connection. Схемы/lock прежние.
+Ограничения/проверки/путь данных — COPILOT.md.
+
 ## T40b1 — адаптер Copilot
 
 `integrations/copilot.py` — синхронный Adapter для worker помощника,
@@ -10,8 +27,7 @@ SDK 0.1.32 — optional extra copilot, импортируется лениво; 
 start/auth/create/send; finally удаляет только свою сессию и останавливает
 клиент, при неуспехе stop вызывает force_stop. Временные cwd/config_dir,
 пустой available_tools и запрет permission/pre-tool, без BYOK.
-Контракт/ограничения/официальные исходники — COPILOT.md. UI не переключён,
-реальный CLI не запускался; вход и изоляция конфигурации остаются T40b2.
+Контракт/ограничения/официальные исходники — COPILOT.md. В этом первоначальном шаге UI ещё не подключался; продолжение — T40b2 выше.
 Схемы БД прежние.
 
 ## T40a — общий контекст помощника

@@ -8,6 +8,8 @@ from PySide6.QtGui import QDesktopServices
 
 from ritm.integrations.assistant import MockAdapter
 from ritm.integrations.chatgpt import DIRECT, ChatGPTAdapter, ChatGPTError, ChatGPTSession
+from ritm.integrations.copilot import CopilotError
+from ritm.integrations.copilot_account import CopilotAccount
 from ritm.platform.credentials import CredentialVault
 
 
@@ -15,11 +17,15 @@ class ConnectionController(QObject):
     changed = Signal()
     _ready = Signal(str)
     _browser = Signal(str)
+    _code = Signal(str)
 
-    def __init__(self, profile, assistant, session=None):
+    def __init__(self, profile, assistant, session=None, copilot=None):
         super().__init__()
         self.assistant = assistant
         self.session = session or ChatGPTSession(CredentialVault(profile))
+        self.copilot = copilot or CopilotAccount(profile)
+        self._login_code = ""
+        self._code.connect(self._show_code)
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ritm-auth")
         self._cancelled = Event()
         self._busy, self._error, self._closed = False, "", False
@@ -39,6 +45,14 @@ class ConnectionController(QObject):
             "model": self.session.model,
             "verified": self.session.verified,
             "warning": self.session.vault.warning,
+            "copilot": {
+                "installed": self.copilot.installed,
+                "connected": self.copilot.connected,
+                "login": self.copilot.login,
+                "models": self.copilot.models,
+                "model": self.copilot.model,
+                "code": self._login_code,
+            },
         }
 
     @Slot()
@@ -65,7 +79,8 @@ class ConnectionController(QObject):
         def operation():
             self.session.logout()
 
-        self.useMock()
+        if self.assistant.adapter.connection.provider == "chatgpt":
+            self.useMock()
         self._run(operation)
 
     @Slot(str)
@@ -73,7 +88,8 @@ class ConnectionController(QObject):
         if self._busy or self.assistant.state["busy"]:
             return
         if slug in {item["slug"] for item in self.session.models}:
-            self.assistant.newChat()
+            if self.assistant.adapter.connection.provider == "chatgpt":
+                self.assistant.newChat()
             self.session.model = slug
             self.session.verified = False
             self.changed.emit()
@@ -84,9 +100,53 @@ class ConnectionController(QObject):
         if self._busy or self.assistant.state["busy"]:
             return
         if self.session.model and self.state["sharing"]:
-            self.assistant.cancel()
-            self.assistant.adapter = ChatGPTAdapter(self.session)
-            self.assistant.changed.emit()
+            self._activate(ChatGPTAdapter(self.session))
+
+    def _activate(self, adapter):
+        self.assistant.cancel()
+        self.assistant.newChat()
+        self.assistant.adapter = adapter
+        self.assistant.changed.emit()
+
+    @Slot()
+    def copilotLogin(self):
+        self._run(lambda: self.copilot.sign_in(self._cancelled, self._code.emit))
+
+    @Slot()
+    def copilotRestore(self):
+        self._run(lambda: self.copilot.check(self._cancelled))
+
+    @Slot(str)
+    def selectCopilotModel(self, slug):
+        if self._busy or self.assistant.state["busy"] or self._closed:
+            return
+        if slug in {item["slug"] for item in self.copilot.models}:
+            self.copilot.model = slug
+            if self.assistant.adapter.connection.provider == "copilot":
+                self._activate(self.copilot.adapter())
+            self.changed.emit()
+
+    @Slot()
+    def useCopilot(self):
+        if self._busy or self.assistant.state["busy"] or self._closed:
+            return
+        if self.copilot.connected and self.copilot.model:
+            self._activate(self.copilot.adapter())
+
+    @Slot()
+    def disconnectCopilot(self):
+        if self._busy or self.assistant.state["busy"] or self._closed:
+            return
+        if self.assistant.adapter.connection.provider == "copilot":
+            self.useMock()
+        self.copilot.disconnect()
+        self.changed.emit()
+
+    @Slot(str)
+    def _show_code(self, code):
+        if not self._closed and self._busy and not self._cancelled.is_set():
+            self._login_code = code
+            self.changed.emit()
 
     @Slot()
     def useMock(self):
@@ -100,6 +160,8 @@ class ConnectionController(QObject):
     @Slot()
     def cancel(self):
         self._cancelled.set()
+        self._login_code = ""
+        self.changed.emit()
 
     @Slot(str)
     def _open_browser(self, url):
@@ -110,7 +172,7 @@ class ConnectionController(QObject):
     def _run(self, operation):
         if self._busy or self.assistant.state["busy"] or self._closed:
             return
-        self._busy, self._error = True, ""
+        self._busy, self._error, self._login_code = True, "", ""
         self.assistant._connecting = True
         self.assistant.changed.emit()
         self._cancelled = Event()
@@ -120,7 +182,7 @@ class ConnectionController(QObject):
             try:
                 operation()
                 error = ""
-            except ChatGPTError as failure:
+            except (ChatGPTError, CopilotError) as failure:
                 error = str(failure)
             except Exception:
                 error = "Не удалось выполнить подключение. Повторите попытку позже."
@@ -132,8 +194,10 @@ class ConnectionController(QObject):
     def _finish(self, error):
         if self._closed:
             return
-        self._busy, self._error = False, error
+        self._busy, self._error, self._login_code = False, error, ""
         self.assistant._connecting = False
+        if self.assistant.adapter.connection.provider == "copilot" and not self.copilot.connected:
+            self._activate(MockAdapter())
         self.changed.emit()
         self.assistant.changed.emit()
 

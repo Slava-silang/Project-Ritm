@@ -1,5 +1,14 @@
 # Проверка «Ритма»
 
+## T40b2 — вход/выбор Copilot, 25 ноября
+
+- `.venv/bin/pytest -q tests/test_copilot*.py tests/test_chatgpt.py tests/test_assistant_prompt.py tests/test_assistant_drafts.py tests/test_file_context.py tests/test_task_updates.py`: **140 passed (39,11 с)**; /tmp/ritm-t40b2-final.log. Первый прогон 137 passed/2 failed (40,38 с), /tmp/ritm-t40b2-regression.log: TypeError новой панели при connection=None в assistant/file-context GUI. Исправлены null bindings, полный набор повторён и пройден.
+- Вход на fake CLI: официальный login argv/изолированный home/gh, только код из ожидаемой строки; stdin DEVNULL, отмена/таймаут завершают дочерний процесс; ошибка не передаёт сырой вывод. SDK discovery без create/send, фильтр disabled-моделей, локальное отключение, файлы Copilot не входят в backup. SDK constructor подтверждает настройки без запуска.
+- GUI: вход/отмена/ошибка/код/модели, явная активация, текстовый черновик без записи задачи, разные provider/model scopes и метки, возврат к ChatGPT/демо, восстановление, закрытие во время входа. После полного набора GUI дополнен проверками неактивного ChatGPT и отсутствующей optional-зависимости: **1 passed (5,42 с)**, /tmp/ritm-t40b2-gui-final.log. Native Linux xcb: первоначально **1 passed (5,04 с)**, затем расширенный сценарий **1 passed (5,39 с)**, /tmp/ritm-t40b2-native-final.log. Дополнительно реальные нажатия отключения/восстановления/активации при 640×480/150%: offscreen 1 passed (6,07 с), native xcb 1 passed (5,92 с), /tmp/ritm-t40b2-narrow-actions.log и /tmp/ritm-t40b2-native-narrow.log. Скриншот во временном профиле осмотрен.
+- Настоящий bundled CLI 1.0.2 в отдельном temp-профиле, use_logged_in_user=False: start/auth status=false/force_stop/loop exit passed; /tmp/ritm-t40b2-probe-host.log. Ни login, ни list_models, ни generate не вызывались. Его --help/login --help подтвердили COPILOT_HOME/config-dir, disable-builtin-mcps/no-custom-instructions и login без --device-code (этого флага у закреплённой версии нет).
+- Ограниченная среда: probe таймаутился на start и зависал при shutdown_default_executor. Минимальный `asyncio.run(asyncio.to_thread(lambda: 1))` без SDK также timeout за 4 с; тот же пример и probe в обычной среде passed. Это ограничение среды, не исправление SDK в приложении. Зависший созданный нами probe завершён адресно; диагностические сценарии не включены в репозиторий.
+- Ruff check/format девяти Python-файлов, qmllint четырёх QML, diff и ignore двух путей copilot-cli passed. Dependencies/lock/схемы БД прежние. Реальный OAuth/модель/квоты, Windows, standalone и аудит R02 не выполнялись.
+
 ## T40b1 — адаптер Copilot, 25 ноября
 
 - Финальный набор `.venv/bin/pytest -q tests/test_copilot.py tests/test_copilot_sdk.py tests/test_assistant_prompt.py tests/test_file_context.py tests/test_task_updates.py`: **77 passed (20,72 с)**, /tmp/ritm-t40b1-regression.log.

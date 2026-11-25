@@ -2,6 +2,50 @@
 
 Обновлено: 25 ноября 2026 года.
 
+## T40b2 — Copilot в окне помощника
+
+Готов T40b: «Помощник» → «Подключения ИИ» → GitHub Copilot.
+Официальный bundled CLI login открывает браузер, Qt показывает только
+проверенный одноразовый код. После входа SDK проверяет аккаунт/модели,
+пользователь отдельно выбирает/активирует подключение. Новый CopilotAccount
+использует profile/copilot-cli, отдельный COPILOT_HOME/GH_CONFIG_DIR и
+--config-dir; отключены builtin MCP/custom instructions. Приложение не
+читает токен, stdin DEVNULL не разрешает plaintext fallback. На запуске
+никакой вход/SDK-процесс не запускается автоматически.
+
+Работают отмена/таймаут, текстовый адаптер в том же isolated home,
+локальное отключение/проверка сохранённого входа. Отключение не удаляет
+общую запись keychain CLI и не отзывает разрешение GitHub — это объяснено
+в панели. Контекст/черновик очищаются при переключении, история помечает
+Copilot отдельно. Модель/выход неактивного ChatGPT не сбрасывают Copilot.
+Заголовки/кнопки помощника и подпись планирования учитывают выбранный
+сервис. Новая панель безопасно загружается и без connection.
+
+Проверки: финальный затронутый набор 140 passed (39,11 с),
+/tmp/ritm-t40b2-final.log. Первые 137 passed/2 failed выявили null bindings
+новой панели в старых GUI-сценариях; исправлены, полный набор прошёл.
+Дополненный GUI 1 passed (5,42 с), native xcb 1 passed (5,39 с),
+проверка кнопок при 640×480/150% 1 passed (6,07 с), итоговый native narrow
+1 passed (5,92 с). Ruff/format 9 Python-файлов, qmllint 4 QML, diff и
+ignore 2 путей passed. Backup не включает synthetic файлы Copilot.
+Настоящий CLI 1.0.2: start/auth status=false/force_stop/loop exit прошли
+в temp-профиле без входа или запроса к модели. В ограниченной среде probe
+зависал на закрытии asyncio executor; то же воспроизвёл минимальный Python
+без SDK, оба примера прошли в обычной среде. Детали TESTING/COPILOT.
+Реальный OAuth/запрос/квоты, Windows, standalone и аудит не проверены.
+
+Изменены .gitignore, integrations/copilot.py; новые copilot_account.py,
+CopilotPane.qml, три тестовых файла; connection.py/assistant.py и
+ConnectionPane/AssistantDialog/PlanningDialog, docs/COPILOT/ARCHITECTURE/
+DEVELOPMENT/TESTING/TASKS/STATUS. Зависимости/lock/схемы БД прежние,
+assets/theme_* пользователя не тронуты. Локальный коммит:
+`feat: connect Copilot account and provider selection` (ID — git log).
+Для исходников с optional SDK: `uv run --locked --extra copilot ritm`;
+при необходимости сохранить средства сборки добавить --group packaging.
+Следующий T40c — проверить официальный способ подключения Claude,
+затем реализовать поддерживаемый вариант без платного fallback.
+R02–R04/выпуск и бабочки остаются отложенными по указанию пользователя.
+
 ## T40b1 — текстовый адаптер Copilot
 
 Готов следующий ограниченный шаг desktop: integrations/copilot.py использует

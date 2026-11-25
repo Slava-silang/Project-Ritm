@@ -140,7 +140,7 @@ class CopilotAdapter:
                         raise CopilotError("response")
                     return content
 
-                return await self._watch(exchange(), cancelled)
+                return await _watch(exchange(), cancelled, self._timeout)
             except CopilotError:
                 raise
             except TimeoutError:
@@ -151,34 +151,38 @@ class CopilotAdapter:
             finally:
                 if client is not None:
                     if session is not None:
-                        await self._cleanup(session.abort)
-                        await self._cleanup(lambda: client.delete_session(session.session_id))
-                    if not await self._cleanup(client.stop):
-                        await self._cleanup(client.force_stop)
+                        await _cleanup(session.abort, self._cleanup_timeout)
+                        await _cleanup(
+                            lambda: client.delete_session(session.session_id), self._cleanup_timeout
+                        )
+                    if not await _cleanup(client.stop, self._cleanup_timeout):
+                        await _cleanup(client.force_stop, self._cleanup_timeout)
 
-    async def _watch(self, coroutine, cancelled):
-        task = asyncio.create_task(coroutine)
-        deadline = asyncio.get_running_loop().time() + self._timeout
-        try:
-            while True:
+
+async def _watch(coroutine, cancelled, timeout):
+    task = asyncio.create_task(coroutine)
+    deadline = asyncio.get_running_loop().time() + timeout
+    try:
+        while True:
+            if cancelled.is_set():
+                raise CopilotError("cancelled")
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                raise CopilotError("timeout")
+            done, _ = await asyncio.wait({task}, timeout=min(0.05, remaining))
+            if done:
                 if cancelled.is_set():
                     raise CopilotError("cancelled")
-                remaining = deadline - asyncio.get_running_loop().time()
-                if remaining <= 0:
-                    raise CopilotError("timeout")
-                done, _ = await asyncio.wait({task}, timeout=min(0.05, remaining))
-                if done:
-                    if cancelled.is_set():
-                        raise CopilotError("cancelled")
-                    return task.result()
-        finally:
-            if not task.done():
-                task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+                return task.result()
+    finally:
+        if not task.done():
+            task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
 
-    async def _cleanup(self, operation):
-        try:
-            await asyncio.wait_for(operation(), timeout=self._cleanup_timeout)
-            return True
-        except Exception:
-            return False
+
+async def _cleanup(operation, timeout):
+    try:
+        await asyncio.wait_for(operation(), timeout=timeout)
+        return True
+    except Exception:
+        return False
