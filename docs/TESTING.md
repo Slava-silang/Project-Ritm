@@ -1,5 +1,14 @@
 # Проверка «Ритма»
 
+## T40a — общий контекст помощника, 25 ноября
+
+- `.venv/bin/pytest -q tests/test_assistant_prompt.py tests/test_file_context.py tests/test_media.py tests/test_skills.py tests/test_planning.py tests/test_task_updates.py tests/test_mail_assistant.py`: 95 passed / 2 failed, 65,07 с; /tmp/ritm-t40a-tests.log.
+- Отказы: запрет socket в тесте inline-вложений и недоступная assistantGenerate в GUI media. Повтор этих двух тестов с доступом к локальному подменному серверу: 2 passed, 11,79 с; /tmp/ritm-t40a-media-retry.log. Причина первого GUI-отказа отдельно не установлена; приложение/GUI-тест ради него не менялись.
+- `tests/test_chatgpt.py`: 24 passed, 6,36 с; /tmp/ritm-t40a-chatgpt.log. Всего 121 сценарий пройден по совокупности; повтор одного и того же набора целиком не выполнялся.
+- Новые 7 случаев: пять операций через общий builder/ChatGPT, свежий снимок и отсутствие active_tasks вне update, история/материалы остаются JSON-данными. Дополнительно сравнение prompt/instructions старого HEAD и нового адаптера: 5 операций совпали.
+- Ruff check/format пяти Python-файлов и diff passed. Подменные адаптеры/временные профили, без настоящего входа и платных запросов. Windows, ручная GUI-проверка и новые провайдеры не проверялись; это не аудит безопасности.
+
+
 ## T39e3 — экспорт сада, 25 ноября
 
 - Первые 14 сценариев без GUI: **14 passed (0,76 с)**,

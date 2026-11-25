@@ -16,7 +16,8 @@ from ritm.application.mail_proposals import MailProposalService
 from ritm.domain.calendar import WorkBlock
 from ritm.domain.tasks import Task
 from ritm.integrations.assistant import ChatTurn, Request
-from ritm.integrations.chatgpt import MAIL_INSTRUCTIONS, ChatGPTAdapter
+from ritm.integrations.assistant_prompt import MAIL_INSTRUCTIONS
+from ritm.integrations.chatgpt import ChatGPTAdapter
 from ritm.storage.sqlite import TaskStore
 
 

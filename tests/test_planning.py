@@ -21,7 +21,8 @@ from ritm.application.planning import (
 from ritm.domain.calendar import WorkBlock
 from ritm.domain.tasks import Task
 from ritm.integrations.assistant import MockAdapter, Request
-from ritm.integrations.chatgpt import SCHEDULE_INSTRUCTIONS, ChatGPTAdapter
+from ritm.integrations.assistant_prompt import SCHEDULE_INSTRUCTIONS
+from ritm.integrations.chatgpt import ChatGPTAdapter
 from ritm.storage import working_hours
 from ritm.storage.sqlite import TaskStore
 from ritm.storage.working_hours import load_hours, save_hours
