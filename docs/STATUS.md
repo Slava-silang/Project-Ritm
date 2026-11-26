@@ -1,5 +1,32 @@
 # Текущее состояние
 
+## T41b2b1 — операции/квитанции завершены, 26 ноября
+
+Готов pure integrations/sync_operations.py: строгий Operation/Receipt,
+постоянные op/device/server UUID, строковые base revision/epoch, canonical hash.
+Квитанция без payload/текста, проверяются связь и положительный переход revision/
+epoch. Delete/stop — null; prune — только оставшееся дерево и барьер; restore
+явный. rollover_record даёт детерминированный rule/day root и потомков с пустыми
+отметками, проверяется правильный день. Источник не меняется. Это кандидат,
+не реальный межустройственный генератор: desktop по-прежнему использует старые
+случайные ID, функции не подключены к приложению.
+
+Четыре пары синтетических JSON и tests/test_sync_operations.py. Контракт с
+границами — docs/SYNC_OPERATIONS.md. 384 passed/1 GUI deselected (3,15 с),
+/tmp/ritm-sync-ops-verified.log, Ruff check/format двух Python, diff passed.
+Промежуточный отказ был у теста prune с неверной суммой весов, исправлен через
+доменную функцию, детали TESTING. GUI/Windows/сервер/реальная сеть не запускались.
+Нет миграций/зависимостей/работы с личным профилем; tasks v14/garden v7 прежние.
+
+Изменены новый module/test/fixtures(sync_operations), docs/SYNC_OPERATIONS,
+ARCHITECTURE/DEVELOPMENT/SYNC_PROTOCOL/TASKS/TESTING/STATUS. assets/theme_* прежние.
+Локальный коммит `feat: define sync operations and receipt validation` (ID — git log).
+T41b2b in_progress, T41b2b1 done. Следующее действие T41b2b2 — страницы/курсор/
+ревизия набора/согласованные эффекты. Реальный ledger/owner/CAS, общая дата,
+история по (rule_id,day), зависимости офлайн-операций и применение — впереди.
+Затем T41b3 проекция/retention, T41c outbox/inbound. До inbound согласовать
+награды сада за новые выполнения с другого устройства. Сервер/публикация отдельно.
+
 ## T41b2a — формат регулярности завершён, 26 ноября
 
 Чистый sync_codec дополнен RegularRecord: отдельный UUID правила, первый день,

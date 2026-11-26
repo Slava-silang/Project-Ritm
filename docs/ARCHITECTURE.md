@@ -1,5 +1,15 @@
 # Архитектурная основа
 
+## T41b2b1 — чистые операции/квитанции
+
+integrations/sync_operations.py проверяет операции create/put/restore/delete/
+prune/stop_regular/rollover и фиксированные квитанции без текста. Canonical hash
+связывает квитанцию с op/device/server; verify_receipt проверяет переходы
+ревизии/барьера, не заменяет сервер/owner/ledger. rollover_record даёт одинаковые
+UUID для rule/day и сбрасывает дерево, но не подключён к desktop. Runtime БД/
+зависимости прежние. Поля/границы — SYNC_OPERATIONS.md. Следующий T41b2b2 —
+страницы/согласованность, затем серверные переходы/outbox и общая дата.
+
 ## T41b2a — запись регулярного расписания в sync
 
 sync_codec.RegularRecord хранит id/first_day/interval_days/current_day/current

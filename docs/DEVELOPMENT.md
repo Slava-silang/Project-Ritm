@@ -1,5 +1,13 @@
 # Окружение, запуск и выпуск
 
+## Проверки операций sync — T41b2b1
+
+`.venv/bin/pytest -q tests/test_sync_operations.py tests/test_sync_codec.py tests/test_sync_recurrence.py tests/test_recurrence.py tests/test_task_weights.py tests/test_task_completion.py tests/test_calendar_blocks.py -k 'not gui'`
+
+Синтетические записи/временные базы; нет сервера/сети/аккаунтов. Контракт —
+SYNC_OPERATIONS.md, примеры — tests/fixtures/sync_operations/v1. Локальное
+приложение пока не создаёт эти операции. Новых зависимостей/миграций нет.
+
 ## Контракт регулярных задач — T41b2a
 
 `.venv/bin/pytest -q tests/test_sync_codec.py tests/test_sync_recurrence.py tests/test_recurrence.py tests/test_task_weights.py tests/test_task_completion.py tests/test_calendar_blocks.py -k 'not gui'`

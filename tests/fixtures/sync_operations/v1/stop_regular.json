@@ -1,0 +1,1 @@
+{"data":{"action":"stop_regular","base_revision":"4","delete_epoch":"2","device_id":"00000000-0000-0000-0000-000000000065","op_id":"00000000-0000-0000-0000-000000000068","payload":null,"server_id":"00000000-0000-0000-0000-000000000066","target_id":"00000010-0000-4000-8000-000000000000","target_kind":"regular"},"kind":"operation","version":1}
