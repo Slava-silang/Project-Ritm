@@ -1,5 +1,12 @@
 # Окружение, запуск и выпуск
 
+## Чистые проверки синхронизации — T41b1
+
+`.venv/bin/pytest -q tests/test_sync_codec.py tests/test_task_weights.py tests/test_task_completion.py tests/test_calendar_blocks.py`
+
+Не требуют сервера/учётной записи и не читают пользовательский профиль.
+Описание формата — [SYNC_ENTITIES.md](SYNC_ENTITIES.md).
+
 ## Локальная Ollama — T40d
 
 Адаптер реализован на стандартной библиотеке Python, отдельные зависимости
