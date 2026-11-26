@@ -1620,6 +1620,7 @@ ApplicationWindow {
         property var scales: [100, 125, 150]
         readonly property string selectedTheme: themeKeys[appearanceTheme.currentIndex] ?? ""
         readonly property bool themeAvailable: selectedTheme === "space" || selectedTheme === "system"
+            || selectedTheme === "jungle"
             || window.backend.garden.themes.indexOf(selectedTheme) >= 0
         property bool attempted: false
         title: qsTr("Оформление")
@@ -1652,7 +1653,7 @@ ApplicationWindow {
                             return qsTr("Тема доступна.");
                         if (key === window.backend.appearance.theme)
                             return qsTr("Ранее выбранная тема сохранена. После смены повторный выбор потребует достижения.");
-                        return qsTr("Откроется за 15 выполненных главных задач в саду.");
+                        return qsTr("Тема открывается за достижение сада.");
                     }
                 }
                 Caption { text: qsTr("Масштаб интерфейса") }

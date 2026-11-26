@@ -14,7 +14,7 @@ from ritm.app import load_window
 from ritm.application.garden_runtime import sync_garden
 from ritm.application.tasks import TaskService
 from ritm.domain.tasks import Task
-from ritm.storage.appearance import save_appearance
+from ritm.storage.appearance import load_appearance, save_appearance
 from ritm.storage.backup import create_backup
 from ritm.storage.garden import GardenStore
 from ritm.storage.sqlite import TaskStore
@@ -74,10 +74,6 @@ try:
     controller.selectTask(str(task.id))
     if mode == "live":
         assert not controller.garden["enabled"] and not (profile / "garden.sqlite3").exists()
-        controller.saveAppearance("jungle", 100)
-        gui.idle()
-        assert "достижение" in controller.error
-        assert controller.appearance["theme"] == "light"
         gui.click("gardenButton")
         gui.click("gardenEnabled")
         assert controller.garden["enabled"] and controller.garden["balance"] == "100.00"
@@ -148,9 +144,9 @@ try:
         gui.click("closeGarden")
         gui.click("appearanceButton")
         gui.choose("appearanceTheme", 1)
-        assert not gui.item("saveAppearance").isEnabled()
-        assert "15" in gui.item("themeUnlockHint").property("text")
-        gui.screenshot(profile / "garden-theme-locked.png")
+        assert gui.item("saveAppearance").isEnabled()
+        assert "доступна" in gui.item("themeUnlockHint").property("text")
+        gui.screenshot(profile / "garden-theme-preview.png")
         gui.click("cancelAppearance")
     elif mode == "recovery":
         assert controller.focus["recovery"]
@@ -197,6 +193,12 @@ try:
         gui.click("saveAppearance")
         assert controller.appearance["theme"] == "space"
         assert "space" not in controller.garden["themes"]
+        gui.click("appearanceButton")
+        gui.choose("appearanceTheme", 1)
+        gui.click("saveAppearance")
+        assert controller.appearance == {"theme": "jungle", "scale": 100}
+        assert load_appearance(profile) == controller.appearance
+        assert "jungle" not in controller.garden["themes"]
         assert not (profile / "garden.sqlite3").exists()
     else:
         controller.setGardenEnabled(True)
