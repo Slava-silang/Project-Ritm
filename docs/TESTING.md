@@ -1,5 +1,17 @@
 # Проверка «Ритма»
 
+## T41a1 — проверка проектного предложения, 26 ноября
+
+Документы SYNC_PROTOCOL/GLOSSARY сверены с S16/TASKS и текущими Task/Subtask/
+WorkBlock, storage/codec.py, archive_node/restore_entry и связями календаря.
+Исследованы официальные Telegram initData/auth_date/initDataUnsafe, OWASP
+Session Management и FastAPI deployment; источники приведены в предложении.
+Проверены уникальность новых ID задач/сценариев, наличие локальных ссылок и
+чётное число Markdown-fence, git diff --check. Это проверка документации.
+SYNC01–SYNC14 — будущая матрица, не пройденные тесты. Runtime/БД/зависимости
+не менялись; pytest/GUI/Windows/реальная авторизация/аудит не запускались.
+Сервер/бот/репозиторий/учётные данные/размещение не создавались.
+
 ## T40d2 — панель локальных моделей, 26 ноября
 
 - Исходный набор `tests/test_ollama*.py tests/test_copilot*.py tests/test_chatgpt.py tests/test_assistant_prompt.py tests/test_assistant_drafts.py tests/test_file_context.py tests/test_task_updates.py` содержит 182 случая. Первый запуск прерван SIGTERM (143) без итогового отчёта, /tmp/ritm-t40d2-regression.log; причина не установлена.
