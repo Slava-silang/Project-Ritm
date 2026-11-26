@@ -26,6 +26,39 @@ Item {
         }
     }
 
+    Canvas {
+        id: stem
+        objectName: "jungleLeafStem"
+        visible: frog.visible
+        x: frog.x + frog.width * 0.90
+        width: canopy.appearance.dp(canopy.compactWildlife ? 47 : 85)
+        height: frog.y + frog.height * 0.50
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        onPaint: {
+            const ctx = getContext("2d");
+            ctx.clearRect(0, 0, width, height);
+            const green = ctx.createLinearGradient(0, height, width, 0);
+            green.addColorStop(0, "#879941");
+            green.addColorStop(0.42, "#52622d");
+            green.addColorStop(1, "#283a19");
+            ctx.fillStyle = green;
+            ctx.beginPath();
+            ctx.moveTo(0, height - 4);
+            ctx.bezierCurveTo(width * 0.44, height - 10, width * 0.68, height * 0.64, width * 0.84, 0);
+            ctx.lineTo(width * 0.94, 0);
+            ctx.bezierCurveTo(width * 0.76, height * 0.75, width * 0.47, height - 5, 0, height);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = "#9aa759";
+            ctx.lineWidth = 0.9;
+            ctx.beginPath();
+            ctx.moveTo(0, height - 3);
+            ctx.bezierCurveTo(width * 0.44, height - 9, width * 0.68, height * 0.66, width * 0.87, 0);
+            ctx.stroke();
+        }
+    }
+
     Image {
         id: frog
         objectName: "jungleFrog"
@@ -39,7 +72,7 @@ Item {
         source: "jungle/frog.png"
         mipmap: true
         readonly property real mouthX: x + width * 0.11
-        readonly property real mouthY: y + height * 0.22
+        readonly property real mouthY: y + height * 0.20
     }
 
     Image {
@@ -49,40 +82,76 @@ Item {
         property bool willCatch: true
         property real phase: 0
         readonly property real impact: 0.76
-        readonly property real approach: Math.min(1, phase / impact)
-        readonly property real distance: canopy.appearance.dp(canopy.compactWildlife ? 86 : 156)
-        readonly property real catchDistance: canopy.appearance.dp(28)
-        visible: flight.running && (!willCatch || phase < impact)
-        x: frog.mouthX - distance + (distance - catchDistance) * (willCatch ? approach : phase)
-            - width / 2 + (willCatch ? 0 : canopy.appearance.dp(60) * phase)
-        y: frog.mouthY - height / 2 + (willCatch ? (1 - approach) : 1)
-            * canopy.appearance.dp(11) * Math.sin(phase * 16)
+        readonly property real approach: willCatch ? Math.min(1, phase / impact) : Math.sin(phase * Math.PI)
+        readonly property real travel: canopy.appearance.dp(canopy.compactWildlife ? 59 : 108)
+        readonly property real catchX: frog.x - canopy.appearance.dp(canopy.compactWildlife ? 38 : 64)
+        readonly property real catchY: frog.mouthY + canopy.appearance.dp(12)
+        readonly property real caught: willCatch ? Math.max(0, Math.min(1, (phase - impact) / 0.047)) : 0
+        visible: flight.running && caught < 1
+        x: catchX - travel * (1 - approach) + canopy.appearance.dp(10) * caught - width / 2
+        y: catchY - height / 2 + (1 - approach) * canopy.appearance.dp(13) * Math.sin(phase * 17)
         width: canopy.appearance.dp(butterfly ? 22 : 30)
         height: width
         fillMode: Image.PreserveAspectFit
         source: butterfly ? "jungle/butterfly.png" : "jungle/dragonfly.png"
-        mirror: !butterfly
+        mirror: !butterfly && (willCatch || phase < 0.5)
         mipmap: true
         rotation: Math.sin(phase * 16) * 7
-        opacity: Math.min(1, phase * 8, (1 - phase) * 7)
+        opacity: (1 - caught) * Math.min(1, phase * 8, (1 - phase) * 7)
         transform: Scale {
             origin.x: insect.width / 2
             xScale: 1 - (insect.butterfly ? 0.30 : 0.12) * Math.abs(Math.sin(insect.phase * 83))
         }
     }
 
-    Rectangle {
+    Canvas {
         id: tongue
         objectName: "jungleTongue"
-        readonly property real reach: Math.max(0, 1 - Math.abs(insect.phase - insect.impact) / 0.067)
-        visible: flight.running && insect.willCatch && reach > 0
-        x: frog.mouthX - width
-        y: frog.mouthY - height / 2
-        width: (insect.catchDistance + canopy.appearance.dp(2)) * reach
-        height: canopy.appearance.dp(3)
-        radius: height / 2
-        color: "#f39287"
-        antialiasing: true
+        readonly property real offset: insect.phase - insect.impact
+        readonly property real reach: offset < 0 ? Math.max(0, 1 + offset / 0.056)
+            : Math.pow(Math.max(0, 1 - offset / 0.095), 1.35)
+        visible: flight.running && insect.willCatch && reach > 0.045
+        x: insect.catchX - canopy.appearance.dp(5)
+        y: frog.mouthY - canopy.appearance.dp(4)
+        width: frog.mouthX - x + canopy.appearance.dp(4)
+        height: canopy.appearance.dp(24)
+        onReachChanged: requestPaint()
+        onVisibleChanged: if (visible) requestPaint()
+        onPaint: {
+            const ctx = getContext("2d");
+            const dp = canopy.appearance.dp(1);
+            const rootX = width - 4 * dp;
+            const rootY = 4 * dp;
+            const tipX = rootX - (rootX - 5 * dp) * reach;
+            const tipY = rootY + 12 * dp * reach;
+            ctx.clearRect(0, 0, width, height);
+            if (reach <= 0)
+                return;
+            const color = ctx.createLinearGradient(rootX, rootY, tipX, tipY);
+            color.addColorStop(0, "#712e30");
+            color.addColorStop(0.27, "#d16b61");
+            color.addColorStop(0.8, "#ec9983");
+            color.addColorStop(1, "#faad93");
+            ctx.fillStyle = color;
+            ctx.strokeStyle = "#74322f";
+            ctx.lineWidth = dp * 0.65;
+            ctx.beginPath();
+            ctx.moveTo(rootX, rootY - 1.4 * dp);
+            ctx.bezierCurveTo(rootX - 14 * dp * reach, rootY - 4 * dp,
+                tipX + 18 * dp * reach, tipY - 2 * dp, tipX + 2 * dp, tipY - 2.1 * dp);
+            ctx.quadraticCurveTo(tipX - 4 * dp, tipY - 1.2 * dp, tipX - 2.1 * dp, tipY + 2 * dp);
+            ctx.bezierCurveTo(tipX + 8 * dp, tipY + 3.3 * dp,
+                rootX - 15 * dp * reach, rootY + 3 * dp, rootX, rootY + 1.4 * dp);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.strokeStyle = "#bbf9c8b5";
+            ctx.lineWidth = dp * 0.7;
+            ctx.beginPath();
+            ctx.moveTo(rootX - 2 * dp, rootY - 0.6 * dp);
+            ctx.quadraticCurveTo(rootX - 19 * dp * reach, rootY - 1.5 * dp, tipX + 3 * dp, tipY - 0.9 * dp);
+            ctx.stroke();
+        }
     }
 
     NumberAnimation {

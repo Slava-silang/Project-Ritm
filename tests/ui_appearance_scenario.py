@@ -65,6 +65,7 @@ def check_jungle(look):
     assert gui.item("workspaceSidebar").isVisible()
     frog = gui.item("jungleFrog")
     assert frog.isVisible() and frog.property("sourceSize").width() > 0
+    assert gui.item("jungleLeafStem").isVisible()
     timer = gui.item("jungleFlightTimer")
     insect = gui.item("jungleInsect")
     tongue = gui.item("jungleTongue")
@@ -75,7 +76,17 @@ def check_jungle(look):
         assert insect.isVisible() and insect.property("sourceSize").width() > 0
         gui.screenshot(profile / ("jungle-butterfly.png" if butterfly else "jungle-dragonfly.png"))
         gui.wait_for(tongue.isVisible, "frog catches insect")
+        bounds = insect.mapRectToScene(QRectF(0, 0, insect.width(), insect.height()))
+        assert bounds.right() < frog.mapToScene(QPoint(0, 0)).x() - 25
+        if not butterfly:
+            assert window.grabWindow().save(str(profile / "jungle-catch.png"))
         gui.wait_for(lambda: not insect.isVisible(), "insect caught")
+    timer.triggered.emit()
+    assert not insect.property("willCatch")
+    gui.wait_for(lambda: insect.property("phase") > 0.5, "insect turns away")
+    bounds = insect.mapRectToScene(QRectF(0, 0, insect.width(), insect.height()))
+    assert bounds.right() < frog.mapToScene(QPoint(0, 0)).x() - 25
+    assert not tongue.isVisible()
     look.setProperty("reduceMotion", True)
     assert not timer.property("running") and not tongue.isVisible() and frog.isVisible()
     look.setProperty("reduceMotion", False)

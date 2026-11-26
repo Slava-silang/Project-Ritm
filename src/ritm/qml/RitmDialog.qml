@@ -45,16 +45,34 @@ Dialog {
             }
         }
         Loader {
+            parent: dialog.background
+            z: -1
             active: dialog.visible && dialog.visitorEnabled && dialog.appearance.jungle
-                && dialog.y >= height
-            anchors.left: parent.left
-            anchors.leftMargin: dialog.appearance.dp(10)
-            width: dialog.appearance.dp(62)
-            height: dialog.appearance.dp(30)
-            y: -height + dialog.appearance.dp(2)
+                && dialog.y >= dialog.appearance.dp(24)
+            x: dialog.appearance.dp(14)
+            width: dialog.appearance.dp(81)
+            height: Math.min(dialog.appearance.dp(73), Math.max(0, dialog.y + dialog.appearance.dp(8)))
+            y: -height + dialog.appearance.dp(12)
             sourceComponent: Image {
                 source: "jungle/fern.png"
                 fillMode: Image.PreserveAspectFit
+                mipmap: true
+            }
+        }
+        Loader {
+            parent: dialog.background
+            z: -1
+            readonly property real rightGap: dialog.parent ? dialog.parent.width - dialog.x - dialog.width : 0
+            active: dialog.visible && dialog.visitorEnabled && dialog.appearance.jungle
+                && rightGap >= dialog.appearance.dp(20)
+            x: parent ? parent.width - dialog.appearance.dp(9) : 0
+            y: dialog.appearance.dp(21)
+            width: Math.min(dialog.appearance.dp(48), Math.max(0, rightGap))
+            height: dialog.appearance.dp(112)
+            sourceComponent: Image {
+                source: "jungle/vine.png"
+                fillMode: Image.PreserveAspectFit
+                mirror: true
                 mipmap: true
             }
         }

@@ -616,6 +616,20 @@ ApplicationWindow {
         width: window.sidebarWidth
         visible: window.sidebarVisible
         color: window.appearance.usesSharedStyle ? window.appearance.colors.sidebar : "transparent"
+        Loader {
+            z: -1
+            active: window.appearance.jungle && window.sidebarVisible
+            x: parent.width - window.appearance.dp(9)
+            y: window.appearance.dp(23)
+            width: window.appearance.dp(29)
+            height: window.appearance.dp(72)
+            sourceComponent: Image {
+                source: "jungle/vine.png"
+                fillMode: Image.PreserveAspectFit
+                mirror: true
+                mipmap: true
+            }
+        }
         Rectangle {
             anchors.right: parent.right
             height: parent.height
@@ -1215,11 +1229,11 @@ ApplicationWindow {
                 radius: window.appearance.controlRadius(18)
                 border.color: window.appearance.usesSharedStyle ? window.appearance.colors.border : "transparent"
                 Loader {
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.rightMargin: window.appearance.dp(3)
-                    width: window.appearance.dp(17)
-                    height: window.appearance.dp(64)
+                    z: -1
+                    x: parent.width - window.appearance.dp(11)
+                    y: window.appearance.dp(8)
+                    width: window.appearance.dp(33)
+                    height: window.appearance.dp(98)
                     active: window.appearance.jungle && !window.narrow
                     sourceComponent: Image {
                         source: "jungle/vine.png"
