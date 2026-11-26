@@ -133,6 +133,8 @@ def test_no_trash_files_focus_garden_credentials_or_queue_read_or_writes(tmp_pat
             "sync_intents",
             "sync_binding",
             "sync_outbox",
+            "sync_capture",
+            "sync_task_presence",
         ):
             assert forbidden not in sql
         assert not any(

@@ -1,5 +1,39 @@
 # Текущее состояние
 
+## T41c4 — opt-in capture обычных задач готов, 27 ноября
+
+storage/sync_capture.py + TaskStore: явный флаг и UUID presence, обычные create/
+put/complete/prune/delete/restore с деревом/completion date/trash/garden journal
+одной транзакцией. Последовательные intentions зависят от предыдущего той же
+цели, frozen bytes неизменны. Retained/local-only завершённая история не
+возвращается от rename, reopening явный. Origin guard вложенный, connection-local,
+без подавления локального восстановления из корзины. Legacy explicit API при
+capture on отклоняется во избежание двойной записи.
+
+Tasks v17: две пустые таблицы, default off; подключение/UI/HTTP/inbound не включены.
+Regular lineage deferred, включая новый слот и stop; категории/календарь/полные
+AI-сценарии пока не заявляются. Backup/import очищают новые metadata только в
+staging, source прежний, аварийный pair rollback сохраняет флаг/UUID/queue.
+Garden v7/dependencies прежние. Контракт и ограничения — SYNC_CAPTURE.md.
+
+667 passed/5 GUI deselected (33,56 с), /tmp/ritm-sync-capture-verified.log.
+GUI tasks capture off/on + backup/regular: offscreen 4 passed (35,95 с), native
+Linux X11 4 passed (35,25 с). Ruff/format 12 Python, diff passed. Full suite/
+Windows/Wayland/standalone/релизный аудит/аккаунты/сеть/личный профиль не проверялись.
+Автоматические GUI-сценарии, отдельного визуального обзора не было.
+
+Изменены sync_capture/sqlite/recurrence/sync_intents/backup, migration_support,
+новый test_sync_capture, test_sync_source/intents/profile_backup/task_ui и
+ui_scenario; docs SYNC_CAPTURE/STORAGE/SOURCE/OUTBOX/SPEC/ARCHITECTURE/DEVELOPMENT/
+TASKS/TESTING/STATUS. assets/theme_* пользователя не включаются.
+Сохранение шага: локальный коммит `feat: capture opted-in ordinary task changes for sync`
+(ID — git log). T41c4 done, T41c in_progress.
+Следующее точное действие: T41c5, сначала ограниченный capture regular current/
+history/rollover/stop/detach по SYNC_TRANSITIONS, затем календарь/категории и
+проверка всех AI-путей. Transport до полного покрытия выключен. До inbound
+согласовать награды сада за новые удалённые выполнения. Сервер/бот/размещение/
+публикация отдельно, без создания закрытого репозитория сейчас.
+
 ## T41c3 — заморозка запросов и подтверждения готовы, 26 ноября
 
 Новый storage/sync_outbox.py: SyncBase/FrozenRequest + TaskStore API freeze/get/

@@ -1,5 +1,28 @@
 # Проверка «Ритма»
 
+## T41c4 — opt-in capture обычных задач, 27 ноября
+
+Итоговый целевой набор DEVELOPMENT с test_sync_capture: **667 passed, 5 GUI
+deselected (33,56 с)**, /tmp/ritm-sync-capture-verified.log. Новый отдельный
+набор — 16 passed (1,47 с). Проверены opt-in/binding/default off/reopen, зависимости
+create/put/prune/delete/restore, completion date, одинаковые writes без очереди,
+retained/local-only history edit/reopen, purge без потери deleted UUID, rollback
+дерева/дат/trash/garden event/queue/presence при enqueue failure, вложенный origin
+guard/exception/другое connection, regular defer/rollover/stop, frozen bytes без
+перезаписи, TaskService/subtree restore, запрет двойной записи legacy API,
+ошибки initial-map без частичного включения, DDL v16→17 rollback байт-в-байт.
+Копии очищают flag/presence в staging; исходник прежний, paired failure сохраняет
+их вместе с frozen queue. Добавлен legacy archive v16. Source trace исключает
+две новые таблицы. Остальные storage/domain/projection/codec проверки включены.
+
+GUI task create/edit/subtasks/restart с capture off/on + backup/regular:
+offscreen **4 passed (35,95 с)**, /tmp/ritm-sync-capture-gui.log; native Linux
+X11 **4 passed (35,25 с)**, /tmp/ritm-sync-capture-native.log. Это автоматические
+сценарии настоящих окон на синтетических данных, отдельного визуального обзора
+не было. Ruff check/format 12 Python, diff --check passed. Tasks v17/garden v7.
+Полный pytest/Windows/Wayland/standalone/реальный профиль/аккаунт/HTTP/сервер/
+inbound/релизный аудит не проверялись. Никакого подключения от миграции нет.
+
 ## T41c3 — заморозка запросов и Receipt storage, 26 ноября
 
 Первый новый набор **21 passed (1,94 с)**. После добавления отказов записи и

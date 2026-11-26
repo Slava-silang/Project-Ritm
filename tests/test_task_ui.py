@@ -60,7 +60,8 @@ def test_editing_other_fields_preserves_exact_time():
     assert updated["expected_duration"] == task.expected_duration
 
 
-def test_qml_task_scenario_and_restart(tmp_path):
+@pytest.mark.parametrize("capture", [False, True])
+def test_qml_task_scenario_and_restart(tmp_path, capture):
     env = os.environ.copy()
     env.update(
         QT_QPA_PLATFORM=os.environ.get("RITM_UI_PLATFORM", "offscreen"),
@@ -70,7 +71,8 @@ def test_qml_task_scenario_and_restart(tmp_path):
         XDG_CACHE_HOME=str(tmp_path / "cache"),
     )
     result = subprocess.run(
-        [sys.executable, str(Path(__file__).with_name("ui_scenario.py")), str(tmp_path)],
+        [sys.executable, str(Path(__file__).with_name("ui_scenario.py")), str(tmp_path)]
+        + (["--capture"] if capture else []),
         cwd=tmp_path,
         env=env,
         text=True,

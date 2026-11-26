@@ -1,5 +1,16 @@
 # Архитектурная основа
 
+## T41c4 — атомарный opt-in capture, tasks v17
+
+storage/sync_capture.py: флаг/UUID presence, hooks общего _write_task и root archive.
+Ordinary create/put/prune/delete/restore вместе с деревом/датами/trash/garden event;
+цепочка intentions по цели, frozen bytes прежние. Retained/local history rename
+не возвращает старую completion, reopening явный. Connection-local origin guard
+не подавляет локальный trash restore. Regular lineage deferred до T41c5.
+Backup/import стирают capture/presence только в staging, pair rollback сохраняет.
+Миграция v16→17 атомарна, default off; нет HTTP/inbound/UI подключения.
+Подробности SYNC_CAPTURE.md; garden v7/dependencies прежние.
+
 ## T41c3 — immutable outbox и receipts, tasks v16
 
 storage/sync_outbox.py/mixin TaskStore: SyncBase, FrozenRequest, freeze/get/list,

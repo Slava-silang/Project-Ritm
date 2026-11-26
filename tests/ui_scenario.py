@@ -18,6 +18,16 @@ from ritm.ui.tasks import TaskController
 QQuickStyle.setStyle("Basic")
 app = QGuiApplication([])
 profile = Path(sys.argv[1])
+if "--capture" in sys.argv:
+    from uuid import UUID
+
+    from ritm.storage.sync_intents import SyncBinding
+
+    with TaskStore(profile / "tasks.sqlite3") as seed:
+        seed.initialize_sync_binding(
+            SyncBinding(owner_id=UUID(int=901), device_id=UUID(int=902), server_id=UUID(int=903))
+        )
+        seed.configure_sync_task_capture(True, {})
 controller = TaskController(profile)
 engine = load_window(controller)
 window = engine.rootObjects()[0]
@@ -145,6 +155,13 @@ try:
         assert saved.difficulty == 7
         assert saved.deadline is None
         assert saved.subtasks[1].completed
+        if "--capture" in sys.argv:
+            queued = store.list_sync_intents()
+            assert queued[0].intent.action == "create"
+            assert len(queued) > 5
+            assert queued[-1].intent.payload.task == saved
+            assert all(row.intent.target_kind == "task" for row in queued)
+            assert store.list_frozen_sync_requests() == ()
     blocked_profile = profile / "not-a-directory"
     blocked_profile.write_text("test", encoding="utf-8")
     broken = TaskController(blocked_profile)

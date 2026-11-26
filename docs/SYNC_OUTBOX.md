@@ -2,7 +2,8 @@
 
 storage/sync_outbox.py добавляет API TaskStore для подготовки запросов и хранения
 квитанций. Tasks schema **v16**, garden v7/dependencies прежние. Это локальная
-инфраструктура без HTTP/аккаунтов/автоматического capture/inbound. SyncBinding
+инфраструктура без HTTP/аккаунтов/inbound. Отдельный opt-in capture обычных
+задач добавлен в T41c4 (SYNC_CAPTURE.md), по умолчанию выключен. SyncBinding
 из UUID остаётся маркером контекста, не подтверждением настоящего входа.
 
 ## Данные

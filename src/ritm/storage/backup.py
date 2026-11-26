@@ -30,6 +30,7 @@ from ritm.storage.profile_backup import (
 )
 from ritm.storage.profile_guard import ensure_profile_available
 from ritm.storage.sqlite import APPLICATION_ID, SCHEMA_VERSION, TaskStore
+from ritm.storage.sync_capture import CAPTURE_OBJECTS
 from ritm.storage.sync_intents import SYNC_OBJECTS, sanitize_sync_backup
 from ritm.storage.sync_outbox import OUTBOX_OBJECTS
 
@@ -252,6 +253,8 @@ def _validate_database(path: Path) -> dict[UUID, str]:
     with TaskStore(Path(":memory:")) as reference, closing(_sqlite(path, "ro")) as db:
         version = db.execute("PRAGMA user_version").fetchone()[0]
         expected = [tuple(row) for row in schema(reference._db)]
+        if version < 17:
+            expected = [row for row in expected if row[0] not in CAPTURE_OBJECTS]
         if version < 16:
             expected = [row for row in expected if row[0] not in OUTBOX_OBJECTS]
         if version < 15:
@@ -276,7 +279,7 @@ def _validate_database(path: Path) -> dict[UUID, str]:
             expected = [row for row in expected if row[0] != "applied_proposals"]
         if (
             db.execute("PRAGMA application_id").fetchone()[0] != APPLICATION_ID
-            or version not in (9, 10, 11, 12, 13, 14, 15, SCHEMA_VERSION)
+            or version not in (9, 10, 11, 12, 13, 14, 15, 16, SCHEMA_VERSION)
             or schema(db) != expected
             or db.execute("PRAGMA integrity_check").fetchall() != [("ok",)]
             or db.execute("PRAGMA foreign_key_check").fetchone() is not None

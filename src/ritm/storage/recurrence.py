@@ -46,7 +46,19 @@ class RecurrenceMixin:
                 self._write_category(category)
             if interval is None:
                 self._db.execute("DELETE FROM recurrence_rules WHERE task_id=?", (str(task.id),))
-            self._write_task(task)
+            lineage = (
+                existing is not None
+                or self._db.execute(
+                    "SELECT 1 FROM recurrence_occurrences WHERE task_id=?", (str(task.id),)
+                ).fetchone()
+                is not None
+            )
+            if interval is not None or lineage:
+                self._defer_sync_task_root(task.id)
+                with self.suppress_sync_capture("regular"):
+                    self._write_task(task)
+            else:
+                self._write_task(task)
             if interval is None:
                 self._db.execute("DELETE FROM recurrence_rules WHERE task_id=?", (str(task.id),))
                 if existing is not None:
@@ -109,7 +121,9 @@ class RecurrenceMixin:
                         (str(old.id),),
                     )
                 task = next_task(old)
-                self._write_task(task)
+                self._defer_sync_task_root(task.id)
+                with self.suppress_sync_capture("regular"):
+                    self._write_task(task)
                 self._db.execute(
                     "INSERT INTO recurrence_occurrences VALUES (?,?,?,'active')",
                     (str(task.id), rule["id"], due.isoformat()),

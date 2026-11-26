@@ -207,6 +207,8 @@ class SyncIntentMixin:
                 "SELECT 1 FROM recurrence_occurrences WHERE task_id=?", (str(identifier),)
             ).fetchone():
                 raise ValueError("Для повторов требуется отдельный адаптер истории")
+            if self.is_sync_task_capture_enabled():
+                raise ValueError("При автоматической записи используйте обычное изменение задачи")
             before = self.get_task(identifier)
             if before is None:
                 raise KeyError(identifier)
@@ -243,6 +245,8 @@ def sanitize_sync_backup(path: Path):
         db.execute("PRAGMA secure_delete=ON")
         db.execute("DELETE FROM sync_outbox")
         db.execute("DELETE FROM sync_intents")
+        db.execute("DELETE FROM sync_capture")
+        db.execute("DELETE FROM sync_task_presence")
         db.execute("DELETE FROM sync_binding")
         db.execute("DELETE FROM sqlite_sequence WHERE name='sync_intents'")
         db.commit()
