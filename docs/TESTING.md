@@ -1,5 +1,38 @@
 # Проверка «Ритма»
 
+## T41c1 — хранение intentions и безопасные локальные копии, 26 ноября
+
+- Целевой набор DEVELOPMENT: **547 passed, 5 GUI deselected (25,54 с)**,
+  /tmp/ritm-sync-storage-complete.log. Проверены unbound default/no implicit capture,
+  binding/reopen/новый процесс, порядок/deps/ID retry/conflict/сохранение при смене
+  контекста, две SQLite connections, corrupt deps без удаления, null delete payload,
+  атомарность task/completion date/garden journal/queue, failures/mismatch/retry,
+  v14→15/DDL rollback байт-в-байт/garden identity, legacy archives v9–15,
+  archive copy privacy/свободные страницы/source untouched/foreign-key цепочка,
+  restore вручную составленного v15 с metadata, paired restore и его rollback.
+- GUI восстановления: offscreen **1 passed (7,00 с)**, /tmp/ritm-sync-storage-gui.log;
+  native Linux X11 **1 passed (5,92 с)**, /tmp/ritm-sync-storage-native.log. Осмотрен
+  снимок backup-restore.png: пояснение о повторном подключении и кнопки видны.
+- Ruff check/format 11 Python, qmllint Main.qml, git diff --check passed.
+
+До изменения v15 отдельные четыре legacy migration-теста уже падали на HEAD
+581468f (4 failed, 0,78 с, /tmp/ritm-sync-storage-legacy-baseline.log): synthetic
+старые версии оставляли более новые recurrence tables. Добавлен test-only
+migration_support для правильного состава fixtures; production validation не
+ослаблен, intentionally invalid DDL fixture сохранён.
+
+Ранние отказы новых тестов: 8 passed/1 failed из-за вызова set_enabled до begin
+источника сада (исправлена заготовка); расширенный набор 544 passed/2 failed —
+seed возвращает исходный immutable Task до completion, а новые paired-тесты
+сравнили его с реально выполненным. Теперь expected читается из seeded DB;
+финальный зелёный прогон выше. Первый широкий прогон до новых paired-проверок:
+542 passed/5 deselected (24,15 с).
+
+Настоящий пользовательский профиль/аккаунт/сеть/сервер не использовались.
+Windows/Wayland/standalone/full suite/релизный аудит не проверялись. Схема tasks
+v15, garden v7, зависимости прежние. Авто-capture/замороженная outbox/receipt/
+inbox/транспорт/серверный owner/auth и SYNC01–SYNC18 ещё не реализованы целиком.
+
 ## T41b3 — проекция и ограниченное облачное хранение, 26 ноября
 
 Новый отдельный набор сначала **19 passed (0,25 с)**. После дополнений общий

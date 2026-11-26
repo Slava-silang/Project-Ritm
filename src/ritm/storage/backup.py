@@ -30,6 +30,7 @@ from ritm.storage.profile_backup import (
 )
 from ritm.storage.profile_guard import ensure_profile_available
 from ritm.storage.sqlite import APPLICATION_ID, SCHEMA_VERSION, TaskStore
+from ritm.storage.sync_intents import SYNC_OBJECTS, sanitize_sync_backup
 
 DATABASE = "tasks.sqlite3"
 MANIFEST = "manifest.json"
@@ -150,6 +151,7 @@ def _create_backup(profile, folder, now, *, automatic_id=None):
         snapshot = directory / DATABASE
         has_garden = snapshot_databases(profile, directory)
         files = _file_paths(profile, _validate_database(snapshot))
+        sanitize_sync_backup(snapshot)
         files[DATABASE] = snapshot
         pair = None
         if has_garden:
@@ -249,6 +251,8 @@ def _validate_database(path: Path) -> dict[UUID, str]:
     with TaskStore(Path(":memory:")) as reference, closing(_sqlite(path, "ro")) as db:
         version = db.execute("PRAGMA user_version").fetchone()[0]
         expected = [tuple(row) for row in schema(reference._db)]
+        if version < 15:
+            expected = [row for row in expected if row[0] not in SYNC_OBJECTS]
         if version < 14:
             expected = [
                 row
@@ -269,7 +273,7 @@ def _validate_database(path: Path) -> dict[UUID, str]:
             expected = [row for row in expected if row[0] != "applied_proposals"]
         if (
             db.execute("PRAGMA application_id").fetchone()[0] != APPLICATION_ID
-            or version not in (9, 10, 11, 12, 13, SCHEMA_VERSION)
+            or version not in (9, 10, 11, 12, 13, 14, SCHEMA_VERSION)
             or schema(db) != expected
             or db.execute("PRAGMA integrity_check").fetchall() != [("ok",)]
             or db.execute("PRAGMA foreign_key_check").fetchone() is not None
@@ -308,6 +312,7 @@ def _read_archive(source: Path, staging: Path, expected: str | None = None) -> t
                 if _transfer(origin, dest) != hashes[DATABASE]:
                     raise ValueError("Контрольная сумма базы не совпадает")
             files = _validate_database(staging / DATABASE)
+            sanitize_sync_backup(staging / DATABASE)
             has_garden = record["format"] == PAIR_FORMAT
             if has_garden:
                 with archive.open(GARDEN) as origin, (staging / GARDEN).open("xb") as dest:

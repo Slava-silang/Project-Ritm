@@ -1,5 +1,38 @@
 # Текущее состояние
 
+## T41c1 — локальное хранение намерений готово, 26 ноября
+
+Tasks v15 автоматически создаёт/migrates sync_binding и sync_intents/index.
+Три context UUID, никаких токенов/паролей/телефонов/Telegram ID. Намерения ещё
+не сетевые Operation: canonical desired entity, null для delete/stop, порядок,
+immutable ID/retry/conflict/dependency. Binding не меняет контекст молча.
+Ограниченный update_task_and_enqueue для ordinary root сохраняет task/date/
+garden event/intent одним BEGIN/rollback. Старые API/QML пока не capture-ят;
+нет UI подключения/сети/freeze/входящих. Контракт — SYNC_STORAGE.md.
+
+Создание/импорт архива очищают только validated staged metadata/sequence,
+secure_delete/VACUUM убирают её из SQLite-файла архива. Источник unchanged;
+internal before-copy аварийного pair restore не очищается, очередь сохраняется
+при сбое. После успешного restore binding/queue пустые, пояснение в диалоге.
+Legacy archives v9–14 поддержаны, garden v7/dependencies прежние.
+
+547 passed/5 GUI deselected (25,54 с), /tmp/ritm-sync-storage-complete.log;
+offscreen backup GUI 1 passed (7,00 с), native Linux 1 passed (5,92 с),
+снимок осмотрен. Ruff/format 11 Python, qmllint Main.qml, diff passed.
+4 baseline legacy-fixture failures подтверждены до v15, исправлен состав
+synthetic старых схем без ослабления production guard. Ранние новые тестовые
+ожидания seed исправлены; подробности TESTING. Full suite/Windows/Wayland/
+standalone/сервер/личный профиль не запускались. Исходные assets/theme_* прежние.
+
+Изменены новый storage/sync_intents, sqlite/backup/Main.qml, новый test_sync_intents/
+migration_support, test_profile_backup/recur/pomodoro/assistant_drafts/mail_proposals/
+garden_events и docs SPEC/SYNC_STORAGE/PROTOCOL/ARCHITECTURE/DEVELOPMENT/TASKS/
+TESTING/STATUS. Локальный коммит `feat: persist local sync intents and sanitize profile backups`
+(ID — git log). T41c in_progress, T41c1 done. Следующий шаг T41c2 — согласованный
+read-only source adapter TaskStore→LocalData для initial preview, без отправки.
+Затем полный capture/prepare/freeze/receipt/worker. До inbound согласовать награды
+сада за новые выполнения с другого устройства. Реальный сервер/публикация отдельно.
+
 ## T41b3 — проекция/retention готовы, 26 ноября
 
 Пользователь уточнил: 50 — суммарно ordinary completed + прошлая occurrence-

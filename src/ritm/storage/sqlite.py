@@ -20,9 +20,10 @@ from ritm.storage.codec import decode_task, encode_task
 from ritm.storage.garden_source import GardenSourceMixin, create_source
 from ritm.storage.profile_guard import connect_profile
 from ritm.storage.recurrence import RECURRENCE_SCHEMA, RecurrenceMixin
+from ritm.storage.sync_intents import SYNC_SCHEMA, SyncIntentMixin
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 SOURCE_SCHEMA = (
     "CREATE TABLE source_links (key TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, "
     "url TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('task','event')), "
@@ -187,7 +188,7 @@ ATTACHMENT_OWNER = """
 """
 
 
-class TaskStore(RecurrenceMixin, GardenSourceMixin):
+class TaskStore(SyncIntentMixin, RecurrenceMixin, GardenSourceMixin):
     def __init__(self, path: Path, *, clock: Callable[[], datetime] | None = None):
         self._clock = clock or (lambda: datetime.now(UTC))
         path = Path(path)
@@ -209,7 +210,7 @@ class TaskStore(RecurrenceMixin, GardenSourceMixin):
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in range(1, 14) and app_id == APPLICATION_ID:
+            if version in range(1, 15) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -240,6 +241,9 @@ class TaskStore(RecurrenceMixin, GardenSourceMixin):
                 if version < 14:
                     for statement in RECURRENCE_SCHEMA:
                         self._db.execute(statement)
+                if version < 15:
+                    for statement in SYNC_SCHEMA:
+                        self._db.execute(statement)
                 if version < 13:
                     create_source(self._db)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -265,6 +269,8 @@ class TaskStore(RecurrenceMixin, GardenSourceMixin):
             for statement in SOURCE_SCHEMA:
                 self._db.execute(statement)
             for statement in RECURRENCE_SCHEMA:
+                self._db.execute(statement)
+            for statement in SYNC_SCHEMA:
                 self._db.execute(statement)
             create_source(self._db)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")

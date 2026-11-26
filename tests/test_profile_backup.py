@@ -616,3 +616,63 @@ def test_v5_binding_migration_preserves_wallet_claims_and_achievements(tmp_path)
         service.drain()
         assert garden._binding_snapshot() == garden.source_snapshot()["identity"]
         assert garden.snapshot().balance == expected[1].balance
+
+
+def test_sync_binding_and_queue_excluded_from_paired_archive_only(tmp_path):
+    from ritm.storage.sync_intents import SyncBinding, SyncIntent
+
+    task = seed(tmp_path)
+    binding = SyncBinding(owner_id=uuid4(), device_id=uuid4(), server_id=uuid4())
+    pending = SyncIntent(
+        id=uuid4(), target_kind="task", target_id=task.id, action="delete", payload=None
+    )
+    with TaskStore(tmp_path / "tasks.sqlite3") as store:
+        store.initialize_sync_binding(binding)
+        store.enqueue_sync_intent(pending)
+        expected_task = store.get_task(task.id)
+    archive = backup.create_backup(tmp_path, tmp_path / "copies", NOW)
+    with TaskStore(tmp_path / "tasks.sqlite3") as store:
+        assert (
+            store.get_sync_binding() == binding and store.list_sync_intents()[0].intent == pending
+        )
+    preview = backup.inspect_backup(archive)
+    backup.restore_backup(tmp_path, archive, preview["token"])
+    with TaskStore(tmp_path / "tasks.sqlite3") as store:
+        assert store.get_sync_binding() is None and not store.list_sync_intents()
+        assert store.get_task(task.id) == expected_task
+    assert profile_backup.validate_pair(tmp_path)
+
+
+def test_failed_pair_restore_keeps_live_sync_queue(tmp_path, monkeypatch):
+    from ritm.storage.sync_intents import SyncBinding, SyncIntent
+
+    task = seed(tmp_path)
+    archive = backup.create_backup(tmp_path, tmp_path / "copies", NOW)
+    binding = SyncBinding(owner_id=uuid4(), device_id=uuid4(), server_id=uuid4())
+    pending = SyncIntent(
+        id=uuid4(), target_kind="task", target_id=task.id, action="delete", payload=None
+    )
+    with TaskStore(tmp_path / "tasks.sqlite3") as store:
+        store.initialize_sync_binding(binding)
+        store.enqueue_sync_intent(pending)
+        expected_task = store.get_task(task.id)
+    original = profile_backup._publish_database
+    calls = []
+
+    def fail_once(source, destination):
+        calls.append(destination)
+        if len(calls) == 2:
+            raise OSError("synthetic failure")
+        return original(source, destination)
+
+    preview = backup.inspect_backup(archive)
+    with monkeypatch.context() as patch:
+        patch.setattr(profile_backup, "_publish_database", fail_once)
+        with pytest.raises(OSError):
+            backup.restore_backup(tmp_path, archive, preview["token"])
+    with TaskStore(tmp_path / "tasks.sqlite3") as store:
+        assert (
+            store.get_sync_binding() == binding and store.list_sync_intents()[0].intent == pending
+        )
+        assert store.get_task(task.id) == expected_task
+    assert profile_backup.validate_pair(tmp_path)

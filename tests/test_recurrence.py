@@ -3,6 +3,7 @@ from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
+from migration_support import drop_later_task_tables
 
 from ritm.application.tasks import TaskService
 from ritm.domain.recurrence import scheduled_day
@@ -111,6 +112,7 @@ def test_v13_migration_keeps_garden_identity_and_task(tmp_path):
         store.create_task(task)
         source = store._db.execute("SELECT identity FROM garden_source").fetchone()[0]
     with sqlite3.connect(path) as db:
+        drop_later_task_tables(db, 14)
         db.execute("DROP TABLE recurrence_occurrences")
         db.execute("DROP TABLE recurrence_rules")
         db.execute("PRAGMA user_version=13")
@@ -188,6 +190,7 @@ def test_backup_roundtrip_keeps_schedules_and_old_v13_supported(tmp_path):
     with TaskStore(path) as store:
         assert store.list_tasks() == ()
         assert store.list_recurrences()[0]["task_id"] == str(task.id)
+        drop_later_task_tables(store._db, 14)
         store._db.execute("DROP TABLE recurrence_occurrences")
         store._db.execute("DROP TABLE recurrence_rules")
         store._db.execute("PRAGMA user_version=13")

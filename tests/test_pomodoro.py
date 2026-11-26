@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from migration_support import drop_later_task_tables
 
 from ritm.domain.calendar import instant_us
 from ritm.domain.companion import Reactions
@@ -166,6 +167,7 @@ def test_v10_migration_preserves_tasks_and_focus(tmp_path):
         store.change_focus("start", START, None, task_id=task.id)
         original = store.active_focus()
     with sqlite3.connect(path) as db:
+        drop_later_task_tables(db, 10)
         db.execute("DROP TABLE mail_proposals")
         db.execute("DROP TABLE source_links")
         db.execute("DROP TABLE pomodoro")
@@ -255,6 +257,7 @@ def test_backup_preserves_cycle_and_restores_v10(tmp_path):
         assert store.get_pomodoro() == state
         assert store.get_task(task.id) == task
     with sqlite3.connect(path) as db:
+        drop_later_task_tables(db, 10)
         db.execute("DROP TABLE mail_proposals")
         db.execute("DROP TABLE source_links")
         db.execute("DROP TABLE pomodoro")

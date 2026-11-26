@@ -1,5 +1,16 @@
 # Архитектурная основа
 
+## T41c1 — durable local intents, tasks schema v15
+
+storage/sync_intents.py — SyncBinding/SyncIntent/QueuedIntent + mixin TaskStore.
+Отдельная таблица binding (owner/device/server UUID), immutable desired entity
+без секретов, append/idempotent ID/порядок/предшественник. Ограниченный API
+ordinary update+intent использует тот же SQLite BEGIN/rollback, что task dates/
+garden journal; нет автоматического capture в старых методах/сети/входящих.
+Backup очищает только validated staged copy с VACUUM; internal before rollback
+не очищается. Прежние v9–14 archives поддержаны, restore требует новой привязки.
+Полный контракт/границы — SYNC_STORAGE.md. Garden v7/dependencies прежние.
+
 ## T41b3 — чистая проекция и план хранения
 
 sync_projection.py принимает LocalData и неизменяемый Snapshot, без SQL/Qt/сети.

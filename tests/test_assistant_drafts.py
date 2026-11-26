@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 from zipfile import ZipFile
 
 import pytest
+from migration_support import drop_later_task_tables
 
 from ritm.application.drafts import parse_draft
 from ritm.application.tasks import TaskService
@@ -147,6 +148,7 @@ def test_v9_profile_and_archive_migrate_and_receipts_survive_new_backup(tmp_path
     with TaskStore(path) as store:
         store.create_task(Task(title="Из версии 9"))
     with sqlite3.connect(path) as db:
+        drop_later_task_tables(db, 9)
         db.execute("DROP TABLE applied_proposals")
         db.execute("DROP TABLE mail_proposals")
         db.execute("DROP TABLE source_links")

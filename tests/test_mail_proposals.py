@@ -8,6 +8,7 @@ from uuid import uuid4
 from zipfile import ZipFile
 
 import pytest
+from migration_support import drop_later_task_tables
 from test_gmail import message
 
 from ritm.application.mail_proposals import MailProposalService, mail_preview, parse_mail_proposal
@@ -291,6 +292,7 @@ def test_v11_migration_and_backups_preserve_ledger_and_old_archives(tmp_path):
     with TaskStore(path) as store:
         store.create_task(task)
     with sqlite3.connect(path) as db:
+        drop_later_task_tables(db, 11)
         db.execute("DROP TABLE mail_proposals")
         db.execute("DROP TABLE source_links")
         db.execute("DROP TABLE garden_events")

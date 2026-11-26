@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
+from migration_support import drop_later_task_tables
 
 from ritm.application.garden_events import GardenEventService, apply_event
 from ritm.application.tasks import TaskService
@@ -266,6 +267,7 @@ def test_v12_migration_and_backup_preserve_source_journal(tmp_path):
     with TaskStore(path) as source:
         source.create_task(task)
     with sqlite3.connect(path) as db:
+        drop_later_task_tables(db, 12)
         db.execute("DROP TABLE garden_events")
         db.execute("DROP TABLE garden_source")
         db.execute("PRAGMA user_version=12")
