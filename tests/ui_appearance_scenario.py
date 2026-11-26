@@ -5,7 +5,7 @@ from pathlib import Path
 
 from garden_support import unlock_themes
 from gui_support import GuiHarness, load_offscreen_fonts
-from PySide6.QtCore import QObject, QPoint, Qt
+from PySide6.QtCore import QObject, QPoint, QRectF, Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtTest import QTest
@@ -61,6 +61,45 @@ def check_observatory(look):
     look.setProperty("reduceMotion", False)
 
 
+def check_jungle(look):
+    assert gui.item("workspaceSidebar").isVisible()
+    frog = gui.item("jungleFrog")
+    assert frog.isVisible() and frog.property("sourceSize").width() > 0
+    timer = gui.item("jungleFlightTimer")
+    insect = gui.item("jungleInsect")
+    tongue = gui.item("jungleTongue")
+    for butterfly in (False, True):
+        timer.triggered.emit()
+        assert insect.property("butterfly") == butterfly
+        gui.wait_for(lambda: insect.property("phase") > 0.25, "insect in flight")
+        assert insect.isVisible() and insect.property("sourceSize").width() > 0
+        gui.screenshot(profile / ("jungle-butterfly.png" if butterfly else "jungle-dragonfly.png"))
+        gui.wait_for(tongue.isVisible, "frog catches insect")
+        gui.wait_for(lambda: not insect.isVisible(), "insect caught")
+    look.setProperty("reduceMotion", True)
+    assert not timer.property("running") and not tongue.isVisible() and frog.isVisible()
+    look.setProperty("reduceMotion", False)
+    window.resize(640, 480)
+    controller.saveAppearance("jungle", 150)
+    gui.idle()
+    assert not gui.item("workspaceSidebar").isVisible()
+    assert not frog.isVisible()
+    new_task = gui.item("newTaskButton")
+    assert new_task.isVisible()
+    background = new_task.property("background")
+    texture = next(
+        item for item in background.findChildren(QObject, "jungleWoodTexture") if item.isVisible()
+    )
+    assert background.mapRectToScene(
+        QRectF(0, 0, background.width(), background.height())
+    ).contains(texture.mapRectToScene(QRectF(0, 0, texture.width(), texture.height())))
+    assert not timer.property("running")
+    gui.screenshot(profile / "jungle-compact-150.png")
+    window.resize(1120, 780)
+    controller.saveAppearance("jungle", 100)
+    gui.idle()
+
+
 try:
     gui.idle()
     window.requestActivate()
@@ -76,13 +115,15 @@ try:
             gui.choose("appearanceTheme", index)
             gui.click("saveAppearance")
             assert controller.appearance["theme"] == name
-            assert look.property("usesSharedStyle") == (name != "jungle")
-            expected_dark = name in ("space", "dark") or (
+            assert look.property("usesSharedStyle")
+            expected_dark = name in ("space", "jungle", "dark") or (
                 name == "system" and app.styleHints().colorScheme() == Qt.ColorScheme.Dark
             )
             assert look.property("dark") == expected_dark
             if name == "space":
                 check_observatory(look)
+            if name == "jungle":
+                check_jungle(look)
         gui.click("appearanceButton")
         gui.choose("appearanceTheme", 2)
         gui.click("saveAppearance")

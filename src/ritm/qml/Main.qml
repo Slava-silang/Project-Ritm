@@ -286,15 +286,33 @@ ApplicationWindow {
         verticalPadding: window.appearance.dp(window.compactLayout ? 7 : 11)
         contentItem: Label {
             text: actionButton.text
-            color: window.appearance.colors.onAccent
+            color: window.appearance.jungle && actionButton.enabled
+                ? window.appearance.colors.text : window.appearance.colors.onAccent
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }
         background: Rectangle {
             radius: window.appearance.controlRadius(9)
-            color: !actionButton.enabled ? window.appearance.colors.disabled : actionButton.down ? window.appearance.colors.accentDown : actionButton.hovered ? window.appearance.colors.accentHover : window.appearance.colors.accentFill
+            color: {
+                const colors = window.appearance.colors;
+                if (!actionButton.enabled)
+                    return colors.disabled;
+                if (window.appearance.jungle)
+                    return actionButton.down ? colors.woodDown : actionButton.hovered ? colors.woodHover : colors.wood;
+                return actionButton.down ? colors.accentDown : actionButton.hovered ? colors.accentHover : colors.accentFill;
+            }
             border.width: actionButton.visualFocus ? 2 : 0
-            border.color: window.appearance.usesSharedStyle ? window.appearance.colors.controlBorder : window.appearance.colors.border
+            border.color: window.appearance.jungle ? window.appearance.colors.accent
+                : window.appearance.usesSharedStyle ? window.appearance.colors.controlBorder : window.appearance.colors.border
+            Loader {
+                anchors.fill: parent
+                active: window.appearance.jungle && actionButton.enabled
+                sourceComponent: JungleWood {
+                    uiScale: window.appearance.scale
+                    hovered: actionButton.hovered
+                    pressed: actionButton.down
+                }
+            }
         }
     }
     component TaskProgress: ProgressBar {
@@ -578,6 +596,15 @@ ApplicationWindow {
             moving: window.active && window.visible && !appearance.reduceMotion
             pointerX: skyPointer.hovered ? skyPointer.point.position.x - window.sidebarWidth : -1000
             pointerY: skyPointer.hovered ? skyPointer.point.position.y : -1000
+        }
+    }
+    Loader {
+        anchors.fill: parent
+        anchors.leftMargin: window.sidebarWidth
+        active: window.appearance.jungle
+        sourceComponent: JungleCanopy {
+            appearance: window.appearance
+            moving: window.active && window.visible && !appearance.reduceMotion
         }
     }
 
@@ -1187,6 +1214,19 @@ ApplicationWindow {
                 color: window.appearance.colors.surface
                 radius: window.appearance.controlRadius(18)
                 border.color: window.appearance.usesSharedStyle ? window.appearance.colors.border : "transparent"
+                Loader {
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.rightMargin: window.appearance.dp(3)
+                    width: window.appearance.dp(17)
+                    height: window.appearance.dp(64)
+                    active: window.appearance.jungle && !window.narrow
+                    sourceComponent: Image {
+                        source: "jungle/vine.png"
+                        fillMode: Image.PreserveAspectFit
+                        mipmap: true
+                    }
+                }
                 Label {
                     anchors.centerIn: parent
                     width: parent.width - window.appearance.dp(40)
@@ -1614,11 +1654,6 @@ ApplicationWindow {
                             return qsTr("Ранее выбранная тема сохранена. После смены повторный выбор потребует достижения.");
                         return qsTr("Откроется за 15 выполненных главных задач в саду.");
                     }
-                }
-                Caption {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: qsTr("Пока все темы используют временное оформление. Финальный вид появится после общего дизайна.")
                 }
                 Caption { text: qsTr("Масштаб интерфейса") }
                 UiCombo {

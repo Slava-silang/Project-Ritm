@@ -2,8 +2,9 @@ import QtQuick
 
 Item {
     id: visitor
-    objectName: "observatoryVisitor"
     required property bool reduceMotion
+    required property url portrait
+    required property color ledgeColor
     property bool tucked: !reduceMotion
     clip: true
     Component.onCompleted: {
@@ -13,8 +14,9 @@ Item {
 
     Image {
         anchors.fill: parent
-        source: "observatory/visitor.png"
+        source: visitor.portrait
         fillMode: Image.PreserveAspectFit
+        mipmap: true
         transform: Translate {
             y: visitor.tucked ? visitor.height : 0
             Behavior on y {
@@ -27,7 +29,7 @@ Item {
         anchors.bottom: parent.bottom
         width: parent.width
         height: 1
-        color: "#a89fda"
+        color: visitor.ledgeColor
     }
     Timer {
         id: returnTimer

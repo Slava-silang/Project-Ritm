@@ -8,12 +8,13 @@ Button {
     property bool quiet: false
     property bool compact: false
     readonly property color legacyFill: checked || highlighted ? palette.dark : palette.button
+    readonly property color primaryText: appearance.jungle && enabled ? appearance.colors.text : appearance.colors.onAccent
 
     highlighted: primary
     // The Basic style reads brightText for checked and highlighted buttons.
     palette.brightText: appearance.usesSharedStyle && highlighted
-        ? (primary ? appearance.colors.onAccent : appearance.colors.accent) : appearance.colors.text
-    palette.buttonText: appearance.usesSharedStyle && primary ? appearance.colors.onAccent : appearance.colors.text
+        ? (primary ? primaryText : appearance.colors.accent) : appearance.colors.text
+    palette.buttonText: appearance.usesSharedStyle && primary ? primaryText : appearance.colors.text
 
     background: RitmControlBackground {
         appearance: button.appearance
