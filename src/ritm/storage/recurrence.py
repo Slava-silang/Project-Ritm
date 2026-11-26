@@ -42,6 +42,13 @@ class RecurrenceMixin:
             existing = self._db.execute(
                 "SELECT * FROM recurrence_rules WHERE task_id=?", (str(task.id),)
             ).fetchone()
+            capture_before = None
+            if self._sync_capture_active():
+                old_task = self.get_task(task.id)
+                if old_task is not None:
+                    capture_before = self._regular_sync_record(old_task) or self._sync_task_record(
+                        old_task
+                    )
             if category is not None:
                 self._write_category(category)
             if interval is None:
@@ -70,6 +77,10 @@ class RecurrenceMixin:
                         "UPDATE recurrence_occurrences SET state='active' WHERE task_id=?",
                         (str(task.id),),
                     )
+                if existing is not None:
+                    self._record_regular_change(
+                        "stop", capture_before, self._sync_task_record(task)
+                    )
                 return
             # Unchanged schedule never shifts when editing a completed current occurrence.
             if (
@@ -77,6 +88,7 @@ class RecurrenceMixin:
                 and existing["first_day"] == first.isoformat()
                 and existing["interval_days"] == interval
             ):
+                self._record_regular_change("save", capture_before, self._regular_sync_record(task))
                 return
             day = scheduled_day(first, interval, today)
             identifier = str(uuid4())
@@ -92,6 +104,8 @@ class RecurrenceMixin:
                 "SET rule_id=excluded.rule_id,day=excluded.day,state=excluded.state",
                 (str(task.id), identifier, day.isoformat(), "waiting" if day > today else "active"),
             )
+
+            self._record_regular_change("save", capture_before, self._regular_sync_record(task))
 
     def refresh_recurrences(self, today: date):
         with self._db:
@@ -120,6 +134,9 @@ class RecurrenceMixin:
                         "UPDATE recurrence_occurrences SET state='skipped' WHERE task_id=?",
                         (str(old.id),),
                     )
+                capture_before = (
+                    self._regular_sync_record(old) if self._sync_capture_active() else None
+                )
                 task = next_task(old)
                 self._defer_sync_task_root(task.id)
                 with self.suppress_sync_capture("regular"):
@@ -131,6 +148,10 @@ class RecurrenceMixin:
                 self._db.execute(
                     "UPDATE recurrence_rules SET task_id=?,current_day=? WHERE id=?",
                     (str(task.id), due.isoformat(), rule["id"]),
+                )
+
+                self._record_regular_change(
+                    "rollover", capture_before, self._regular_sync_record(task)
                 )
 
     def recurrence_views(self):

@@ -238,9 +238,11 @@ class SyncOutboxMixin:
             return self._frozen_sync_request(receipt.op_id)
 
     def next_sync_sendable(self) -> FrozenRequest | None:
-        """FIFO candidate only; never bypass an unprepared or rejected head."""
+        """FIFO candidate only; unresolved regular facts also block transport."""
         with self._db:
             self._db.execute("BEGIN")
+            if self._db.execute("SELECT 1 FROM sync_regular_changes LIMIT 1").fetchone():
+                return None
             ids = tuple(
                 UUID(row[0]) for row in self._db.execute("SELECT id FROM sync_intents ORDER BY seq")
             )

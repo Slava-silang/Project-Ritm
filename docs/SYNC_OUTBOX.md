@@ -6,6 +6,9 @@ storage/sync_outbox.py добавляет API TaskStore для подготов�
 задач добавлен в T41c4 (SYNC_CAPTURE.md), по умолчанию выключен. SyncBinding
 из UUID остаётся маркером контекста, не подтверждением настоящего входа.
 
+T41c5a: необработанные sync_regular_changes блокируют next_sync_sendable;
+это facts, не готовые Operation, см. SYNC_REGULAR_CAPTURE.md.
+
 ## Данные
 
 sync_outbox: intent_id (FK на sync_intents), request BLOB, request_hash, receipt

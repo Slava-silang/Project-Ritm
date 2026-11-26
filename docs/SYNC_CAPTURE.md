@@ -1,6 +1,6 @@
 # Автоматическая локальная запись обычных задач — T41c4
 
-Tasks v17, garden v7. `storage/sync_capture.py` включён в TaskStore.
+Tasks v18, garden v7. `storage/sync_capture.py` включён в TaskStore.
 Это подготовка исходящей очереди без HTTP, сервера, входа или применения inbound.
 Обычный запуск, миграция и одна лишь UUID-привязка запись не включают.
 
@@ -49,6 +49,10 @@ TaskStore для incoming/profile_restore/bootstrap/regular. Он исключа
 продолжает записывать свои локальные изменения независимо.
 
 ## Границы этапа
+
+T41c5a добавляет отдельный durable журнал current regular/save/rollover/stop/delete
+(SYNC_REGULAR_CAPTURE.md). Это ещё не отправляемые intents: наличие фактов
+блокирует next_sync_sendable. Ниже граница обычного task capture T41c4.
 
 Регулярные корни и их история помечаются deferred, включая создание следующего
 слота и остановку серии. Они не сериализуются ошибочно как ordinary TaskRecord.

@@ -1,5 +1,15 @@
 # Архитектурная основа
 
+## T41c5a — durable regular facts, tasks v18
+
+storage/sync_regular_capture.py расширяет capture: неизменяемые before/after
+RegularRecord/TaskRecord, порядок regular seq + anchor последнего обычного intent.
+Hooks current write/save/schedule/rollover/stop/delete в транзакции дерева/метаданных.
+Это локальные факты, не готовый сетевой rollover со случайными desktop UUID.
+Пока facts не обработаны, next_sync_sendable возвращает None. History detach/
+подготовка команд/зависимости далее. Backup/import чистят staged copy, pair
+rollback сохраняет; v17→18 атомарна, flag off по умолчанию. SYNC_REGULAR_CAPTURE.md.
+
 ## T41c4 — атомарный opt-in capture, tasks v17
 
 storage/sync_capture.py: флаг/UUID presence, hooks общего _write_task и root archive.

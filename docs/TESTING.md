@@ -1,5 +1,31 @@
 # Проверка «Ритма»
 
+## T41c5a — durable regular facts, 27 ноября
+
+Итоговый целевой набор DEVELOPMENT с test_sync_regular_capture: **685 passed,
+6 GUI deselected (35,69 с)**, /tmp/ritm-regular-capture-final.log. 17 новых проверок:
+current create/edit/completion/prune, три последовательных offline завершения с
+rollover/reopen, skip до последнего дня/waiting без backlog/дубликата, смена
+расписания/ordinary promotion/одновременная правка+stop, delete без тела/локальная
+корзина, failure после INSERT на шести путях с полным SQL dump rollback,
+off/incoming/повторное включение, v17→18 DDL failure байт-в-байт, публичная копия/
+import/source unchanged, corrupt facts без удаления, nested read без commit,
+барьер send candidate при сохранении доступа к frozen bytes. Pair failure
+проверяет также сохранность regular facts; legacy archive v17 добавлен.
+
+Offscreen **22 passed (45,84 с)**, /tmp/ritm-regular-capture-gui-fixed.log:
+17 новых logic + 5 GUI (regular capture off/on, backup, tasks capture off/on).
+Native Linux X11 **5 GUI passed (42,77 с)**, /tmp/ritm-regular-capture-native.log.
+Это автоматические сценарии окон; отдельного визуального обзора не было.
+Первый новый logic прогон: 14 passed/1 failed — тест напрямую выставлял root
+completion без дочерних отметок, заменён на корректный TaskService переход.
+Первый GUI: 4 passed/1 failed — новый send guard случайно стоял и в list frozen;
+исправлен, добавлена проверка доступности frozen при pending regular facts.
+Итоговые наборы выше зелёные. Ruff check/format 14 Python, diff --check passed.
+Tasks v18/garden v7, dependencies прежние. Полный pytest/Windows/Wayland/
+самостоятельная сборка/личные профили/аккаунты/HTTP/сервер/inbound/релизный аудит
+не проверялись. Факты не становятся готовыми сетевыми операциями.
+
 ## T41c4 — opt-in capture обычных задач, 27 ноября
 
 Итоговый целевой набор DEVELOPMENT с test_sync_capture: **667 passed, 5 GUI

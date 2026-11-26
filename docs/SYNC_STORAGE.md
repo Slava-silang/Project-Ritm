@@ -1,10 +1,12 @@
 # Локальные несетевые намерения — T41c1
 
-Tasks SQLite теперь **v17** (T41c3 — outbox, T41c4 — opt-in capture); garden v7.
+Tasks SQLite теперь **v18** (outbox/opt-in capture/regular facts); garden v7.
 Новые таблицы пусты до явного вызова storage API. Обычный запуск и прежние
 изменения задач не подключают синхронизацию. Явное включение capture обычных
 задач через storage API описано в SYNC_CAPTURE.md; по умолчанию оно выключено.
 Нет сервера/HTTP/регистрации/токенов/активного аккаунта в интерфейсе.
+
+Новый журнал regular facts и барьер отправки — SYNC_REGULAR_CAPTURE.md.
 
 ## Модель хранения
 

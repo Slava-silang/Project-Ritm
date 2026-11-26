@@ -137,7 +137,8 @@ def test_refresh_transaction_rolls_back_on_failure(tmp_path, monkeypatch):
         assert store.list_recurrences()[0]["task_id"] == str(task.id)
 
 
-def test_regular_tasks_gui_and_restart(tmp_path):
+@pytest.mark.parametrize("capture", [False, True])
+def test_regular_tasks_gui_and_restart(tmp_path, capture):
     import os
     import subprocess
     import sys
@@ -156,7 +157,8 @@ def test_regular_tasks_gui_and_restart(tmp_path):
                 str(Path(__file__).with_name("ui_recurrence_scenario.py")),
                 str(tmp_path),
                 mode,
-            ],
+            ]
+            + (["--capture"] if capture else []),
             env=env,
             cwd=tmp_path,
             capture_output=True,

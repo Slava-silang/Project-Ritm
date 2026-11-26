@@ -1,5 +1,46 @@
 # Текущее состояние
 
+## T41c5a — переходы current regular надёжно сохраняются, 27 ноября
+
+Новый storage/sync_regular_capture.py: immutable local RegularChange с typed
+before/after, seq/UUID/context и anchor последнего ordinary intent. Current
+create/edit/completion/prune, promotion/reschedule, rollover/skip, stop с правкой
+и delete пишутся с деревом/датами/membership/trash/garden event одной транзакцией.
+Три последовательных offline завершения сохраняются по отдельности с исходным
+запланированным днём и фактической датой. Delete fact только UUID, без дерева;
+локальная корзина прежняя. Одинаковые снимки/waiting activation не дублируются.
+
+Это локальные факты, ещё не готовые Operation: случайный desktop rollover
+нельзя отправлять как детерминированный сетевой. Pending regular facts блокируют
+next_sync_sendable; просмотр frozen requests остаётся доступен. Capture off и
+origin guard прежние. История/detach/ordinary после stop/restore и resolver ещё
+впереди. Нет UI подключения/HTTP/inbound/общего серверного пояса/аккаунтов.
+
+Tasks v18 добавляет одну пустую таблицу атомарно, сохраняет флаг v17 (обычно off).
+Backup/import чистят journal/sequence перед прочей sync metadata только в staged
+copy; источник прежний, аварийный paired rollback сохраняет исходные факты.
+Архивы v9–17 поддержаны, garden v7/dependencies прежние.
+Контракт и границы — SYNC_REGULAR_CAPTURE.md.
+
+685 passed/6 GUI deselected (35,69 с), /tmp/ritm-regular-capture-final.log.
+Offscreen 22 passed (17 logic+5 GUI, 45,84 с), native Linux X11 5 GUI passed
+(42,77 с). Ruff check/format 14 Python, diff passed. Первоначальные два сбоя
+тестов и исправления записаны в TESTING.md. Full suite/Windows/Wayland/
+standalone/визуальный обзор/релизный аудит/личный профиль/реальная сеть не проверялись.
+
+Изменены sync_regular_capture/sqlite/recurrence/sync_capture/sync_intents/
+sync_outbox/backup, migration_support/test_sync_regular_capture/test_profile_backup/
+test_recurrence/ui_recurrence_scenario/test_sync_source/test_sync_intents;
+docs SYNC_REGULAR_CAPTURE/CAPTURE/STORAGE/SOURCE/OUTBOX/SPEC/ARCHITECTURE/
+DEVELOPMENT/TASKS/TESTING/STATUS. assets/theme_* пользователя не затронуты.
+Сохранение: локальный коммит `feat: persist local regular task transitions for sync`
+(ID — git log). T41c5a done; T41c5/T41c in_progress.
+Следующее точное действие: T41c5b, покрыть history edits/reopen/detach и ordinary
+после stop/restore с сохранением local UUID/дат/корзины; затем resolver facts
+в occurrence/готовые intents с зависимостями и known bases. Календарь/категории/
+AI пути после regular. Transport до полного покрытия выключен; до inbound
+согласовать награды сада. Сервер/бот/размещение/публикация отдельно.
+
 ## T41c4 — opt-in capture обычных задач готов, 27 ноября
 
 storage/sync_capture.py + TaskStore: явный флаг и UUID presence, обычные create/

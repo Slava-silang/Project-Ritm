@@ -3,6 +3,7 @@
 
 def drop_later_task_tables(db, version):
     for table, introduced in (
+        ("sync_regular_changes", 18),
         ("sync_capture", 17),
         ("sync_task_presence", 17),
         ("sync_outbox", 16),

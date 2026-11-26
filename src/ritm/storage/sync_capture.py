@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from ritm.domain.calendar import from_instant_us
 from ritm.integrations.sync_codec import TaskRecord
 from ritm.storage.sync_intents import SyncIntent, _stored_uuid, _uuid
+from ritm.storage.sync_regular_capture import SyncRegularCaptureMixin
 
 CAPTURE_OBJECTS = ("sync_capture", "sync_task_presence")
 CAPTURE_SCHEMA = (
@@ -24,7 +25,7 @@ def _node_ids(task):
     }
 
 
-class SyncCaptureMixin:
+class SyncCaptureMixin(SyncRegularCaptureMixin):
     def is_sync_task_capture_enabled(self):
         row = self._db.execute("SELECT enabled FROM sync_capture WHERE context_id=1").fetchone()
         if row is None:
@@ -134,7 +135,10 @@ class SyncCaptureMixin:
             )
         )
 
-    def _capture_task_write(self, before, task, *, restored):
+    def _capture_task_write(self, before, task, *, restored, regular_before=None):
+        if self._sync_capture_active() and regular_before is not None:
+            self._record_regular_change("save", regular_before, self._regular_sync_record(task))
+            return
         if not self._sync_capture_active() or not self._ordinary_sync_root(task.id):
             return
         if before == task and not restored:
@@ -165,6 +169,11 @@ class SyncCaptureMixin:
         self._set_sync_task_presence(task.id, "live")
 
     def _capture_task_delete(self, task):
+        if self._sync_capture_active():
+            regular = self._regular_sync_record(task)
+            if regular is not None:
+                self._record_regular_change("delete", regular, None)
+                return
         if not self._sync_capture_active() or not self._ordinary_sync_root(task.id):
             return
         state = self.get_sync_task_presence(task.id)
