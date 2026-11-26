@@ -100,6 +100,16 @@ def task_view(task: Task) -> dict:
     }
 
 
+def repeat_day(value: str) -> date:
+    try:
+        result = date.fromisoformat(value)
+        if result.isoformat() != value:
+            raise ValueError
+        return result
+    except ValueError:
+        raise ValueError("Первый день повтора: ГГГГ-ММ-ДД") from None
+
+
 def parse_details(data: dict, current: Task | None = None) -> dict:
     difficulty = str(data.get("difficulty", "")).strip()
     minutes = str(data.get("minutes", "")).strip().replace(",", ".")
@@ -342,6 +352,7 @@ class TaskController(QObject):
         self._background = False
         self._pending_action = None
         self._error = ""
+        self._regular_tasks = []
         self._closing = False
         self._ready.connect(self._finish)
         self._submit("refresh", {"startup": True, "automatic": automatic_backup})
@@ -1028,6 +1039,10 @@ class TaskController(QObject):
             self._update_listing()
             self.changed.emit()
 
+    @Property("QVariantList", notify=changed)
+    def regularTasks(self):
+        return self._regular_tasks
+
     @Slot(str, "QVariantMap")
     def saveTask(self, identifier, data):
         self._submit("save", {"id": identifier, "fields": dict(data)})
@@ -1248,6 +1263,7 @@ class TaskController(QObject):
                     return
                 selected = ""
             with TaskStore(self._profile / "tasks.sqlite3", clock=self._clock) as store:
+                store.refresh_recurrences(self._clock().astimezone(self._zone).date())
                 service = TaskService(store)
                 if data.get("startup") or action == "restore_backup":
                     store.checkpoint_pomodoro(self._clock(), startup=True)
@@ -1425,6 +1441,10 @@ class TaskController(QObject):
                     current = store.get_task(UUID(identifier)) if identifier else None
                     if identifier and current is None:
                         raise KeyError(identifier)
+                    if current and store.is_skipped_occurrence(current.id):
+                        raise ValueError(
+                            "Этот повтор уже заменён следующим. Откройте актуальную задачу."
+                        )
                     fields = parse_details(data["fields"], current)
                     new_category = None
                     if "category" in data["fields"]:
@@ -1441,11 +1461,41 @@ class TaskController(QObject):
                             else None
                         )
                         fields["category_id"] = category.id if category else None
-                    task = (
-                        service.edit_details(current.id, category=new_category, **fields)
-                        if current
-                        else service.create_task(Task(**fields), category=new_category)
+                    repeat = str(data["fields"].get("repeatDays", "")).strip()
+                    existing_repeat = store.recurrence_views().get(identifier, {})
+                    if "repeatDays" not in data["fields"]:
+                        repeat = existing_repeat.get("repeatDays", "")
+                    first = (
+                        repeat_day(
+                            str(
+                                data["fields"].get("repeatStart")
+                                or existing_repeat.get("repeatStart")
+                                or self._clock().astimezone(self._zone).date().isoformat()
+                            )
+                        )
+                        if repeat
+                        else None
                     )
+                    interval = (
+                        int(repeat) if repeat and repeat.isascii() and repeat.isdecimal() else None
+                    )
+                    if repeat and (interval is None or not 1 <= interval <= 36500):
+                        raise ValueError("Укажите интервал от 1 до 36500 дней")
+                    task = replace(current, **fields) if current else Task(**fields)
+                    if interval is not None or existing_repeat:
+                        store.save_regular_task(
+                            initialize_weights(task),
+                            new_category,
+                            interval=interval,
+                            first=first,
+                            today=self._clock().astimezone(self._zone).date(),
+                        )
+                    else:
+                        task = (
+                            service.edit_details(current.id, category=new_category, **fields)
+                            if current
+                            else service.create_task(task, category=new_category)
+                        )
                     selected = str(task.id)
                 elif action == "purge_trash":
                     store.purge_trash({UUID(identifier) for identifier in data["ids"]})
@@ -1501,6 +1551,7 @@ class TaskController(QObject):
                         }
                 pending_cleanup = len(store.pending_attachment_cleanup())
                 raw = store.list_tasks()
+                repeat_views = store.recurrence_views()
                 blocks = store.list_work_blocks()
                 source_urls = {}
                 for link in store.list_source_links():
@@ -1533,9 +1584,16 @@ class TaskController(QObject):
                 )
                 categories = [{"id": str(x.id), "title": x.title} for x in store.list_categories()]
                 names = {x["id"]: x["title"] for x in categories}
+                regular_tasks = []
+                for identifier, values in repeat_views.items():
+                    entry = task_view(store.get_task(UUID(identifier)))
+                    regular_tasks.append(
+                        {**entry, **values, "category": names.get(entry["categoryId"], "")}
+                    )
                 rows = [
                     {
                         **task_view(task),
+                        **repeat_views.get(str(task.id), {}),
                         "sourceUrls": source_urls.get(("task", str(task.id)), []),
                         "category": names.get(str(task.category_id), ""),
                         "plannedText": planned[task.id],
@@ -1607,6 +1665,7 @@ class TaskController(QObject):
                     pomodoro_state,
                     focus_settings,
                     focus_settings_error,
+                    regular_tasks,
                 ),
                 "",
                 action,
@@ -1730,6 +1789,7 @@ class TaskController(QObject):
                 self._pomodoro,
                 focus_settings,
                 focus_settings_error,
+                self._regular_tasks,
             ) = result
             if focus_settings is not None:
                 self._pause_on_system = focus_settings

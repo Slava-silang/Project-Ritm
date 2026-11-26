@@ -190,7 +190,7 @@ ApplicationWindow {
     ].concat(window.backend.categories)
 
     property bool modalOpen: [
-        companionDialog, planningDialog, assistantDialog, systemDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
+        companionDialog, planningDialog, assistantDialog, systemDialog, regularDialog, appearanceDialog, backupDialog, restoreBackupDialog, attachmentDialog,
         exitFocusDialog, focusRecordEditor, focusEditor, taskEditor, renameEditor,
         weightEditor, deleteEditor, trashEditor, purgeEditor, attachmentPicker,
         backupFolderPicker, backupFilePicker
@@ -371,6 +371,9 @@ ApplicationWindow {
         difficultyInput.text = data.difficulty || "";
         minutesInput.text = data.minutes || "";
         deadlineInput.text = data.deadline || "";
+        repeatEnabled.checked = !!data.repeatDays;
+        repeatInterval.text = data.repeatDays || "1";
+        repeatStart.text = data.repeatStart || window.backend.calendar.today;
         formCategory.currentIndex = Math.max(0, window.backend.categories.findIndex(x => x.id === data.categoryId) + 1);
         formCategory.editText = data.category || "";
         taskEditor.open();
@@ -572,6 +575,12 @@ ApplicationWindow {
                         hiddenStart.checked = window.desktop.settings.hidden;
                         systemDialog.open();
                     }
+                }
+                MenuItem {
+                    objectName: "regularTasksButton"
+                    text: qsTr("Регулярные задачи")
+                    enabled: !window.backend.busy
+                    onTriggered: regularDialog.open()
                 }
                 MenuItem {
                     objectName: "appearanceButton"
@@ -1151,7 +1160,7 @@ ApplicationWindow {
                                         text: (taskRow.modelData.category ? taskRow.modelData.category + " · " : "")
                                             + (taskRow.modelData.overdue ? qsTr("Просрочено · ")
                                                 : taskRow.modelData.deadline ? qsTr("До ") : "")
-                                            + (taskRow.modelData.deadline || qsTr("Без дедлайна"))
+                                            + (taskRow.modelData.repeatDays ? qsTr("Каждые %1 дн. · без просрочки").arg(taskRow.modelData.repeatDays) : taskRow.modelData.deadline || qsTr("Без дедлайна"))
                                         wrapMode: Text.Wrap
                                     }
                                     ColumnLayout {
@@ -1172,7 +1181,7 @@ ApplicationWindow {
                                 Caption {
                                     visible: !window.appearance.usesSharedStyle
                                     Layout.fillWidth: true
-                                    text: (taskRow.modelData.overdue ? qsTr("Просрочено · ") : taskRow.modelData.deadline ? qsTr("До ") : "") + (taskRow.modelData.deadline || qsTr("Без дедлайна"))
+                                    text: (taskRow.modelData.overdue ? qsTr("Просрочено · ") : taskRow.modelData.deadline ? qsTr("До ") : "") + (taskRow.modelData.repeatDays ? qsTr("Каждые %1 дн. · без просрочки").arg(taskRow.modelData.repeatDays) : taskRow.modelData.deadline || qsTr("Без дедлайна"))
                                     wrapMode: Text.Wrap
                                 }
                                 Caption {
@@ -1344,7 +1353,7 @@ ApplicationWindow {
                                 text: window.current.minutes ? qsTr("Ожидается: ") + window.current.minutes + qsTr(" мин") : qsTr("Время не задано")
                             }
                             Caption {
-                                text: window.current.deadline ? qsTr("До ") + window.current.deadline : qsTr("Без дедлайна")
+                                text: window.current.repeatDays ? qsTr("Каждые %1 дн. · %2 · без просрочки").arg(window.current.repeatDays).arg(window.current.repeatDay) : window.current.deadline ? qsTr("До ") + window.current.deadline : qsTr("Без дедлайна")
                             }
                         }
                         RowLayout {
@@ -1633,6 +1642,55 @@ ApplicationWindow {
             visible: !window.appearance.usesSharedStyle
             text: qsTr("В своём темпе. Шаг за шагом.")
             horizontalAlignment: Text.AlignHCenter
+        }
+    }
+
+    EditorDialog {
+        id: regularDialog
+        title: qsTr("Регулярные задачи")
+        anchors.centerIn: parent
+        width: Math.min(window.appearance.dp(620), window.width - 32)
+        height: Math.min(window.appearance.dp(520), window.height - 32)
+        modal: true
+        contentItem: ScrollView {
+            id: regularScroll
+            contentWidth: availableWidth
+            ColumnLayout {
+                width: regularScroll.availableWidth
+                spacing: window.appearance.dp(12)
+                Caption {
+                    visible: window.backend.regularTasks.length === 0
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Расписаний пока нет. При создании задачи включите «Регулярная задача».")
+                }
+                Repeater {
+                    model: window.backend.regularTasks
+                    delegate: RowLayout {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label { text: modelData.title; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                            Caption { text: qsTr("Каждые %1 дн. · текущий повтор %2").arg(modelData.repeatDays).arg(modelData.repeatDay) }
+                        }
+                        UiButton {
+                            objectName: "editRegularTaskButton"
+                            text: qsTr("Изменить")
+                            enabled: !window.backend.busy
+                            onClicked: { regularDialog.close(); window.editTask(modelData); }
+                        }
+                    }
+                }
+                Caption {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Чтобы отключить расписание, откройте «Изменить» и снимите «Регулярная задача». Текущий экземпляр станет обычной задачей.")
+                }
+            }
+        }
+        footer: UiFooter {
+            UiButton { text: qsTr("Закрыть"); onClicked: regularDialog.close() }
         }
     }
 
@@ -2570,13 +2628,51 @@ ApplicationWindow {
                         }
                     }
                 }
+                UiCheck {
+                    id: repeatEnabled
+                    objectName: "repeatEnabled"
+                    text: qsTr("Регулярная задача")
+                    onToggled: if (checked) deadlineInput.text = ""
+                }
+                RowLayout {
+                    visible: repeatEnabled.checked
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Caption { text: qsTr("Каждые N дней") }
+                        UiField {
+                            id: repeatInterval
+                            objectName: "repeatInterval"
+                            Layout.fillWidth: true
+                            inputMethodHints: Qt.ImhDigitsOnly
+                        }
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Caption { text: qsTr("Первый день · ГГГГ-ММ-ДД") }
+                        UiField {
+                            id: repeatStart
+                            objectName: "repeatStart"
+                            Layout.fillWidth: true
+                            placeholderText: "2026-11-26"
+                        }
+                    }
+                }
                 Caption {
+                    visible: repeatEnabled.checked
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTr("Повтор по расписанию, без просрочки. Следующий заменяет пропущенный. Новому повтору передаются текст и подзадачи; файлы, календарные блоки и фокус остаются у прежнего.")
+                }
+                Caption {
+                    visible: !repeatEnabled.checked
                     text: qsTr("Дедлайн · местное время")
                 }
                 DateTimeField {
                     appearance: window.appearance
                     allowEmpty: true
                     id: deadlineInput
+                    visible: !repeatEnabled.checked
                     objectName: "deadlineInput"
                     Layout.fillWidth: true
                     placeholderText: "ДД.ММ.ГГГГ ЧЧ:ММ"
@@ -2610,7 +2706,9 @@ ApplicationWindow {
                     description: descriptionInput.text,
                     difficulty: difficultyInput.text,
                     minutes: minutesInput.text,
-                    deadline: deadlineInput.text,
+                    deadline: repeatEnabled.checked ? "" : deadlineInput.text,
+                    repeatDays: repeatEnabled.checked ? repeatInterval.text : "",
+                    repeatStart: repeatStart.text,
                     category: formCategory.editText,
                     categoryId: formCategory.currentIndex > 0 ? window.backend.categories[formCategory.currentIndex - 1].id : ""
                 })

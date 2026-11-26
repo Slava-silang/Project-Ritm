@@ -19,9 +19,10 @@ from ritm.storage.attachments import Attachment
 from ritm.storage.codec import decode_task, encode_task
 from ritm.storage.garden_source import GardenSourceMixin, create_source
 from ritm.storage.profile_guard import connect_profile
+from ritm.storage.recurrence import RECURRENCE_SCHEMA, RecurrenceMixin
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 SOURCE_SCHEMA = (
     "CREATE TABLE source_links (key TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, "
     "url TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('task','event')), "
@@ -186,7 +187,7 @@ ATTACHMENT_OWNER = """
 """
 
 
-class TaskStore(GardenSourceMixin):
+class TaskStore(RecurrenceMixin, GardenSourceMixin):
     def __init__(self, path: Path, *, clock: Callable[[], datetime] | None = None):
         self._clock = clock or (lambda: datetime.now(UTC))
         path = Path(path)
@@ -208,7 +209,7 @@ class TaskStore(GardenSourceMixin):
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in range(1, 13) and app_id == APPLICATION_ID:
+            if version in range(1, 14) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -236,7 +237,11 @@ class TaskStore(GardenSourceMixin):
                 if version < 12:
                     for statement in SOURCE_SCHEMA:
                         self._db.execute(statement)
-                create_source(self._db)
+                if version < 14:
+                    for statement in RECURRENCE_SCHEMA:
+                        self._db.execute(statement)
+                if version < 13:
+                    create_source(self._db)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._db.commit()
                 return
@@ -258,6 +263,8 @@ class TaskStore(GardenSourceMixin):
             self._db.execute(PROPOSAL_SCHEMA)
             self._db.execute(POMODORO_SCHEMA)
             for statement in SOURCE_SCHEMA:
+                self._db.execute(statement)
+            for statement in RECURRENCE_SCHEMA:
                 self._db.execute(statement)
             create_source(self._db)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
@@ -536,6 +543,13 @@ class TaskStore(GardenSourceMixin):
         }
 
     def _write_task(self, task: Task, *, restore_root: bool = False, restore_event: bool = False):
+        if (
+            task.deadline is not None
+            and self._db.execute(
+                "SELECT 1 FROM recurrence_rules WHERE task_id=?", (str(task.id),)
+            ).fetchone()
+        ):
+            raise ValueError("У регулярной задачи нет дедлайна")
         before = self.get_task(task.id) if self._garden_subscribed() else None
         task_id = str(task.id)
         previous = self._db.execute(
@@ -661,7 +675,11 @@ class TaskStore(GardenSourceMixin):
             self._db.execute("BEGIN")
             identifiers = [
                 UUID(row[0])
-                for row in self._db.execute("SELECT id FROM nodes WHERE kind=0 ORDER BY rowid")
+                for row in self._db.execute(
+                    "SELECT id FROM nodes WHERE kind=0 AND id NOT IN "
+                    "(SELECT task_id FROM recurrence_occurrences "
+                    "WHERE state IN ('waiting','skipped')) ORDER BY rowid"
+                )
             ]
             return tuple(self.get_task(identifier) for identifier in identifiers)
 
@@ -709,6 +727,11 @@ class TaskStore(GardenSourceMixin):
                 ),
             )
             if after is None:
+                self._db.execute("DELETE FROM recurrence_rules WHERE task_id=?", (str(task_id),))
+                self._db.execute(
+                    "UPDATE recurrence_occurrences SET state='active' WHERE task_id=?",
+                    (str(task_id),),
+                )
                 self._db.execute("DELETE FROM nodes WHERE id=?", (str(task_id),))
                 self._garden_event(
                     "task",

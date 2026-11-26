@@ -1,5 +1,13 @@
 # Проверка «Ритма»
 
+## RPT01 — регулярные задачи, 26 ноября
+
+- `pytest -q tests/test_recurrence.py tests/test_sqlite_store.py tests/test_profile_backup.py tests/test_backup.py tests/test_task_completion.py`: **63 passed (37,65 с)**, журнал /tmp/ritm-repeat-final-all.log. Расписание по дням, длинный пропуск/один актуальный повтор, отсутствие просрочки/корзины, новые UUID/сброс дерева, история completed, будущий старт/отключение, удаление/восстановление, миграция v13 с прежней garden identity, откат транзакции, backup v14/совместимость v13, существующие проверки storage/completion/backup.
+- `pytest -q tests/test_garden_runtime.py -k 'not gui'`: **12 passed, 6 deselected (2,26 с)**, /tmp/ritm-repeat-garden.log.
+- Новый GUI-сценарий создаёт интервал 3, проверяет отказ 0, завершение/переход дня/пропуск, отсутствие overdue, список расписаний и новый процесс. После расширения компактным окном 640×480 и отключением/включением: **1 passed (6,81 с)** offscreen, /tmp/ritm-repeat-compact.log. Native Linux X11 — **1 passed (6,70 с)** с дополнительной проверкой сохранения категории при редактировании, /tmp/ritm-repeat-native-category.log; ранний native до расширения — 1 passed (5,54 с).
+- Первоначальный GUI-тест: 7 passed/1 failed из-за сравнения числа всех задач с отфильтрованным списком активных; исправлен тест, история проверяется в общем снимке. Затем GUI 1 passed (5,56 с), полный целевой набор 63 passed. Первая дополнительная команда ошибочно указала отсутствующий test_task_list.py: тесты не запускались; повторён существующий garden_runtime.
+- Ruff check/format семи Python, qmllint Main.qml, git diff --check passed. Осмотрен native-снимок формы; нижние поля доступны прокруткой. Тесты используют временные профили, без личной базы/сетевых запросов. Full suite, Windows/Wayland/самостоятельная сборка не проверялись. Tasks schema v14, garden v7, зависимости прежние.
+
 ## UI01 — независимые тема и панель, 26 ноября
 
 - Настройки: 20 passed, 2 deselected (0,32 с), tests/test_appearance.py -k 'not qml'. Все 6 ключей тем × 2 панели, сохранение при смене темы/масштаба, отказ неверного значения без перезаписи, загрузка старых файлов с сохранением прежнего расположения.
