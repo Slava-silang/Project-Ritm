@@ -1,5 +1,16 @@
 # Архитектурная основа
 
+## T41b3 — чистая проекция и план хранения
+
+sync_projection.py принимает LocalData и неизменяемый Snapshot, без SQL/Qt/сети.
+project_local убирает blocked/дубли current/history, предлагает 50 completed и
+30 суток календаря; CompletionSelectionRequired блокирует неоднозначный большой
+импорт, LocalExclusion не является cloud mark. retain_cloud использует отдельный
+серверный completion-order, возвращает эффекты одной revision/marks без текста.
+Current templates сохранены вне лимита по решению пользователя. Исходники
+профиля/секреты не читаются; подключение source adapter/очереди впереди (T41c).
+Правила/границы/лимиты в SYNC_RETENTION.md; схемы/зависимости прежние.
+
 ## T41b2b3 — история и согласованные планы регулярности
 
 sync_codec: CalendarRecord и OccurrenceRecord с стабильным id по (rule_id,day),

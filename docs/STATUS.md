@@ -1,5 +1,37 @@
 # Текущее состояние
 
+## T41b3 — проекция/retention готовы, 26 ноября
+
+Пользователь уточнил: 50 — суммарно ordinary completed + прошлая occurrence-
+история; текущие экземпляры активных расписаний сохраняются отдельно даже
+выполненными, как шаблоны. Новый integrations/sync_projection.py — pure
+LocalData/project_local/retain_cloud, не источник TaskStore и не отправка.
+
+Локальная проекция не экспортирует skipped/deleted/дубли plain current/history,
+сохраняет все активные/current templates, предлагает 50 по известным датам.
+При большом наборе с неизвестными датами CompletionSelectionRequired требует
+выбора; даты не выдумываются. Календарь по ends>=now UTC−30 суток, future/live
+сохраняются; для вытесненного корня только title/ID, явно удалённый теряет и блок.
+LocalExclusion — отчёт, не сетевое удаление. Входные DTO неизменны.
+
+Cloud-план требует отдельного серверного completion-order, не revision/часов
+устройства. Возвращает эффекты одной ревизии: retention marks без тел и с тем же
+epoch, очистку captions, block user_deleted+epoch при удалённом корне. Повтор
+над уже очищенным результатом no-op. Реального SQL/ledger/order/owner/WAL/сети нет.
+Правила/ограничения — SYNC_RETENTION.md; исходная локальная история не режется.
+
+485 passed/1 GUI deselected (3,66 с), /tmp/ritm-sync-retention-final.log;
+Ruff check/format двух Python, diff passed. Все прогоны шага зелёные. GUI/Windows/
+сборка/реальный профиль не проверялись, pure модуль пока не подключён к app.
+Tasks v14/garden v7/deps и assets/theme_* прежние. Изменены новый module/test,
+SPEC/SYNC_PROTOCOL/SYNC_TRANSITIONS/RETENTION/ARCHITECTURE/DEVELOPMENT/TASKS/
+TESTING/STATUS. Локальный коммит `feat: project sync data and plan cloud retention`
+(ID — git log). T41b/T41b3 done. Следующий точный шаг T41c1 — модель служебных
+таблиц для несетевых намерений/привязки поколения и миграция с rollback/backup,
+без ключей/паролей и без реального inbound. Затем source adapter/prepare/freeze/
+очередь/common timezone/history/reopen; до inbound согласовать награды сада за
+новые выполнения с другого устройства. Сервер/размещение/публикация отдельно.
+
 ## T41b2b3 — история регулярности и общий пояс готовы, 26 ноября
 
 Пользователь принял единый пояс аккаунта из настроек: предложить пояс компьютера

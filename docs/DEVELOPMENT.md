@@ -1,5 +1,13 @@
 # Окружение, запуск и выпуск
 
+## Проверки проекции/хранения — T41b3
+
+`.venv/bin/pytest -q tests/test_sync_projection.py tests/test_sync_transitions.py tests/test_sync_pages.py tests/test_sync_operations.py tests/test_sync_codec.py tests/test_sync_recurrence.py tests/test_recurrence.py tests/test_task_weights.py tests/test_task_completion.py tests/test_calendar_blocks.py -k 'not gui'`
+
+Чистые DTO/временные тестовые данные, без профиля и сервера. SYNC_RETENTION.md
+описывает явный выбор недатированной истории и разницу exclusion/retention.
+Module пока не используется приложением; dependencies/миграций нет.
+
 ## Проверки истории sync — T41b2b3
 
 `.venv/bin/pytest -q tests/test_sync_transitions.py tests/test_sync_pages.py tests/test_sync_operations.py tests/test_sync_codec.py tests/test_sync_recurrence.py tests/test_recurrence.py tests/test_task_weights.py tests/test_task_completion.py tests/test_calendar_blocks.py -k 'not gui'`

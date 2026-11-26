@@ -1,5 +1,23 @@
 # Проверка «Ритма»
 
+## T41b3 — проекция и ограниченное облачное хранение, 26 ноября
+
+Новый отдельный набор сначала **19 passed (0,25 с)**. После дополнений общий
+целевой набор команды DEVELOPMENT: **485 passed, 1 GUI deselected (3,66 с)**,
+/tmp/ritm-sync-retention-final.log. Проверены 50 ordinary+occurrence суммарно,
+все active, более 50 completed current templates/будущий regular, отсутствие
+дубля plain Task, skipped/deleted/связанные блоки, неизвестные даты и явный
+выбор без выдумывания timestamp, ID/body/duplicate validation, минимальная
+подпись без старого description, inclusive cutoff/микросекунда/offset/future/
+пересечения, серверный порядок независимо от revision/date, marks/epoch,
+неизменность входа, повторный no-op, reopen/caption clearing, stable ties.
+
+Все запуски тестов этого шага зелёные. Ruff check/format двух Python и diff
+passed. Проверки pure, без настоящего профиля/сервера/сети. GUI/Windows/SQL-
+миграция/пакетирование не запускались: runtime ничего не импортирует, schemas
+v14/v7/dependencies прежние. Source adapter/реальная очередь/cleanup WAL/
+server owner/order/apply/SYNC01–SYNC18 не проверены и не реализованы этим шагом.
+
 ## T41b2b3 — история/общий пояс/связанные эффекты, 26 ноября
 
 Команда DEVELOPMENT: **462 passed, 1 GUI deselected (3,45 с)**,
