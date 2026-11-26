@@ -1,5 +1,30 @@
 # Проверка «Ритма»
 
+## T41c2 — source adapter и membership current, 26 ноября
+
+Целевой набор DEVELOPMENT: **565 passed, 3 GUI deselected (26,24 с)**,
+/tmp/ritm-sync-source-complete.log. Новые проверки: один WAL snapshot при writer
+между tree/category/date reads, readonly/байты исходника неизменны, SQL trace
+без trash/files/credentials/queue/garden/focus, skipped тело даже не читается,
+waiting current/история/даты/null, неизвестные даты и явный выбор 50 без binding,
+stop completed/current archive-restore ordinary, archive-restore старой истории,
+reopen/history с ручным deadline, legacy orphan metadata без repair, nested txn/
+restore guard, повреждённый day без echo/изменения. Остальные codec/queue/
+recurrence/storage/backup/garden/domain проверки включены.
+
+Regular GUI offscreen **1 passed (7,08 с)** /tmp/ritm-sync-source-gui.log;
+native Linux X11 **1 passed (7,23 с)** /tmp/ritm-sync-source-native.log:
+создание/смена дня/пропуск, управление, compact, off/on и новый процесс.
+Ruff check/format 4 Python и diff passed. Полный набор/Windows/Wayland/релизная
+сборка/личный профиль/сервер/сеть не проверялись. Схемы v15/v7/deps прежние.
+
+Первый новый набор: 8 passed/1 failed — тест ожидал identity после permanent
+purge; существующая очистка удаляет identity и блоки. Исправлено ожидание:
+source не восстанавливает забытые UUID. Следующий общий прогон 564 passed/3
+deselected (26,49 с); затем добавлен сценарий ручного deadline, итог выше.
+Никакого автоматического capture/freeze/передачи/inbound не появилось. Legacy
+orphan membership неоднозначна и не ремонтируется на read, см. SYNC_SOURCE.
+
 ## T41c1 — хранение intentions и безопасные локальные копии, 26 ноября
 
 - Целевой набор DEVELOPMENT: **547 passed, 5 GUI deselected (25,54 с)**,

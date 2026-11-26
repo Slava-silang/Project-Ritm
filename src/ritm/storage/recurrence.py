@@ -49,10 +49,15 @@ class RecurrenceMixin:
             self._write_task(task)
             if interval is None:
                 self._db.execute("DELETE FROM recurrence_rules WHERE task_id=?", (str(task.id),))
-                self._db.execute(
-                    "UPDATE recurrence_occurrences SET state='active' WHERE task_id=?",
-                    (str(task.id),),
-                )
+                if existing is not None:
+                    self._db.execute(
+                        "DELETE FROM recurrence_occurrences WHERE task_id=?", (str(task.id),)
+                    )
+                else:
+                    self._db.execute(
+                        "UPDATE recurrence_occurrences SET state='active' WHERE task_id=?",
+                        (str(task.id),),
+                    )
                 return
             # Unchanged schedule never shifts when editing a completed current occurrence.
             if (

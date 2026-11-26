@@ -1,5 +1,37 @@
 # Текущее состояние
 
+## T41c2 — source adapter готов, 26 ноября
+
+Новый storage/sync_source.py: TaskStore.read_sync_source/prepare_sync_preview.
+Одно read BEGIN фиксирует roots/trees/completion dates/категории/recurrence/
+календарь, DTO проверяются после освобождения SQLite read-lock. Снимок не
+читает trash.before/after/files/credentials/binding/queue/focus/garden; skipped
+тела вообще не загружаются, future templates входят в regular. History сохраняет
+stored rule/day/Task ID/date, reopened/ручной deadline идут ordinary. Нет
+автопривязки, генерации повторов, изменений профиля/очереди или отправки.
+
+Исправлена только membership текущего экземпляра при stop/current archive:
+его завершённое тело после отключения/restore ordinary, без удаления задач/
+дат/старых исторических slots. Старые неоднозначные orphan rows читаются как
+сохранены, не угадываются; забытые при permanent purge UUID не выдумываются.
+Полный capture/detach при работе с уже подключённой историей ещё впереди.
+Контракт/границы — SYNC_SOURCE.md. Новых схем/dependencies нет (v15/v7).
+
+565 passed/3 GUI deselected (26,24 с), /tmp/ritm-sync-source-complete.log;
+regular GUI offscreen 1 passed (7,08 с), native Linux 1 passed (7,23 с).
+Ruff/format 4 Python, diff passed. Ранний отказ был неверным ожиданием теста
+после purge, исправлен; детали TESTING. Full suite/Windows/Wayland/standalone/
+личный профиль/сервер/реальная сеть не запускались. assets/theme_* прежние.
+
+Изменены новый sync_source/test_sync_source, sqlite/recurrence и docs
+SYNC_SOURCE/STORAGE/PROTOCOL/ARCHITECTURE/DEVELOPMENT/TASKS/TESTING/STATUS.
+Локальный коммит `feat: read consistent local sync source snapshots` (ID — git log).
+T41c in_progress, T41c2 done. Следующий шаг T41c3 — prepare/freeze Operation из
+намерения, persisted receipts/dependencies/retry в локальных транзакциях и
+санитизация backup; без HTTP/inbound. Затем полный capture/worker/common zone/
+history migration/reopen. До inbound согласовать награды сада за новые выполнения
+с другого устройства. Сервер/размещение/публикация отдельно.
+
 ## T41c1 — локальное хранение намерений готово, 26 ноября
 
 Tasks v15 автоматически создаёт/migrates sync_binding и sync_intents/index.

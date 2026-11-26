@@ -1,5 +1,16 @@
 # Окружение, запуск и выпуск
 
+## Source adapter синхронизации — T41c2
+
+Новый storage API не вызывается QML и не отправляет данные. Использует текущий
+TaskStore в его worker-потоке, явные now/CalendarRecord для preview. Описание:
+SYNC_SOURCE.md; schema v15/garden v7/dependencies прежние.
+
+`.venv/bin/pytest -q tests/test_sync_source.py tests/test_sync_intents.py tests/test_recurrence.py tests/test_sqlite_store.py tests/test_backup.py tests/test_profile_backup.py tests/test_garden_events.py tests/test_sync_projection.py tests/test_sync_transitions.py tests/test_sync_pages.py tests/test_sync_operations.py tests/test_sync_codec.py tests/test_sync_recurrence.py tests/test_task_weights.py tests/test_task_completion.py tests/test_calendar_blocks.py -k 'not gui'`
+
+GUI regular: `.venv/bin/pytest -q tests/test_recurrence.py::test_regular_tasks_gui_and_restart`;
+native Linux — та же команда с `RITM_UI_PLATFORM=xcb`. Профили временные.
+
 ## Локальное хранение очереди — T41c1
 
 Tasks schema **v15** создаётся/мигрирует автоматически, garden v7 прежняя.

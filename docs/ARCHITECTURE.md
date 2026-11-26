@@ -1,5 +1,19 @@
 # Архитектурная основа
 
+## T41c2 — согласованный source adapter
+
+storage/sync_source.py добавляет read_sync_source/prepare_sync_preview в TaskStore.
+Явный read BEGIN фиксирует все корни/деревья/даты/metadata/категории/календарь;
+validation DTO идёт после закрытия транзакции. Source не читает trash/files/
+focus/garden/binding/queue и не пишет данные. Waiting templates включены, skipped
+тела не запрашиваются. Проекция/выбор дат — прежний sync_projection.
+
+Отключение/архивация current отсоединяет только его occurrence membership,
+чтобы completed current после stop/restore оставался ordinary. Старая история
+своего rule остаётся. Схемы v15/v7/dependencies прежние. Legacy orphan metadata
+не чинится эвристически, предупреждение/границы — SYNC_SOURCE.md. Full capture/
+замороженная очередь/transport/inbound ещё впереди.
+
 ## T41c1 — durable local intents, tasks schema v15
 
 storage/sync_intents.py — SyncBinding/SyncIntent/QueuedIntent + mixin TaskStore.

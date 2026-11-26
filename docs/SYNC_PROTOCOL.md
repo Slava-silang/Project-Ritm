@@ -1,5 +1,14 @@
 # Синхронизация и Telegram — схема T41a
 
+## T41c2 — согласованный source, 26 ноября
+
+TaskStore умеет read-only собрать LocalData в одной SQLite snapshot-транзакции
+и подготовить данные initial preview. Никаких чтений текстов корзины/файлов/
+ключей/очереди, автоматической привязки/отправки. Source не восстанавливает UUID
+после permanent purge и не трактует отсутствие как cloud delete. Текущие stop/
+current archive отделяют membership, не задачи/даты; старую неоднозначную metadata
+не чиним молча. Детали в SYNC_SOURCE.md; full capture/freeze/receipts впереди.
+
 ## T41c1 — хранение несетевых намерений, 26 ноября
 
 TaskStore v15: локальные UUID context и immutable intentions с зависимостями,

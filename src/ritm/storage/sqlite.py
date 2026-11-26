@@ -21,6 +21,7 @@ from ritm.storage.garden_source import GardenSourceMixin, create_source
 from ritm.storage.profile_guard import connect_profile
 from ritm.storage.recurrence import RECURRENCE_SCHEMA, RecurrenceMixin
 from ritm.storage.sync_intents import SYNC_SCHEMA, SyncIntentMixin
+from ritm.storage.sync_source import SyncSourceMixin
 
 APPLICATION_ID = 0x5249544D
 SCHEMA_VERSION = 15
@@ -188,7 +189,7 @@ ATTACHMENT_OWNER = """
 """
 
 
-class TaskStore(SyncIntentMixin, RecurrenceMixin, GardenSourceMixin):
+class TaskStore(SyncSourceMixin, SyncIntentMixin, RecurrenceMixin, GardenSourceMixin):
     def __init__(self, path: Path, *, clock: Callable[[], datetime] | None = None):
         self._clock = clock or (lambda: datetime.now(UTC))
         path = Path(path)
@@ -733,6 +734,12 @@ class TaskStore(SyncIntentMixin, RecurrenceMixin, GardenSourceMixin):
                 ),
             )
             if after is None:
+                # Restoring a deleted current template must not revive its series membership.
+                self._db.execute(
+                    "DELETE FROM recurrence_occurrences WHERE task_id=? AND EXISTS "
+                    "(SELECT 1 FROM recurrence_rules WHERE task_id=?)",
+                    (str(task_id), str(task_id)),
+                )
                 self._db.execute("DELETE FROM recurrence_rules WHERE task_id=?", (str(task_id),))
                 self._db.execute(
                     "UPDATE recurrence_occurrences SET state='active' WHERE task_id=?",
