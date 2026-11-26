@@ -220,10 +220,10 @@ def test_manually_constructed_archive_cannot_restore_old_queue(tmp_path, version
         store.create_task(Task(title="Keep task"))
         store.initialize_sync_binding(BINDING)
         store.enqueue_sync_intent(intent())
-    if version == 14:
+    if version < SCHEMA_VERSION:
         with sqlite3.connect(path) as db:
-            drop_later_task_tables(db, 14)
-            db.execute("PRAGMA user_version=14")
+            drop_later_task_tables(db, version)
+            db.execute(f"PRAGMA user_version={version}")
     raw = path.read_bytes()
     archive = tmp_path / "synthetic.zip"
     with ZipFile(archive, "w") as zipped:

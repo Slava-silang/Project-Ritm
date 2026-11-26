@@ -1,5 +1,26 @@
 # Проверка «Ритма»
 
+## T41c3 — заморозка запросов и Receipt storage, 26 ноября
+
+Первый новый набор **21 passed (1,94 с)**. После добавления отказов записи и
+rollover guard полный целевой набор DEVELOPMENT: **650 passed, 5 GUI deselected
+(31,62 с)**, /tmp/ritm-sync-outbox-verified.log. Проверены byte-for-byte freeze/
+retry/reopen, Receipt association/counters/context/hash, identical/contradictory
+receipts, rejected/pending/applied deps, transitive cross-target dependencies,
+явный base/запрет rebase, FIFO/неподготовленная голова, две SQLite connections,
+corrupt hash без удаления, DDL v15→16 rollback байт-в-байт, post-write failure
+rollback freeze/receipt, noncanonical rollover pending без переписывания,
+backup copy/import без outbox и paired failure rollback с frozen bytes.
+Прежние source/queue/domain/legacy archives v9–15 включены. Все pytest шага зелёные.
+
+GUI существующих backup/regular сценариев: offscreen **2 passed (12,90 с)**,
+/tmp/ritm-sync-outbox-gui.log; native Linux X11 **2 passed (12,33 с)**,
+/tmp/ritm-sync-outbox-native.log. Нового интерфейса подключения нет.
+Ruff check/format девяти Python и git diff --check passed. Full suite/Windows/
+Wayland/standalone/реальные аккаунты/сервер/сеть/релизный аудит не проверялись.
+Tasks v16/garden v7, dependencies прежние. Проверка Receipt здесь не заменяет
+TLS/auth/owner/server ledger; реальные transport/inbound ещё не подключены.
+
 ## T41c2 — source adapter и membership current, 26 ноября
 
 Целевой набор DEVELOPMENT: **565 passed, 3 GUI deselected (26,24 с)**,

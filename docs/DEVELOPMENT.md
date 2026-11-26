@@ -1,5 +1,18 @@
 # Окружение, запуск и выпуск
 
+## Подготовка запросов очереди — T41c3
+
+Tasks schema **v16**, garden v7/dependencies прежние. Миграция автоматическая,
+но UI не включает capture/HTTP от одного запуска. API описан в SYNC_OUTBOX.md.
+Старый executable может отказать читать v16: используйте отдельный старый профиль,
+не понижайте user_version вручную.
+
+`.venv/bin/pytest -q tests/test_sync_outbox.py tests/test_sync_source.py tests/test_sync_intents.py tests/test_sqlite_store.py tests/test_recurrence.py tests/test_backup.py tests/test_profile_backup.py tests/test_garden_events.py tests/test_pomodoro.py tests/test_mail_proposals.py tests/test_assistant_drafts.py tests/test_sync_projection.py tests/test_sync_transitions.py tests/test_sync_pages.py tests/test_sync_operations.py tests/test_sync_codec.py tests/test_sync_recurrence.py tests/test_task_weights.py tests/test_task_completion.py tests/test_calendar_blocks.py -k 'not gui'`
+
+GUI regression: `.venv/bin/pytest -q tests/test_backup.py::test_backup_gui_confirms_replacement tests/test_recurrence.py::test_regular_tasks_gui_and_restart`;
+native Linux — та же команда с `RITM_UI_PLATFORM=xcb`. Временные профили/fake
+contexts и receipts; настоящий сервер/аккаунт не используются.
+
 ## Source adapter синхронизации — T41c2
 
 Новый storage API не вызывается QML и не отправляет данные. Использует текущий

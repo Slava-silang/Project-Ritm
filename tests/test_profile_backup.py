@@ -620,6 +620,7 @@ def test_v5_binding_migration_preserves_wallet_claims_and_achievements(tmp_path)
 
 def test_sync_binding_and_queue_excluded_from_paired_archive_only(tmp_path):
     from ritm.storage.sync_intents import SyncBinding, SyncIntent
+    from ritm.storage.sync_outbox import SyncBase
 
     task = seed(tmp_path)
     binding = SyncBinding(owner_id=uuid4(), device_id=uuid4(), server_id=uuid4())
@@ -630,6 +631,16 @@ def test_sync_binding_and_queue_excluded_from_paired_archive_only(tmp_path):
         store.initialize_sync_binding(binding)
         store.enqueue_sync_intent(pending)
         expected_task = store.get_task(task.id)
+        frozen = store.freeze_sync_intent(
+            pending.id,
+            SyncBase(
+                server_id=binding.server_id,
+                target_kind="task",
+                target_id=task.id,
+                revision=4,
+                delete_epoch=2,
+            ),
+        )
     archive = backup.create_backup(tmp_path, tmp_path / "copies", NOW)
     with TaskStore(tmp_path / "tasks.sqlite3") as store:
         assert (
@@ -640,11 +651,16 @@ def test_sync_binding_and_queue_excluded_from_paired_archive_only(tmp_path):
     with TaskStore(tmp_path / "tasks.sqlite3") as store:
         assert store.get_sync_binding() is None and not store.list_sync_intents()
         assert store.get_task(task.id) == expected_task
+        if store.get_sync_binding() is None:
+            assert store.list_frozen_sync_requests() == ()
+        else:
+            assert store.get_frozen_sync_request(pending.id).raw == frozen.raw
     assert profile_backup.validate_pair(tmp_path)
 
 
 def test_failed_pair_restore_keeps_live_sync_queue(tmp_path, monkeypatch):
     from ritm.storage.sync_intents import SyncBinding, SyncIntent
+    from ritm.storage.sync_outbox import SyncBase
 
     task = seed(tmp_path)
     archive = backup.create_backup(tmp_path, tmp_path / "copies", NOW)
@@ -656,6 +672,16 @@ def test_failed_pair_restore_keeps_live_sync_queue(tmp_path, monkeypatch):
         store.initialize_sync_binding(binding)
         store.enqueue_sync_intent(pending)
         expected_task = store.get_task(task.id)
+        frozen = store.freeze_sync_intent(
+            pending.id,
+            SyncBase(
+                server_id=binding.server_id,
+                target_kind="task",
+                target_id=task.id,
+                revision=4,
+                delete_epoch=2,
+            ),
+        )
     original = profile_backup._publish_database
     calls = []
 
@@ -675,4 +701,8 @@ def test_failed_pair_restore_keeps_live_sync_queue(tmp_path, monkeypatch):
             store.get_sync_binding() == binding and store.list_sync_intents()[0].intent == pending
         )
         assert store.get_task(task.id) == expected_task
+        if store.get_sync_binding() is None:
+            assert store.list_frozen_sync_requests() == ()
+        else:
+            assert store.get_frozen_sync_request(pending.id).raw == frozen.raw
     assert profile_backup.validate_pair(tmp_path)

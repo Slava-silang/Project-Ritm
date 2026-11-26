@@ -1,5 +1,38 @@
 # Текущее состояние
 
+## T41c3 — заморозка запросов и подтверждения готовы, 26 ноября
+
+Новый storage/sync_outbox.py: SyncBase/FrozenRequest + TaskStore API freeze/get/
+list/save_receipt/next candidate. Operation BLOB/hash неизменяемы; same ID retry
+читает те же bytes, другое основание не переписывает запрос. Явный known base
+или applied ancestor той же цели; cross-target receipt не становится основанием.
+Rejected/unprepared зависимости и FIFO голова блокируют более поздние отправки.
+Receipt связан с op/device/server/hash/counter, identical idempotent,
+противоречие не заменяет первый результат. Никакого HTTP/task apply/награды сада.
+
+Tasks v16 добавляет sync_outbox одной DDL транзакцией, context/intents прежние.
+Общий _read_intent переиспользуется, архивы v9–15 поддержаны. Sanitize копии
+очищает outbox перед intents/binding; source untouched, internal pair rollback
+сохраняет frozen bytes. Garden v7/dependencies прежние. Источники/автопривязка/
+UI capture не включились от миграции, рабочий профиль пользователя не открывался.
+Контракт/границы — SYNC_OUTBOX.md. UI подключения/owner/auth/сервер/сеть впереди.
+
+650 passed/5 GUI deselected (31,62 с), /tmp/ritm-sync-outbox-verified.log;
+GUI backup+regular offscreen 2 passed (12,90 с), native Linux 2 passed (12,33 с).
+Все pytest зелёные; Ruff/format 9 Python, diff passed. Full suite/Windows/
+Wayland/standalone/релизный аудит не запускались. assets/theme_* прежние.
+
+Изменены новый sync_outbox/test_sync_outbox, sqlite/sync_intents/backup,
+migration_support/test_sync_intents/test_sync_source/test_profile_backup,
+docs SYNC_OUTBOX/STORAGE/SOURCE/PROTOCOL/SPEC/ARCHITECTURE/DEVELOPMENT/TASKS/
+TESTING/STATUS. Локальный коммит `feat: freeze sync requests and persist verified receipts`
+(ID — git log). T41c3 done, T41c in_progress. Следующий шаг T41c4 — opt-in capture
+обычных task mutations одним transaction с intentions/dependencies, preserve
+unbound behavior и origin guard против feedback входящих/restore. Без реальной
+сети, до полноценного capture regular/calendar/всех путей не включать transport.
+До inbound согласовать награды сада за новые выполнения с другого устройства.
+Реальный сервер/размещение/публикация отдельно.
+
 ## T41c2 — source adapter готов, 26 ноября
 
 Новый storage/sync_source.py: TaskStore.read_sync_source/prepare_sync_preview.

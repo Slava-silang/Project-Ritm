@@ -1,5 +1,17 @@
 # Архитектурная основа
 
+## T41c3 — immutable outbox и receipts, tasks v16
+
+storage/sync_outbox.py/mixin TaskStore: SyncBase, FrozenRequest, freeze/get/list,
+Receipt save и FIFO candidate. BLOB канонического запроса неизменяем, counter-
+основание явное или из applied ancestor той же цели; cross-target receipt не
+подменяет основание. Request/receipt соответствуют intent/op/device/server/hash,
+rejected/неподготовленная голова не обходится. Нет транспорта/incoming/task apply.
+
+Вынесен общий _read_intent, sanitize backup сначала очищает outbox (только staged
+copy); before rollback сохраняет frozen. Schema v15→16 атомарна, старые archive
+filters/fixtures обновлены. Подробности SYNC_OUTBOX.md; garden v7/deps прежние.
+
 ## T41c2 — согласованный source adapter
 
 storage/sync_source.py добавляет read_sync_source/prepare_sync_preview в TaskStore.

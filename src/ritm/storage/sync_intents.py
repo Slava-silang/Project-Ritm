@@ -101,6 +101,19 @@ def _intent(intent):
     return (identifier, dependency, intent.target_kind, target, intent.action, payload)
 
 
+def _read_intent(row):
+    intent = SyncIntent(
+        id=_stored_uuid(row["id"]),
+        depends_on=_stored_uuid(row["depends_on"]) if row["depends_on"] is not None else None,
+        target_kind=row["target_kind"],
+        target_id=_stored_uuid(row["target_id"]),
+        action=row["action"],
+        payload=decode_entity(row["desired_json"]) if row["desired_json"] is not None else None,
+    )
+    _intent(intent)
+    return intent
+
+
 class SyncIntentMixin:
     def get_sync_binding(self) -> SyncBinding | None:
         row = self._db.execute(
@@ -173,19 +186,7 @@ class SyncIntentMixin:
             result = []
             seen = set()
             for row in self._db.execute("SELECT * FROM sync_intents ORDER BY seq"):
-                intent = SyncIntent(
-                    id=_stored_uuid(row["id"]),
-                    depends_on=_stored_uuid(row["depends_on"])
-                    if row["depends_on"] is not None
-                    else None,
-                    target_kind=row["target_kind"],
-                    target_id=_stored_uuid(row["target_id"]),
-                    action=row["action"],
-                    payload=decode_entity(row["desired_json"])
-                    if row["desired_json"] is not None
-                    else None,
-                )
-                _intent(intent)
+                intent = _read_intent(row)
                 if (
                     binding is None
                     or row["context_id"] != 1
@@ -240,6 +241,7 @@ def sanitize_sync_backup(path: Path):
         db.execute("PRAGMA foreign_keys=ON")
         db.execute("PRAGMA journal_mode=DELETE")
         db.execute("PRAGMA secure_delete=ON")
+        db.execute("DELETE FROM sync_outbox")
         db.execute("DELETE FROM sync_intents")
         db.execute("DELETE FROM sync_binding")
         db.execute("DELETE FROM sqlite_sequence WHERE name='sync_intents'")

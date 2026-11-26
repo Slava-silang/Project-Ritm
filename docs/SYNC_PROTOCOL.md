@@ -1,5 +1,13 @@
 # Синхронизация и Telegram — схема T41a
 
+## T41c3 — persisted frozen requests/receipts, 26 ноября
+
+TaskStore v16 хранит frozen canonical bytes и checked Receipt отдельно от
+несетевых intentions. Retry не меняет op/hash/base; зависимости требуют applied,
+основание связано с той же целью/поколением. FIFO candidate не обходит unprepared/
+rejected. Backup/import очищают staged outbox, рабочая/rollback очередь цела.
+Подробности SYNC_OUTBOX.md. Transport/server/auth/inbound ещё не подключены.
+
 ## T41c2 — согласованный source, 26 ноября
 
 TaskStore умеет read-only собрать LocalData в одной SQLite snapshot-транзакции
