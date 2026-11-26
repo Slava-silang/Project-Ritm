@@ -233,7 +233,13 @@ def test_missing_category_or_task_reference_rejected_but_archived_caption_allowe
 
 def test_regular_snapshot_with_category_is_valid():
     collector = SnapshotCollector(SERVER)
-    collector.add(page(total=2, entries=(entry("category"), entry("regular")), next_cursor=None))
+    collector.add(
+        page(
+            total=3,
+            entries=(entry("category"), entry("calendar_settings"), entry("regular")),
+            next_cursor=None,
+        )
+    )
     assert collector.complete
 
 
@@ -291,7 +297,7 @@ def test_frozen_canonical_examples(name):
 
 
 def test_sample_chain_matches_empty_or_full_snapshot():
-    for names in (["empty"], ["first", "last"]):
+    for names in (["empty"], ["first", "last"], ["regular_history"]):
         collector = SnapshotCollector(SERVER)
         for name in names:
             collector.add(decode_page((FIXTURES / f"{name}.json").read_bytes()))

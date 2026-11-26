@@ -17,6 +17,8 @@
 | --- | --- |
 | task | id, title, completed, description, category_id, difficulty, expected_us, deadline, subtasks, completed_at |
 | regular | id, first_day, interval_days, current_day, current |
+| occurrence | id, rule_id, day, current |
+| calendar_settings | id, timezone |
 | category | id, title |
 | block | id, task_id, title, starts_at, ends_at, archived_task_title |
 | removed | entity_kind, entity_id, root_id, revision, delete_epoch, reason |
@@ -42,9 +44,9 @@ NaN/Infinity запрещены. Даты требуют часовой пояс
 для связанного блока как минимальная подпись вытесненной задачи.
 Проверяется ends_at > starts_at.
 
-Удаление: entity_kind — task/node/block/category/regular; node требует root_id,
+Удаление: entity_kind — task/node/block/category/regular/occurrence; node и occurrence требуют root_id,
 отличный от entity_id, остальные требуют root_id=null. reason — user_deleted
-или retention; retention допустим только для task/block. В записи удаления
+или retention; retention допустим только для task/block/occurrence. В записи удаления
 нет места для текста, снимков корзины, вложений или старого payload.
 
 ## Регулярные задачи — T41b2a
@@ -71,13 +73,21 @@ reason=user_deleted, root_id=null. Она сама не означает уда�
 отключение/удаление корня требуют согласованного набора операций следующего
 шага. retention не должен случайно останавливать правило.
 
-Это формат записи, не генератор общих экземпляров. До outbox/inbound нужно
-определить операции для rollover/отключения/удаления и связь завершённой истории
-с парой (rule_id, day), общую календарную дату клиентов/сервера и дедупликацию
+Это формат записи, не генератор общих экземпляров. Контракт операций/истории/общей даты теперь описан в SYNC_TRANSITIONS.md;
+до outbox/inbound нужно реализовать его применение и дедупликацию
 при одновременной генерации двумя устройствами. Нынешние desktop-UUID случайны;
 кодек не делает их детерминированными и не решает дубли сам. Проекция должна
 передавать текущий корень внутри regular ровно один раз, а не ещё отдельным task;
 waiting-шаблон нужен в regular, skipped-записи с локальными файлами в облако не идут.
+
+## История и пояс — T41b2b3
+
+OccurrenceRecord — завершённый TaskRecord без deadline с запланированным day
+и rule_id; id=uuid5(rule_id, "history:"+day). current использует прежние UUID
+локального дерева. CalendarRecord — единственная настройка общего timezone
+аккаунта. Поля/правила/согласованный выбор пояса и переходы в SYNC_TRANSITIONS.md.
+Неизвестная дата completion не выдумывается. removed/occurrence имеет root_id
+исходной задачи, а не текст; current тоже не помещается в отметку.
 
 ## Границы ответственности
 

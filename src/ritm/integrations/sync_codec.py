@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
-from uuid import UUID
+from uuid import UUID, uuid5
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ritm.domain.calendar import WorkBlock
 from ritm.domain.recurrence import scheduled_day
@@ -53,6 +54,20 @@ class RegularRecord:
 
 
 @dataclass(frozen=True, kw_only=True)
+class OccurrenceRecord:
+    id: UUID
+    rule_id: UUID
+    day: date
+    current: TaskRecord = field(repr=False)
+
+
+@dataclass(frozen=True, kw_only=True)
+class CalendarRecord:
+    id: UUID
+    timezone: str
+
+
+@dataclass(frozen=True, kw_only=True)
 class CategoryRecord:
     category: Category = field(repr=False)
 
@@ -65,7 +80,7 @@ class BlockRecord:
 
 @dataclass(frozen=True, kw_only=True)
 class RemovalRecord:
-    entity_kind: Literal["task", "node", "block", "category", "regular"]
+    entity_kind: Literal["task", "node", "block", "category", "regular", "occurrence"]
     entity_id: UUID
     revision: int
     delete_epoch: int
@@ -73,7 +88,15 @@ class RemovalRecord:
     root_id: UUID | None = None
 
 
-Entity = TaskRecord | RegularRecord | CategoryRecord | BlockRecord | RemovalRecord
+Entity = (
+    TaskRecord
+    | RegularRecord
+    | OccurrenceRecord
+    | CalendarRecord
+    | CategoryRecord
+    | BlockRecord
+    | RemovalRecord
+)
 
 
 def _object(value, keys):
@@ -140,6 +163,22 @@ def _day_text(value):
     if type(value) is not date:
         raise SyncCodecError()
     return value.isoformat()
+
+
+def history_id(rule_id: UUID, day: date) -> UUID:
+    if type(rule_id) is not UUID or type(day) is not date:
+        raise SyncCodecError()
+    return uuid5(rule_id, "history:" + day.isoformat())
+
+
+def _timezone(value):
+    if type(value) is not str or re.fullmatch(r"[A-Za-z0-9_+./-]{1,128}", value) is None:
+        raise SyncCodecError()
+    try:
+        ZoneInfo(value)
+    except (ValueError, ZoneInfoNotFoundError):
+        raise SyncCodecError() from None
+    return value
 
 
 def _identity(value):
@@ -242,6 +281,26 @@ def _parse(value):
             current_day=current_day,
             current=current,
         )
+    if kind == "calendar_settings":
+        _object(data, {"id", "timezone"})
+        return CalendarRecord(id=_uuid(data["id"]), timezone=_timezone(data["timezone"]))
+    if kind == "occurrence":
+        _object(data, {"id", "rule_id", "day", "current"})
+        identifier, rule = _uuid(data["id"]), _uuid(data["rule_id"])
+        day, current = _day(data["day"]), _task(data["current"])
+        ids = {current.task.id}
+        for child in current.task.subtasks:
+            ids.add(child.id)
+            ids.update(item.id for item in child.items)
+        if (
+            identifier != history_id(rule, day)
+            or identifier in ids
+            or rule in ids
+            or not current.task.completed
+            or current.task.deadline is not None
+        ):
+            raise SyncCodecError()
+        return OccurrenceRecord(id=identifier, rule_id=rule, day=day, current=current)
     if kind == "category":
         _object(data, {"id", "title"})
         return CategoryRecord(
@@ -269,7 +328,14 @@ def _parse(value):
     if kind == "removed":
         _object(data, {"entity_kind", "entity_id", "root_id", "revision", "delete_epoch", "reason"})
         entity_kind, reason = data["entity_kind"], data["reason"]
-        if entity_kind not in ("task", "node", "block", "category", "regular") or reason not in (
+        if entity_kind not in (
+            "task",
+            "node",
+            "block",
+            "category",
+            "regular",
+            "occurrence",
+        ) or reason not in (
             "user_deleted",
             "retention",
         ):
@@ -277,9 +343,9 @@ def _parse(value):
         root = _uuid(data["root_id"]) if data["root_id"] is not None else None
         identifier = _uuid(data["entity_id"])
         if (
-            (entity_kind == "node") != (root is not None)
+            (entity_kind in ("node", "occurrence")) != (root is not None)
             or root == identifier
-            or (reason == "retention" and entity_kind not in ("task", "block"))
+            or (reason == "retention" and entity_kind not in ("task", "block", "occurrence"))
         ):
             raise SyncCodecError()
         return RemovalRecord(
@@ -348,6 +414,26 @@ def _wire(record):
                 "interval_days": record.interval_days,
                 "current_day": _day_text(record.current_day),
                 "current": current["data"],
+            },
+        )
+    elif type(record) is CalendarRecord:
+        if type(record.id) is not UUID:
+            raise SyncCodecError()
+        kind, data = "calendar_settings", {"id": str(record.id), "timezone": record.timezone}
+    elif type(record) is OccurrenceRecord:
+        if (
+            type(record.id) is not UUID
+            or type(record.rule_id) is not UUID
+            or type(record.current) is not TaskRecord
+        ):
+            raise SyncCodecError()
+        kind, data = (
+            "occurrence",
+            {
+                "id": str(record.id),
+                "rule_id": str(record.rule_id),
+                "day": _day_text(record.day),
+                "current": _wire(record.current)["data"],
             },
         )
     elif type(record) is CategoryRecord and type(record.category) is Category:

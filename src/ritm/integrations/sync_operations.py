@@ -20,7 +20,9 @@ from ritm.integrations._sync_wire import (
 )
 from ritm.integrations.sync_codec import (
     BlockRecord,
+    CalendarRecord,
     CategoryRecord,
+    OccurrenceRecord,
     RegularRecord,
     SyncCodecError,
     TaskRecord,
@@ -29,6 +31,8 @@ from ritm.integrations.sync_codec import (
 )
 
 PAYLOADS = {
+    "calendar_settings": CalendarRecord,
+    "occurrence": OccurrenceRecord,
     "task": TaskRecord,
     "category": CategoryRecord,
     "block": BlockRecord,
@@ -57,7 +61,15 @@ class Operation:
     base_revision: int
     delete_epoch: int
     action: str
-    payload: TaskRecord | CategoryRecord | BlockRecord | RegularRecord | None = field(repr=False)
+    payload: (
+        TaskRecord
+        | CategoryRecord
+        | BlockRecord
+        | RegularRecord
+        | OccurrenceRecord
+        | CalendarRecord
+        | None
+    ) = field(repr=False)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -73,6 +85,10 @@ class Receipt:
 
 
 def target_identity(record):
+    if type(record) is CalendarRecord:
+        return "calendar_settings", record.id
+    if type(record) is OccurrenceRecord:
+        return "occurrence", record.id
     if type(record) is TaskRecord:
         return "task", record.task.id
     if type(record) is CategoryRecord:
@@ -101,12 +117,18 @@ def _validate(operation):
         "rollover",
     ):
         raise SyncCodecError()
+    if operation.target_kind == "calendar_settings" and operation.action not in ("create", "put"):
+        raise SyncCodecError()
     if operation.action == "create":
         if operation.base_revision != 0 or operation.delete_epoch != 0:
             raise SyncCodecError()
     elif operation.base_revision == 0:
         raise SyncCodecError()
-    if operation.action == "prune" and operation.target_kind not in ("task", "regular"):
+    if operation.action == "prune" and operation.target_kind not in (
+        "task",
+        "regular",
+        "occurrence",
+    ):
         raise SyncCodecError()
     if operation.action in ("rollover", "stop_regular") and operation.target_kind != "regular":
         raise SyncCodecError()

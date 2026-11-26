@@ -1,5 +1,25 @@
 # Проверка «Ритма»
 
+## T41b2b3 — история/общий пояс/связанные эффекты, 26 ноября
+
+Команда DEVELOPMENT: **462 passed, 1 GUI deselected (3,45 с)**,
+/tmp/ritm-sync-effects-verified.log. Новый test_sync_transitions: общий день
+Moscow/UTC на границе суток, DST/Berlin, naive/неизвестный пояс без fallback,
+стабильный history ID, дата слота отдельно от поздней completion, null-date,
+rollover completed/skip, stop/delete, повторяемость без изменения before,
+точный CAS/epoch, чужой template/серверный день, rejected receipt без эффектов,
+новые entity types/marks/prune/history граф/дубли/один пояс/активная сетка.
+12 entity-векторов и 4 страницы; новый regular_history прошёл полный Collector.
+Включены прежние ops/pages/codec/regular/domain проверки.
+
+Первый совместимый прогон: 355 passed/1 failed — старый тест полного regular-
+снимка не включал теперь обязательный общий calendar_settings. Пример расширен;
+после этого 459 passed, затем дополнительные prune/repeat проверки: 462 passed.
+Ruff check/format шести Python и diff passed. GUI/Windows/сервер/сеть/личный
+профиль не запускались, pure код не подключён к приложению. Схемы tasks v14/
+garden v7 и dependencies прежние. Не проверены реальные ledger/SQL-CAS/owner/
+offline очередь/применение/синхронизация двух устройств/SYNC01–SYNC18.
+
 ## T41b2b2 — полный снимок страницами, 26 ноября
 
 Команда DEVELOPMENT: **431 passed, 1 GUI deselected (3,23 с)**,

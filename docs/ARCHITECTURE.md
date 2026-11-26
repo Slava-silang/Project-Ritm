@@ -1,5 +1,15 @@
 # Архитектурная основа
 
+## T41b2b3 — история и согласованные планы регулярности
+
+sync_codec: CalendarRecord и OccurrenceRecord с стабильным id по (rule_id,day),
+завершённым прежним TaskRecord, без выдумывания completion date. pages проверяет
+один общий пояс для активных правил, даты истории и дубли корней/marks.
+sync_transitions.py: calendar_day/history_record/plan_regular_effects; CAS на
+известном SnapshotEntry, квитанция и два эффекта одной ревизии. Нет побочных
+действий/аутентификации/SQL. Нынешний desktop-генератор не подключён; данные и
+schema прежние. Контракт/зависимости offline — SYNC_TRANSITIONS.md.
+
 ## T41b2b2 — временная сборка полного снимка
 
 sync_pages.py: строгие SnapshotEntry/Page/Snapshot и SnapshotCollector без Qt/

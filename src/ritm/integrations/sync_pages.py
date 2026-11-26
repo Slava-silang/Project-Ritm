@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass, field
 from uuid import UUID
 
+from ritm.domain.recurrence import scheduled_day
 from ritm.integrations._sync_wire import (
     _dump,
     _guard,
@@ -17,8 +18,10 @@ from ritm.integrations._sync_wire import (
 )
 from ritm.integrations.sync_codec import (
     BlockRecord,
+    CalendarRecord,
     CategoryRecord,
     Entity,
+    OccurrenceRecord,
     RegularRecord,
     RemovalRecord,
     SyncCodecError,
@@ -175,11 +178,19 @@ def _check_graph(entries):
     tasks = set()
     references = []
     blocks = []
+    calendars = []
+    regulars = {}
+    history = []
     for entry in entries:
         entity = entry.entity
         identifiers = []
         if isinstance(entity, RemovalRecord):
             identifiers = [entity.entity_id]
+            if entity.entity_kind == "occurrence":
+                identifiers.append(entity.root_id)
+        elif isinstance(entity, CalendarRecord):
+            identifiers = [entity.id]
+            calendars.append(entity)
         elif isinstance(entity, CategoryRecord):
             categories.add(entity.category.id)
             identifiers = [entity.category.id]
@@ -187,12 +198,18 @@ def _check_graph(entries):
             identifiers = [entity.block.id]
             blocks.append(entity)
         else:
-            record = entity.current if isinstance(entity, RegularRecord) else entity
+            record = (
+                entity.current if isinstance(entity, (RegularRecord, OccurrenceRecord)) else entity
+            )
             task = record.task
             tasks.add(task.id)
             identifiers = [task.id]
             if isinstance(entity, RegularRecord):
                 identifiers.append(entity.id)
+                regulars[entity.id] = entity
+            if isinstance(entity, OccurrenceRecord):
+                identifiers.append(entity.id)
+                history.append(entity)
             for child in task.subtasks:
                 identifiers.append(child.id)
                 identifiers.extend(item.id for item in child.items)
@@ -202,6 +219,17 @@ def _check_graph(entries):
             if identifier in identities:
                 raise SyncCodecError()
             identities.add(identifier)
+    if len(calendars) > 1 or (regulars and not calendars):
+        raise SyncCodecError()
+    for entity in history:
+        if entity.rule_id in regulars:
+            rule = regulars[entity.rule_id]
+            if (
+                entity.day < rule.first_day
+                or entity.day >= rule.current_day
+                or scheduled_day(rule.first_day, rule.interval_days, entity.day) != entity.day
+            ):
+                raise SyncCodecError()
     if any(identifier not in categories for identifier in references):
         raise SyncCodecError()
     for entity in blocks:

@@ -1,5 +1,41 @@
 # Текущее состояние
 
+## T41b2b3 — история регулярности и общий пояс готовы, 26 ноября
+
+Пользователь принял единый пояс аккаунта из настроек: предложить пояс компьютера
+при подключении, не менять в поездках. Codec: CalendarRecord и OccurrenceRecord
+с отдельным стабильным ID по (rule_id, scheduled day), прежним completed Task;
+null completion date не выдумывается. removed/occurrence имеет root_id без текста.
+Pages требует один общий пояс при активных regular, проверяет историю/сетку/
+дубли, старые snapshots без активных правил совместимы. Operations поддерживает
+историю, calendar только create/put.
+
+Новый sync_transitions.py строит pure планы двух связанных эффектов одной
+ревизии для rollover/stop/delete; точный before revision/epoch, checked receipt,
+день общего пояса, неизменный template. Завершённый слот сохраняется в истории,
+пропущенный даёт только retention mark; stop оставляет ordinary Task, delete
+порождает только marks. Реального SQL/replay/owner/очереди нет. SYNC_TRANSITIONS
+определяет зависимые локальные intentions до freeze; уже отправленный запрос
+не переписывается, старая offline история не должна теряться.
+
+462 passed/1 GUI deselected (3,45 с), /tmp/ritm-sync-effects-verified.log;
+Ruff/format 6 Python, diff passed. Один ранний отказ теста — старый regular
+снимок без нового обязательного calendar_settings; обновлён, детали TESTING.
+12 entity-векторов/4 страницы, новый полный regular_history. GUI/Windows/
+сервер/сеть/личный профиль не запускались. Tasks v14/garden v7/deps прежние,
+UI/локальный случайный генератор не подключён к новым планам/поясу.
+
+Изменены sync_codec/operations/pages, новый sync_transitions/test, test_sync_pages,
+2 entity JSON + regular_history page/README; docs SPEC/SYNC_ENTITIES/PAGES/
+OPERATIONS/TRANSITIONS/PROTOCOL/ARCHITECTURE/DEVELOPMENT/TASKS/TESTING/STATUS.
+assets/theme_* не менялись. Локальный коммит `feat: define recurring history and coordinated sync effects`
+(ID — git log). T41b2/T41b2b/T41b2b3 done, T41b in_progress. Следующий шаг
+T41b3 — чистая проекция/retention: 50 завершённых суммарно task+occurrence,
+30 суток календаря, без skipped/дубля current; локальную историю не удалять.
+Затем T41c runtime intents/outbox/inbox/common timezone/history migration/reopen;
+до inbound согласовать награды сада за новые выполнения с другого устройства.
+Реальный сервер/размещение/публикация отдельно.
+
 ## T41b2b2 — страницы полного снимка готовы, 26 ноября
 
 Новый sync_pages.py: SnapshotEntry/Page/Snapshot и временный Collector. Одна
