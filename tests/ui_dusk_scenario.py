@@ -77,7 +77,7 @@ try:
     gui.idle()
     gui.wait_for(lambda: not desktop.settings["busy"] and not pet.state["busy"])
     if mode == "reopen":
-        assert backend.appearance == {"theme": "dusk", "scale": 150}
+        assert backend.appearance == {"theme": "dusk", "scale": 150, "panel": "top"}
         assert appearance.property("dusk")
         assert not gui.item("workspaceSidebar").isVisible()
         assert colors()["accent"] == "#c4ccff"
@@ -86,6 +86,7 @@ try:
         assert not (profile / "garden.sqlite3").exists()
         gui.click("appearanceButton")
         gui.choose("appearanceTheme", 5)
+        gui.choose("appearancePanel", 1)
         assert gui.item("saveAppearance").isEnabled()
         gui.click("saveAppearance")
         assert backend.appearance["theme"] == "dusk"
@@ -175,12 +176,12 @@ try:
             gui.screenshot(profile / f"dusk-settings-{scale}.png")
             gui.click("closeSystemDialog")
         # Check switching back is safe; the existing Graphite variant remains available.
-        backend.saveAppearance("dark", 100)
+        backend.saveAppearance("dark", 100, "left")
         gui.idle()
         window.resize(1160, 800)
         QTest.qWait(100)
         assert gui.item("workspaceSidebar").isVisible()
-        backend.saveAppearance("dusk", 150)
+        backend.saveAppearance("dusk", 150, "top")
         gui.idle()
         assert not gui.item("workspaceSidebar").isVisible()
 finally:

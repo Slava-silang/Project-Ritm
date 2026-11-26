@@ -238,7 +238,7 @@ try:
         gui.screenshot(profile / "garden-editor-drawer.png")
     elif mode == "reopen":
         opened()
-        assert controller.appearance == {"theme": "dark", "scale": 150}
+        assert controller.appearance == {"theme": "dark", "scale": 150, "panel": "left"}
         saved = snapshot().garden
         assert {item.kind for item in saved.items} == {"bench", "oak", "water_lily"}
         assert all(item.placed for item in saved.items) and saved.fertilizer == 0

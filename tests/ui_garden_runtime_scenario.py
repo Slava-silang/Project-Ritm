@@ -195,7 +195,7 @@ try:
         with TaskStore(profile / "tasks.sqlite3") as store:
             assert store.active_focus() is not None
     elif mode == "legacy":
-        assert controller.appearance == {"theme": "space", "scale": 125}
+        assert controller.appearance == {"theme": "space", "scale": 125, "panel": "left"}
         assert "space" not in controller.garden["themes"]
         controller.saveAppearance("space", 150)
         idle()

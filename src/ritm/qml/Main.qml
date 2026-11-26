@@ -53,7 +53,8 @@ ApplicationWindow {
     property var current: window.backend.detail
     property var activeFocus: window.backend.focus
     property bool hasTask: !!current.id
-    readonly property bool sidebarVisible: appearance.usesSharedStyle && !appearance.dusk && width >= appearance.dp(1040) && height >= appearance.dp(510)
+    readonly property bool sidebarVisible: backend.appearance.panel === "left" && width >= appearance.dp(1040) && height >= appearance.dp(510)
+    readonly property bool topNavigation: !sidebarVisible
     readonly property real sidebarWidth: sidebarVisible ? appearance.dp(184) : 0
     property bool narrow: width - sidebarWidth < appearance.dp(850)
     readonly property bool compactLayout: appearance.usesSharedStyle && narrow
@@ -126,8 +127,8 @@ ApplicationWindow {
     component NavButton: UiButton {
         id: navButton
         property string symbol: ""
-        quiet: window.sidebarVisible || window.appearance.dusk
-        ToolTip.visible: hovered && window.appearance.dusk && window.narrow
+        quiet: true
+        ToolTip.visible: hovered && window.topNavigation && window.narrow
         ToolTip.text: text
         Accessible.name: text
         width: window.sidebarVisible ? window.sidebarWidth - window.appearance.dp(24) : implicitWidth
@@ -137,12 +138,12 @@ ApplicationWindow {
         contentItem: RowLayout {
             spacing: window.appearance.dp(7)
             NavIcon {
-                visible: (window.sidebarVisible || window.appearance.dusk) && !!navButton.symbol
+                visible: !!navButton.symbol
                 symbol: navButton.symbol
                 ink: navButton.highlighted ? window.appearance.colors.accent : window.appearance.colors.muted
             }
             Label {
-                visible: !(window.appearance.dusk && window.narrow && !!navButton.symbol)
+                visible: !(window.topNavigation && window.narrow && !!navButton.symbol)
                 Layout.fillWidth: true
                 text: navButton.text
                 font: navButton.font
@@ -199,6 +200,7 @@ ApplicationWindow {
     function openAppearance() {
         appearanceTheme.currentIndex = appearanceDialog.themeKeys.indexOf(window.backend.appearance.theme);
         appearanceScale.currentIndex = appearanceDialog.scales.indexOf(window.backend.appearance.scale);
+        appearancePanel.currentIndex = appearanceDialog.panels.indexOf(window.backend.appearance.panel);
         appearanceDialog.attempted = false;
         appearanceDialog.open();
     }
@@ -476,7 +478,7 @@ ApplicationWindow {
 
     Flow {
         id: navigation
-        parent: window.sidebarVisible ? sidebarNavSlot : window.appearance.dusk ? duskNavSlot : horizontalNavSlot
+        parent: window.sidebarVisible ? sidebarNavSlot : duskNavSlot
         width: parent.width
         spacing: window.appearance.dp(4)
         NavButton {
@@ -672,7 +674,7 @@ ApplicationWindow {
         anchors.leftMargin: window.sidebarWidth + anchors.margins
         spacing: window.appearance.dp(window.compactLayout ? 7 : window.appearance.usesSharedStyle ? 12 : 16)
         RowLayout {
-            visible: window.appearance.dusk
+            visible: window.topNavigation
             Layout.fillWidth: true
             spacing: window.appearance.dp(22)
             RowLayout {
@@ -704,19 +706,6 @@ ApplicationWindow {
         RowLayout {
             visible: window.page !== "garden" || !window.narrow
             Layout.fillWidth: true
-            Rectangle {
-                visible: !window.sidebarVisible && !window.appearance.dusk
-                implicitWidth: window.appearance.dp(window.compactLayout ? 26 : 44)
-                implicitHeight: implicitWidth
-                radius: window.appearance.dp(14)
-                color: window.appearance.colors.accentFill
-                Label {
-                    anchors.centerIn: parent
-                    text: "Р"
-                    color: window.appearance.colors.onAccent
-                    font.pixelSize: window.appearance.dp(window.compactLayout ? 17 : 26)
-                }
-            }
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: window.appearance.dp(2)
@@ -758,17 +747,11 @@ ApplicationWindow {
                 onClicked: window.editTask({})
             }
         }
-        Item {
-            id: horizontalNavSlot
-            visible: !window.sidebarVisible && !window.appearance.dusk
-            Layout.fillWidth: true
-            implicitHeight: navigation.implicitHeight
-        }
         Caption {
             Layout.fillWidth: true
             visible: !!window.desktop && !window.desktop.trayAvailable
             wrapMode: Text.Wrap
-            text: window.appearance.dusk && window.narrow
+            text: window.topNavigation && window.narrow
                 ? qsTr("Трей недоступен: крестик завершает приложение.")
                 : qsTr("Трей недоступен: крестик завершает приложение. Настройки запуска — в меню «Приложение».")
         }
@@ -1657,6 +1640,7 @@ ApplicationWindow {
         id: appearanceDialog
         property var themeKeys: ["space", "jungle", "light", "dark", "system", "dusk"]
         property var scales: [100, 125, 150]
+        property var panels: ["left", "top"]
         readonly property string selectedTheme: themeKeys[appearanceTheme.currentIndex] ?? ""
         readonly property bool themeAvailable: selectedTheme === "space" || selectedTheme === "system" || selectedTheme === "dusk"
             || window.backend.garden.themes.indexOf(selectedTheme) >= 0
@@ -1697,7 +1681,14 @@ ApplicationWindow {
                 Caption {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    text: qsTr("«Сумерки» — сине-серая палитра с верхней навигацией. «Графит» — мятные акценты и боковая панель. Космос и джунгли пока используют условное оформление.")
+                    text: qsTr("Тема задаёт оформление, а расположение панели выбирается отдельно. В узком окне панель временно размещается сверху.")
+                }
+                Caption { text: qsTr("Расположение панели") }
+                UiCombo {
+                    id: appearancePanel
+                    objectName: "appearancePanel"
+                    Layout.fillWidth: true
+                    model: [qsTr("Слева"), qsTr("Сверху")]
                 }
                 Caption { text: qsTr("Масштаб интерфейса") }
                 UiCombo {
@@ -1735,7 +1726,8 @@ ApplicationWindow {
                     appearanceDialog.attempted = true;
                     window.backend.saveAppearance(
                         appearanceDialog.themeKeys[appearanceTheme.currentIndex],
-                        appearanceDialog.scales[appearanceScale.currentIndex]);
+                        appearanceDialog.scales[appearanceScale.currentIndex],
+                        appearanceDialog.panels[appearancePanel.currentIndex]);
                 }
             }
         }

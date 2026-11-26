@@ -1,5 +1,15 @@
 # Окружение, запуск и выпуск
 
+## Независимая навигация — UI01
+
+«Параметры» → «Вид»: тема, «Расположение панели» (слева/сверху), масштаб.
+Три выбора сохраняются в appearance.json; смена темы или Ctrl++/− не сбрасывает
+панель. Узкое окно временно использует верхнюю навигацию без изменения файла.
+Проверки: `.venv/bin/pytest -q tests/test_appearance.py tests/test_dusk.py`.
+Native Linux: `RITM_UI_PLATFORM=xcb .venv/bin/pytest -q 'tests/test_appearance.py::test_qml_appearance[theme-and-restart]'`.
+Обе команды используют временный профиль. Новых зависимостей нет.
+
+
 ## Чистые проверки синхронизации — T41b1
 
 `.venv/bin/pytest -q tests/test_sync_codec.py tests/test_task_weights.py tests/test_task_completion.py tests/test_calendar_blocks.py`

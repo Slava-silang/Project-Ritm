@@ -71,7 +71,7 @@ def check_scroll_layout():
         for theme in ("dark", "light", "space"):
             controller.saveAppearance(theme, percent)
             gui.idle()
-            assert controller.appearance == {"theme": theme, "scale": percent}
+            assert controller.appearance == {"theme": theme, "scale": percent, "panel": "left"}
             for period, cell in (("Week", 6), ("Month", 20)):
                 gui.click(f"calendar{period}Button")
                 gui.click(f"calendarDay_{cell}")

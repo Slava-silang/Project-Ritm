@@ -11,7 +11,7 @@ from ritm.storage import appearance
 def test_four_theme_slots_and_system_mode_persist_without_task_data(tmp_path):
     for key in ("space", "jungle", "light", "dark", "system"):
         appearance.save_appearance(tmp_path, key, 125)
-        assert appearance.load_appearance(tmp_path) == {"theme": key, "scale": 125}
+        assert appearance.load_appearance(tmp_path) == {"theme": key, "scale": 125, "panel": "left"}
     saved = (tmp_path / "appearance.json").read_bytes()
     for key, scale in (("missing", 100), ("dark", 200), ("light", True)):
         with pytest.raises(ValueError):
@@ -29,7 +29,11 @@ def test_failed_settings_write_preserves_previous_choice(tmp_path, monkeypatch):
     monkeypatch.setattr(appearance.os, "replace", fail)
     with pytest.raises(OSError):
         appearance.save_appearance(tmp_path, "dark", 150)
-    assert appearance.load_appearance(tmp_path) == {"theme": "jungle", "scale": 100}
+    assert appearance.load_appearance(tmp_path) == {
+        "theme": "jungle",
+        "scale": 100,
+        "panel": "left",
+    }
     assert [file.name for file in tmp_path.iterdir()] == ["appearance.json"]
 
 
@@ -58,7 +62,7 @@ def test_qml_appearance(tmp_path, script_name, modes):
             env=env,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=240,
         )
         assert result.returncode == 0, result.stdout + result.stderr
         for warning in (
@@ -69,3 +73,27 @@ def test_qml_appearance(tmp_path, script_name, modes):
             "Cannot assign",
         ):
             assert warning not in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize("theme", appearance.THEMES)
+@pytest.mark.parametrize("panel", appearance.PANELS)
+def test_panel_independent_of_theme_and_scale(tmp_path, theme, panel):
+    appearance.save_appearance(tmp_path, theme, 125, panel)
+    assert appearance.load_appearance(tmp_path) == {"theme": theme, "scale": 125, "panel": panel}
+    appearance.save_appearance(tmp_path, "dark", 150)
+    assert appearance.load_appearance(tmp_path)["panel"] == panel
+    previous = (tmp_path / "appearance.json").read_bytes()
+    with pytest.raises(ValueError):
+        appearance.save_appearance(tmp_path, theme, 100, "bottom")
+    assert (tmp_path / "appearance.json").read_bytes() == previous
+
+
+@pytest.mark.parametrize("theme", appearance.THEMES)
+def test_old_profile_keeps_previous_navigation(tmp_path, theme):
+    import json
+
+    (tmp_path / "appearance.json").write_text(json.dumps({"theme": theme, "scale": 100}))
+    panel = "top" if theme in ("dusk", "jungle") else "left"
+    assert appearance.load_appearance(tmp_path)["panel"] == panel
+    appearance.save_appearance(tmp_path, "dark", 125)
+    assert appearance.load_appearance(tmp_path)["panel"] == panel

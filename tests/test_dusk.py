@@ -8,7 +8,7 @@ from ritm.storage.appearance import load_appearance, save_appearance
 
 def test_dusk_persists_as_a_free_dark_variant_without_garden(tmp_path):
     save_appearance(tmp_path, "dusk", 125)
-    assert load_appearance(tmp_path) == {"theme": "dusk", "scale": 125}
+    assert load_appearance(tmp_path) == {"theme": "dusk", "scale": 125, "panel": "left"}
     assert not (tmp_path / "garden.sqlite3").exists()
 
 

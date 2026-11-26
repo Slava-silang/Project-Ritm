@@ -67,20 +67,36 @@ try:
     QTest.qWait(50)
     look = window.findChild(QObject, "uiAppearance")
     if sys.argv[2] == "reopen":
-        assert controller.appearance == {"theme": "space", "scale": 150}
+        assert controller.appearance == {"theme": "space", "scale": 150, "panel": "left"}
         assert look.property("dark") and look.property("usesSharedStyle")
         assert len(controller.tasks) == 1
     else:
-        for index, name in enumerate(("space", "jungle", "light", "dark", "system")):
+        for index, name in enumerate(("space", "jungle", "light", "dark", "system", "dusk")):
             gui.click("appearanceButton")
             gui.choose("appearanceTheme", index)
             gui.click("saveAppearance")
             assert controller.appearance["theme"] == name
             assert look.property("usesSharedStyle") == (name != "jungle")
-            expected_dark = name in ("space", "dark") or (
+            expected_dark = name in ("space", "dark", "dusk") or (
                 name == "system" and app.styleHints().colorScheme() == Qt.ColorScheme.Dark
             )
             assert look.property("dark") == expected_dark
+            for panel_index, panel in enumerate(("left", "top")):
+                gui.click("appearanceButton")
+                gui.choose("appearancePanel", panel_index)
+                gui.click("saveAppearance")
+                assert controller.appearance["panel"] == panel
+                assert controller.appearance["theme"] == name
+                assert gui.item("workspaceSidebar").isVisible() == (panel == "left")
+                for button, page in (
+                    ("calendarPageButton", "calendar"),
+                    ("tasksPageButton", "tasks"),
+                ):
+                    gui.click(button)
+                    assert window.property("page") == page
+                gui.screenshot(profile / (name + "-" + panel + ".png"))
+            controller.saveAppearance(name, 100, "left")
+            gui.idle()
             if name == "space":
                 check_observatory(look)
         gui.click("appearanceButton")
@@ -110,7 +126,7 @@ try:
         gui.choose("appearanceTheme", 3)
         gui.choose("appearanceScale", 2)
         gui.click("saveAppearance")
-        assert controller.appearance == {"theme": "dark", "scale": 150}
+        assert controller.appearance == {"theme": "dark", "scale": 150, "panel": "left"}
         window.setWidth(640)
         window.setHeight(480)
         gui.wait_for(lambda: window.width() == 640, "narrow layout")

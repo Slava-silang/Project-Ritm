@@ -1103,8 +1103,9 @@ class TaskController(QObject):
         return self._appearance_error
 
     @Slot(str, int)
-    def saveAppearance(self, theme, scale):
-        self._submit("appearance", {"theme": theme, "scale": scale})
+    @Slot(str, int, str)
+    def saveAppearance(self, theme, scale, panel=None):
+        self._submit("appearance", {"theme": theme, "scale": scale, "panel": panel})
 
     @Property("QVariantMap", notify=backupsChanged)
     def backups(self):
@@ -1230,7 +1231,9 @@ class TaskController(QObject):
                 available = (*garden_state["themes"], "system", "dusk", "space", previous["theme"])
                 if data["theme"] not in available:
                     raise ValueError("Эта тема откроется за достижение сада.")
-                appearance_state = save_appearance(self._profile, data["theme"], data["scale"])
+                appearance_state = save_appearance(
+                    self._profile, data["theme"], data["scale"], data.get("panel")
+                )
                 self._ready.emit(appearance_state, "", action)
                 return
             if action in ("backup_folder", "create_backup", "inspect_backup", "restore_backup"):
