@@ -16,6 +16,7 @@
 | kind | Поля data |
 | --- | --- |
 | task | id, title, completed, description, category_id, difficulty, expected_us, deadline, subtasks, completed_at |
+| regular | id, first_day, interval_days, current_day, current |
 | category | id, title |
 | block | id, task_id, title, starts_at, ends_at, archived_task_title |
 | removed | entity_kind, entity_id, root_id, revision, delete_epoch, reason |
@@ -41,10 +42,42 @@ NaN/Infinity запрещены. Даты требуют часовой пояс
 для связанного блока как минимальная подпись вытесненной задачи.
 Проверяется ends_at > starts_at.
 
-Удаление: entity_kind — task/node/block/category; node требует root_id,
+Удаление: entity_kind — task/node/block/category/regular; node требует root_id,
 отличный от entity_id, остальные требуют root_id=null. reason — user_deleted
 или retention; retention допустим только для task/block. В записи удаления
 нет места для текста, снимков корзины, вложений или старого payload.
+
+## Регулярные задачи — T41b2a
+
+Новый kind=regular расширяет пока не опубликованный v1. Старые примеры task,
+category, block, removed не менялись; старый строгий клиент отвергнет новый kind.
+До обмена потребуется проверять поддержку: нельзя молча превращать расписание
+в обычную задачу при несовместимости. Сам номер версии не гарантирует, что
+старый экспериментальный клиент поддерживает это дополнение.
+
+RegularRecord — единый агрегат: id — UUID расписания, first_day/current_day —
+строго ГГГГ-ММ-ДД, interval_days — JSON integer 1–36500 (без bool/float/строк),
+current — тело TaskRecord без вложенной version/kind/data. current_day должен
+совпадать с first_day + k×interval_days, k≥0. ID расписания отличается от всех
+ID дерева. Дедлайн внутри current запрещён. Остальные инварианты задачи,
+точность времени/чисел, лимит 2 МиБ на весь агрегат остаются прежними.
+
+Будущий первый день разрешён: кодек не читает часы и не запускает генерацию.
+Завершённый текущий экземпляр разрешён с известной/неизвестной completed_at;
+кодек не сдвигает расписание и не снимает отметки автоматически.
+
+removed/entity_kind=regular — отметка удаления правила без тела, только
+reason=user_deleted, root_id=null. Она сама не означает удаление текущей задачи:
+отключение/удаление корня требуют согласованного набора операций следующего
+шага. retention не должен случайно останавливать правило.
+
+Это формат записи, не генератор общих экземпляров. До outbox/inbound нужно
+определить операции для rollover/отключения/удаления и связь завершённой истории
+с парой (rule_id, day), общую календарную дату клиентов/сервера и дедупликацию
+при одновременной генерации двумя устройствами. Нынешние desktop-UUID случайны;
+кодек не делает их детерминированными и не решает дубли сам. Проекция должна
+передавать текущий корень внутри regular ровно один раз, а не ещё отдельным task;
+waiting-шаблон нужен в regular, skipped-записи с локальными файлами в облако не идут.
 
 ## Границы ответственности
 

@@ -1,5 +1,31 @@
 # Текущее состояние
 
+## T41b2a — формат регулярности завершён, 26 ноября
+
+Чистый sync_codec дополнен RegularRecord: отдельный UUID правила, первый день,
+интервал, текущий день и вложенный TaskRecord. Проверены кратность расписанию,
+отдельные идентификаторы, отсутствие deadline и лишних/локальных полей.
+removed/regular — только метаданные остановки, без текста и без retention.
+Добавлены два синтетических JSON (всего 10) и tests/test_sync_recurrence.py.
+Старые восемь векторов неизменны. Это дополнение неопубликованного v1; старый
+клиент должен отказать на незнакомом kind, а не терять регулярность молча.
+
+279 passed/1 GUI deselected (2,74 с), /tmp/ritm-sync-regular-final.log;
+Ruff check/format двух Python, diff passed. Первый отказ нового теста —
+неверный ожидаемый заголовок fixture, исправлен, детали TESTING. GUI/Windows/
+реальный сервер не запускались, чистый кодек не подключён к приложению.
+БД tasks v14/garden v7, зависимости, профиль и assets/theme_* прежние.
+
+Изменены sync_codec.py, новый test_sync_recurrence.py, fixtures/sync/README
+и два JSON; docs/SYNC_ENTITIES/SYNC_PROTOCOL/SPEC/ARCHITECTURE/DEVELOPMENT/
+TASKS/TESTING/STATUS. Локальный коммит `feat: encode recurring task sync aggregates`
+(ID — git log). T41b2 in_progress, T41b2a done. Следующее точное действие —
+T41b2b: конверты операций/квитанций/страниц и регулярные rollover/off/delete,
+история по (rule_id,day), общая дата/дедупликация. Кодек не решает эти вопросы:
+desktop пока создаёт случайные UUID, настоящего обмена нет. Затем T41b3 —
+проекция/retention без skipped и дублей текущего корня. До inbound T41c отдельно
+согласовать награды сада за новые выполнения с другого устройства.
+
 ## RPT01 — регулярные задачи готовы, 26 ноября
 
 Пользователь выбрал: каждый N-й день по фиксированному расписанию; пропущенный

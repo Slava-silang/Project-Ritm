@@ -1,5 +1,13 @@
 # Окружение, запуск и выпуск
 
+## Контракт регулярных задач — T41b2a
+
+`.venv/bin/pytest -q tests/test_sync_codec.py tests/test_sync_recurrence.py tests/test_recurrence.py tests/test_task_weights.py tests/test_task_completion.py tests/test_calendar_blocks.py -k 'not gui'`
+
+Синтетические данные/временные базы, без сети/профиля. Детали — SYNC_ENTITIES.md.
+Два дополнительных вектора regular/stopped_regular в fixtures/sync/v1.
+Приложение пока не экспортирует эти записи; схема/зависимости прежние.
+
 ## Регулярные задачи — RPT01
 
 Создание/изменение задачи → «Регулярная задача» → N дней и первый день

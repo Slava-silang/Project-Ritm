@@ -1,5 +1,23 @@
 # Проверка «Ритма»
 
+## T41b2a — регулярность в формате обмена, 26 ноября
+
+Команда DEVELOPMENT: **279 passed, 1 deselected (2,74 с)**, журнал
+/tmp/ritm-sync-regular-final.log. Новый tests/test_sync_recurrence.py проверяет
+якорь/кратность календарного интервала, bool/float/строки вместо integer,
+неверные/отсутствующие/неизвестные поля на пяти уровнях, deadline, коллизии UUID
+правила с деревом, будущий старт, завершённый current без выдуманной даты,
+типизированный encode, дубликаты JSON-ключей, отсутствие текста в stop/repr.
+10 векторов побайтово roundtrip, прежние восемь неизменны; точность >2^53 и
+микросекунды, domain recurrence/weights/completion/calendar включены в набор.
+
+Первый прогон: 210 passed/1 failed/1 deselected — неверно записанный ожидаемый
+заголовок синтетического примера в новом тесте, исправлен. Финальный набор выше.
+Ruff check/format двух Python и diff passed. GUI/Windows/реальные пользователи/
+сервер не проверялись; новый чистый кодек не используется приложением. Нет
+миграций/сетевых запросов/зависимостей; реальный rollover двух клиентов и
+SYNC01–SYNC18 не объявляются пройденными.
+
 ## RPT01 — регулярные задачи, 26 ноября
 
 - `pytest -q tests/test_recurrence.py tests/test_sqlite_store.py tests/test_profile_backup.py tests/test_backup.py tests/test_task_completion.py`: **63 passed (37,65 с)**, журнал /tmp/ritm-repeat-final-all.log. Расписание по дням, длинный пропуск/один актуальный повтор, отсутствие просрочки/корзины, новые UUID/сброс дерева, история completed, будущий старт/отключение, удаление/восстановление, миграция v13 с прежней garden identity, откат транзакции, backup v14/совместимость v13, существующие проверки storage/completion/backup.

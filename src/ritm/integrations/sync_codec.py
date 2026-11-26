@@ -3,12 +3,13 @@
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
 from ritm.domain.calendar import WorkBlock
+from ritm.domain.recurrence import scheduled_day
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
 from ritm.domain.weights import set_weights
 
@@ -43,6 +44,15 @@ class TaskRecord:
 
 
 @dataclass(frozen=True, kw_only=True)
+class RegularRecord:
+    id: UUID
+    first_day: date
+    interval_days: int
+    current_day: date
+    current: TaskRecord = field(repr=False)
+
+
+@dataclass(frozen=True, kw_only=True)
 class CategoryRecord:
     category: Category = field(repr=False)
 
@@ -55,7 +65,7 @@ class BlockRecord:
 
 @dataclass(frozen=True, kw_only=True)
 class RemovalRecord:
-    entity_kind: Literal["task", "node", "block", "category"]
+    entity_kind: Literal["task", "node", "block", "category", "regular"]
     entity_id: UUID
     revision: int
     delete_epoch: int
@@ -63,7 +73,7 @@ class RemovalRecord:
     root_id: UUID | None = None
 
 
-Entity = TaskRecord | CategoryRecord | BlockRecord | RemovalRecord
+Entity = TaskRecord | RegularRecord | CategoryRecord | BlockRecord | RemovalRecord
 
 
 def _object(value, keys):
@@ -115,6 +125,21 @@ def _date_text(value):
     if not isinstance(value, datetime) or value.utcoffset() is None:
         raise SyncCodecError()
     return value.astimezone(UTC).isoformat(timespec="microseconds")
+
+
+def _day(value):
+    if type(value) is not str:
+        raise SyncCodecError()
+    result = date.fromisoformat(value)
+    if result.isoformat() != value:
+        raise SyncCodecError()
+    return result
+
+
+def _day_text(value):
+    if type(value) is not date:
+        raise SyncCodecError()
+    return value.isoformat()
 
 
 def _identity(value):
@@ -196,6 +221,27 @@ def _parse(value):
     kind, data = value["kind"], value["data"]
     if kind == "task":
         return _task(data)
+    if kind == "regular":
+        _object(data, {"id", "first_day", "interval_days", "current_day", "current"})
+        identifier = _uuid(data["id"])
+        first, current_day = _day(data["first_day"]), _day(data["current_day"])
+        interval = data["interval_days"]
+        current = _task(data["current"])
+        if current_day < first or scheduled_day(first, interval, current_day) != current_day:
+            raise SyncCodecError()
+        node_ids = {current.task.id}
+        for child in current.task.subtasks:
+            node_ids.add(child.id)
+            node_ids.update(item.id for item in child.items)
+        if current.task.deadline is not None or identifier in node_ids:
+            raise SyncCodecError()
+        return RegularRecord(
+            id=identifier,
+            first_day=first,
+            interval_days=interval,
+            current_day=current_day,
+            current=current,
+        )
     if kind == "category":
         _object(data, {"id", "title"})
         return CategoryRecord(
@@ -223,7 +269,7 @@ def _parse(value):
     if kind == "removed":
         _object(data, {"entity_kind", "entity_id", "root_id", "revision", "delete_epoch", "reason"})
         entity_kind, reason = data["entity_kind"], data["reason"]
-        if entity_kind not in ("task", "node", "block", "category") or reason not in (
+        if entity_kind not in ("task", "node", "block", "category", "regular") or reason not in (
             "user_deleted",
             "retention",
         ):
@@ -290,6 +336,20 @@ def _wire(record):
             ],
         }
         kind = "task"
+    elif type(record) is RegularRecord:
+        if not isinstance(record.id, UUID) or type(record.current) is not TaskRecord:
+            raise SyncCodecError()
+        current = _wire(record.current)
+        kind, data = (
+            "regular",
+            {
+                "id": str(record.id),
+                "first_day": _day_text(record.first_day),
+                "interval_days": record.interval_days,
+                "current_day": _day_text(record.current_day),
+                "current": current["data"],
+            },
+        )
     elif type(record) is CategoryRecord and type(record.category) is Category:
         kind, data = "category", {"id": str(record.category.id), "title": record.category.title}
     elif type(record) is BlockRecord and type(record.block) is WorkBlock:
