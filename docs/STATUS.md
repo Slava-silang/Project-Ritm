@@ -1,5 +1,34 @@
 # Текущее состояние
 
+## T41b2b2 — страницы полного снимка готовы, 26 ноября
+
+Новый sync_pages.py: SnapshotEntry/Page/Snapshot и временный Collector. Одна
+цепочка имеет server/read/set_revision/total, непрерывный offset/курсоры без
+циклов. Ошибка очищает staging и запрещает его дальнейшее использование;
+finish недоступен до конца. Проверены уникальные UUID/граф категорий/календаря,
+отсутствие дубля current regular как plain task и противоречащих tombstone.
+Лимиты 50/страницу, 2 МиБ/страницу, 10000 записей/32 МиБ суммарно; отказ без
+усечения/выдачи части. Снимок не применяет изменения и не удаляет локальные данные.
+
+Общий JSON boundary перенесён из sync_operations в _sync_wire, публичный формат
+операций/квитанций прежний. Три новых примера/tests/test_sync_pages.py, контракт
+SYNC_PAGES.md. Проверки: 431 passed/1 GUI deselected (3,23 с),
+/tmp/ritm-sync-pages-verified.log; Ruff check/format четырёх Python, diff passed.
+Два ранних отказа были из-за одинакового UUID независимых блоков в новом тесте,
+правильно обнаружены; исправлен новый пример, детали TESTING. GUI/Windows/
+сервер/личный профиль/сеть не запускались, runtime ничего не импортирует.
+Tasks v14/garden v7, зависимости, пользовательские данные/assets/theme_* прежние.
+
+Изменены новые _sync_wire/sync_pages/test_sync_pages/fixtures(sync_pages),
+sync_operations (извлечение helpers), docs/SYNC_PAGES/ARCHITECTURE/DEVELOPMENT/
+SYNC_PROTOCOL/TASKS/TESTING/STATUS. Локальный коммит
+`feat: validate and stage paginated sync snapshots` (ID — git log).
+T41b2b2 done; T41b2b in_progress. Следующее точное действие T41b2b3 — контракт
+истории регулярности (rule_id,day)/согласованных эффектов и общей календарной
+даты/зависимостей. Затем T41b3 проекция/retention; runtime owner/CAS/outbox/
+inbox/старые снимки и сервер впереди. До inbound согласовать награды сада за
+новые выполнения с другого устройства. Размещение/публикация отдельно.
+
 ## T41b2b1 — операции/квитанции завершены, 26 ноября
 
 Готов pure integrations/sync_operations.py: строгий Operation/Receipt,

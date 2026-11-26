@@ -1,5 +1,15 @@
 # Архитектурная основа
 
+## T41b2b2 — временная сборка полного снимка
+
+sync_pages.py: строгие SnapshotEntry/Page/Snapshot и SnapshotCollector без Qt/
+сети/профиля. Header server/read/set_revision/total, непрерывные offset/курсоры,
+проверка графа только перед выдачей результата. Ошибка отбрасывает только staging,
+никаких локальных данных/очередей. Лимиты и границы в SYNC_PAGES.md.
+Общий внутренний JSON boundary вынесен из sync_operations в _sync_wire.py;
+публичные операции/квитанции и их канонические примеры неизменны. Runtime-
+применение/защита старых снимков — T41c; история регулярности/общая дата впереди.
+
 ## T41b2b1 — чистые операции/квитанции
 
 integrations/sync_operations.py проверяет операции create/put/restore/delete/

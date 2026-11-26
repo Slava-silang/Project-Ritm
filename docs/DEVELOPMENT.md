@@ -1,5 +1,13 @@
 # Окружение, запуск и выпуск
 
+## Проверки снимков sync — T41b2b2
+
+`.venv/bin/pytest -q tests/test_sync_pages.py tests/test_sync_operations.py tests/test_sync_codec.py tests/test_sync_recurrence.py tests/test_recurrence.py tests/test_task_weights.py tests/test_task_completion.py tests/test_calendar_blocks.py -k 'not gui'`
+
+Без сети/аккаунтов/личного профиля; три примера в tests/fixtures/sync_pages/v1.
+SYNC_PAGES.md описывает пределы staging и отсутствие применения в БД.
+Новых зависимостей/миграций/команд отправки нет.
+
 ## Проверки операций sync — T41b2b1
 
 `.venv/bin/pytest -q tests/test_sync_operations.py tests/test_sync_codec.py tests/test_sync_recurrence.py tests/test_recurrence.py tests/test_task_weights.py tests/test_task_completion.py tests/test_calendar_blocks.py -k 'not gui'`
