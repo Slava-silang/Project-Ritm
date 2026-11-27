@@ -2,7 +2,7 @@
 
 ## Tasks v20 / durable preparation
 
-Миграция v19→20 автоматическая, сохраняет очередь/факты, добавляет три ledger tables. Garden v7/deps прежние. К целевому набору добавить tests/test_sync_prepared.py; backup архивы v19 поддерживаются. Старую сборку к v20 профилю не подключать и user_version не понижать. Нет новой UI/сети, send barrier остаётся. SYNC_PREPARED.md.
+Миграция v19→20 автоматическая, сохраняет очередь/факты, добавляет три ledger tables. Garden v7/deps прежние. К целевому набору добавить tests/test_sync_prepared.py и tests/test_sync_history_prepared.py; backup архивы v19 поддерживаются. Старую сборку к v20 профилю не подключать и user_version не понижать. Нет новой UI/сети, send barrier остаётся. SYNC_PREPARED.md.
 
 
 ## Reschedule — T41c5c2b1

@@ -1,5 +1,17 @@
 # Проверка «Ритма»
 
+## Durable history / первый блок очереди
+
+624 sync passed (25,58 с), /tmp/ritm-history-prepared-final.log. Шесть новых
+history-prepared scenarios: три отдельные offline completion с reopen/retry/ack,
+FIFO failure без частичного enqueue, prune ack без loop, persisted detach,
+старый restore против нового remote delete, restore ack и последующий put.
+Общие regular tests проверяют сохранность прежнего atomic prepare/rollback.
+Ruff check/format 3 Python и diff passed. GUI/Windows/full application suite
+не повторялись: UI/схема/зависимости прежние. Сеть/личные профили не использовались.
+Первый блок ещё не завершён: baseline/effects/retirement/loop далее.
+
+
 ## Durable regular preparation / schema v20
 
 Расширенный набор DEVELOPMENT: 809 passed/6 deselected (51,04 с),

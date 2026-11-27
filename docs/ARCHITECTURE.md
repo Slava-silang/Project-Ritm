@@ -2,7 +2,7 @@
 
 ## Durable regular preparation
 
-storage/sync_prepared.py добавляет SyncPreparedMixin: locked recompute→intent+metadata+frozen request, applied receipt→immutable bijective identities/phase ledger в одной SQL транзакции. Tasks schema v20; источник оснований пока explicit context, все facts сохраняются. Контракт и границы — SYNC_PREPARED.md.
+storage/sync_prepared.py добавляет SyncPreparedMixin для regular/history: locked recompute→intent+metadata+frozen request, applied receipt→immutable bijective identities/phase ledger в одной SQL транзакции. Tasks schema v20; источник оснований пока explicit context, все facts сохраняются. Контракт и границы — SYNC_PREPARED.md.
 
 
 ## Promotion preparation

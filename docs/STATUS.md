@@ -1,5 +1,27 @@
 # Текущее состояние
 
+## Первый крупный блок: очередь — история подключена
+
+enqueue_sync_history использует общий atomic persist/freeze с regular. Три offline
+completion сохраняются независимо; подтверждение одного не удаляет соседние facts.
+Persisted detach/barrier phases восстанавливаются автоматически. History prune/
+restore не повторяются после applied receipt/restart; позднее редактирование
+готовит put, прежний restore не отменяет новую remote user_deleted отметку.
+Общий persist вынесен из regular-метода, identity ledger ограничен реально
+использованными узлами history payload/before. Схема v20/garden v7/deps прежние.
+Проверки: 624 sync passed (25,58 с), /tmp/ritm-history-prepared-final.log;
+6 новых history-prepared passed (1,96 с), /tmp/ritm-history-prepared-focused2.log.
+Ruff check/format 3 Python и diff passed. GUI/Windows/full app suite не повторялись:
+UI и SQL schema не менялись. Личные профили/аккаунты/сервер не затронуты.
+Первый блок ещё НЕ завершён. Следующее: persistent server baseline/receipt effects
+для обеих проекций, затем точное retirement только обработанных фактов и общий
+preparation loop. До полного покрытия send barrier остаётся; сеть не включать.
+Остальные четыре крупных блока: capture calendar/category/AI, inbound/merge/rewards,
+runtime/UI на fake transport, сквозная проверка двух клиентов. Общая desktop
+синхронизация не готова. Контракт SYNC_PREPARED.md. Пользовательские темы не тронуты.
+Checkpoint: `feat: prepare offline history through durable sync queue`.
+
+
 ## Продолжение цели: durable regular preparation
 
 Tasks schema v20: sync_prepared/identities/phase_acks. Новый enqueue_sync_regular

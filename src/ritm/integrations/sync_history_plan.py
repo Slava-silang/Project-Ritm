@@ -47,6 +47,7 @@ class HistoryContext:
     frozen_changes: frozenset[UUID] = frozenset()
     task_bases: tuple[HistoryBase, ...] = field(default=(), repr=False)
     acknowledged_detaches: frozenset[UUID] = frozenset()
+    acknowledged_barriers: frozenset[UUID] = frozenset()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -58,6 +59,7 @@ class HistoryProposal:
     payload: OccurrenceRecord | TaskRecord | None = field(repr=False)
     source_changes: tuple[UUID, ...]
     transition_change: UUID | None = None
+    barrier_changes: tuple[UUID, ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -82,8 +84,8 @@ class _Candidate:
     root: UUID
     desired: OccurrenceRecord | None = field(repr=False)
     sources: list[UUID] = field(default_factory=list)
-    restore: bool = False
-    pruned: bool = False
+    prune_changes: set[UUID] = field(default_factory=set)
+    restore_changes: set[UUID] = field(default_factory=set)
     removed: set[UUID] = field(default_factory=set)
     original_nodes: set[UUID] = field(default_factory=set)
     blocked: str | None = None
@@ -99,7 +101,11 @@ def _context(context, server_id):
     for collection in (context.bases, context.identities, context.regulars):
         if type(collection) is not tuple or len(collection) > MAX_SNAPSHOT_ITEMS:
             raise ValueError("Превышены границы контекста истории")
-    for collection in (context.ordinary_roots, context.frozen_changes):
+    for collection in (
+        context.ordinary_roots,
+        context.frozen_changes,
+        context.acknowledged_barriers,
+    ):
         if type(collection) is not frozenset or len(collection) > MAX_SNAPSHOT_ITEMS:
             raise ValueError("Некорректные границы контекста истории")
         for key in collection:
@@ -215,9 +221,10 @@ def _candidates(changes):
                 if returned:
                     candidate.blocked = "node_restore_required"
                 candidate.removed.update(removed)
-                candidate.pruned |= bool(removed)
+                if removed:
+                    candidate.prune_changes.add(change.id)
             if change.kind == "root_restore":
-                candidate.restore = True
+                candidate.restore_changes.add(change.id)
                 if candidate.blocked == "node_restore_required":
                     candidate.blocked = None
                 candidate.removed.clear()
@@ -385,6 +392,8 @@ def plan_history(changes, context: HistoryContext, *, server_id: UUID) -> Histor
                 candidate.day - regular.first_day
             ).days % regular.interval_days:
                 reason = "schedule_conflict"
+        pending_restore = bool(candidate.restore_changes - context.acknowledged_barriers)
+        pending_prune = bool(candidate.prune_changes - context.acknowledged_barriers)
         entry = bases.get(identifier)
         if not reason and entry is not None:
             entity = entry.entity
@@ -393,7 +402,7 @@ def plan_history(changes, context: HistoryContext, *, server_id: UUID) -> Histor
             )
             if remote_root != root:
                 reason = "root_conflict"
-            elif type(entity) is OccurrenceRecord and desired is not None and not candidate.restore:
+            elif type(entity) is OccurrenceRecord and desired is not None and not pending_restore:
                 original = {
                     identities[key] for key in candidate.original_nodes if key in identities
                 }
@@ -417,7 +426,7 @@ def plan_history(changes, context: HistoryContext, *, server_id: UUID) -> Histor
                 continue
             action = "delete"
         elif type(remote) is RemovalRecord:
-            if not candidate.restore:
+            if not pending_restore:
                 if remote.reason == "retention":
                     unchanged.append(identifier)
                 else:
@@ -428,15 +437,15 @@ def plan_history(changes, context: HistoryContext, *, server_id: UUID) -> Histor
             action = "restore"
         elif remote is None:
             action = "create"
-        elif candidate.restore:
+        elif pending_restore:
             action = "restore"
-        elif desired == remote and not candidate.pruned:
+        elif desired == remote and not pending_prune:
             unchanged.append(identifier)
             continue
         else:
             action = (
                 "prune"
-                if candidate.pruned or _nodes(remote.current.task) - _nodes(desired.current.task)
+                if pending_prune or _nodes(remote.current.task) - _nodes(desired.current.task)
                 else "put"
             )
         proposals.append(
@@ -447,6 +456,11 @@ def plan_history(changes, context: HistoryContext, *, server_id: UUID) -> Histor
                 delete_epoch=epoch,
                 payload=desired,
                 source_changes=sources,
+                barrier_changes=tuple(
+                    x for x in sources if x in candidate.prune_changes | candidate.restore_changes
+                )
+                if action in ("restore", "prune")
+                else (),
             )
         )
     return HistoryPlan(

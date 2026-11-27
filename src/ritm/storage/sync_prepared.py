@@ -4,6 +4,9 @@ import json
 from dataclasses import dataclass, field, replace
 from uuid import UUID, uuid4
 
+from ritm.integrations.sync_codec import Entity, OccurrenceRecord, RemovalRecord, TaskRecord
+from ritm.integrations.sync_history_plan import plan_history
+from ritm.integrations.sync_regular_changes import task_node_ids
 from ritm.integrations.sync_regular_plan import plan_regular
 from ritm.storage.sync_intents import SyncIntent, _stored_uuid
 from ritm.storage.sync_outbox import SyncBase
@@ -27,6 +30,21 @@ class PreparedState:
     barriers: frozenset[UUID]
     reschedules: frozenset[UUID]
     promotions: frozenset[UUID]
+    detaches: frozenset[UUID]
+
+
+@dataclass(frozen=True, kw_only=True)
+class _PreparedProjection:
+    id: UUID
+    target_kind: str
+    action: str
+    base_revision: int
+    delete_epoch: int
+    payload: Entity | None = field(repr=False)
+    source_changes: tuple[UUID, ...]
+    barrier_changes: tuple[UUID, ...]
+    transition_change: UUID | None
+    identities: tuple[tuple[UUID, UUID], ...] = field(repr=False)
 
 
 def _metadata(proposal):
@@ -104,58 +122,118 @@ class SyncPreparedMixin:
             if len(matches) != 1:
                 raise ValueError("Нет однозначного готового изменения")
             proposal = matches[0]
-            raw = _metadata(proposal)
-            metadata = _read_metadata(raw)
-            confirmed = dict(state.identities)
-            reverse = {remote: local for local, remote in state.identities}
-            for local, remote in metadata["identities"]:
-                if (local in confirmed and confirmed[local] != remote) or (
-                    remote in reverse and reverse[remote] != local
-                ):
-                    raise ValueError("Подготовка меняет подтверждённое соответствие")
-            for row in self._db.execute("SELECT * FROM sync_prepared"):
-                previous = _read_metadata(row["metadata"])
-                frozen = self._frozen_sync_request(_stored_uuid(row["intent_id"]))
-                if frozen is None:
-                    raise ValueError("Подготовленное изменение потеряло запрос")
-                op = frozen.operation
-                if (
-                    row["metadata"] == raw
-                    and op.target_kind == proposal.target_kind
-                    and op.target_id == proposal.id
-                    and op.action == proposal.action
-                    and op.payload == proposal.payload
-                    and op.base_revision == proposal.base_revision
-                    and op.delete_epoch == proposal.delete_epoch
-                ):
-                    return frozen
-                if set(previous["sources"]) & set(metadata["sources"]) and (
-                    frozen.receipt is None or frozen.receipt.status != "applied"
-                ):
-                    raise ValueError("Дождитесь подтверждения подготовленного изменения")
-            last = self._db.execute(
-                "SELECT id FROM sync_intents ORDER BY seq DESC LIMIT 1"
-            ).fetchone()
-            item = SyncIntent(
-                id=uuid4(),
-                target_kind=proposal.target_kind,
-                target_id=proposal.id,
+            return self._persist_sync_proposal(proposal, binding, state)
+
+    def enqueue_sync_history(self, context, target_id):
+        """Prepare one history projection atomically; never consume other completions."""
+        if self._db.in_transaction:
+            raise ValueError("Подготовка требует отдельную транзакцию")
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            binding = self.get_sync_binding()
+            if binding is None:
+                raise ValueError("Синхронизация не подключена")
+            changes = self._read_sync_regular_changes(binding)
+            plan_history(changes, context, server_id=binding.server_id)
+            state = self._read_sync_prepared_state()
+            supplied = dict(context.identities)
+            for local, remote in state.identities:
+                if local in supplied and supplied[local] != remote:
+                    raise ValueError("Контекст меняет подтверждённое соответствие")
+                supplied[local] = remote
+            context = replace(
+                context,
+                identities=tuple(supplied.items()),
+                acknowledged_detaches=context.acknowledged_detaches | state.detaches,
+                acknowledged_barriers=context.acknowledged_barriers | state.barriers,
+            )
+            plan = plan_history(changes, context, server_id=binding.server_id)
+            matches = [p for p in plan.proposals if p.id == target_id]
+            if len(matches) != 1:
+                raise ValueError("Нет однозначного готового изменения")
+            proposal = matches[0]
+            used = set()
+            for record in (
+                proposal.payload,
+                next(
+                    b.entry.entity
+                    for b in context.bases
+                    if b.id == target_id and b.entry is not None
+                )
+                if any(b.id == target_id and b.entry is not None for b in context.bases)
+                else None,
+            ):
+                if type(record) is OccurrenceRecord:
+                    used.update(task_node_ids(record.current.task))
+                elif type(record) is TaskRecord:
+                    used.update(task_node_ids(record.task))
+                elif type(record) is RemovalRecord and record.root_id is not None:
+                    used.add(record.root_id)
+            adapted = _PreparedProjection(
+                id=proposal.id,
+                target_kind="occurrence",
                 action=proposal.action,
+                base_revision=proposal.base_revision,
+                delete_epoch=proposal.delete_epoch,
                 payload=proposal.payload,
-                depends_on=_stored_uuid(last[0]) if last else None,
+                source_changes=proposal.source_changes,
+                barrier_changes=proposal.barrier_changes,
+                transition_change=proposal.transition_change,
+                identities=tuple((a, b) for a, b in context.identities if b in used),
             )
-            self._enqueue_sync_intent(item)
-            self._db.execute("INSERT INTO sync_prepared VALUES (?,?)", (str(item.id), raw))
-            return self._freeze_sync_intent(
-                item.id,
-                SyncBase(
-                    server_id=binding.server_id,
-                    target_kind=item.target_kind,
-                    target_id=item.target_id,
-                    revision=proposal.base_revision,
-                    delete_epoch=proposal.delete_epoch,
-                ),
-            )
+            return self._persist_sync_proposal(adapted, binding, state)
+
+    def _persist_sync_proposal(self, proposal, binding, state):
+        raw = _metadata(proposal)
+        metadata = _read_metadata(raw)
+        confirmed = dict(state.identities)
+        reverse = {remote: local for local, remote in state.identities}
+        for local, remote in metadata["identities"]:
+            if (local in confirmed and confirmed[local] != remote) or (
+                remote in reverse and reverse[remote] != local
+            ):
+                raise ValueError("Подготовка меняет подтверждённое соответствие")
+        for row in self._db.execute("SELECT * FROM sync_prepared"):
+            previous = _read_metadata(row["metadata"])
+            frozen = self._frozen_sync_request(_stored_uuid(row["intent_id"]))
+            if frozen is None:
+                raise ValueError("Подготовленное изменение потеряло запрос")
+            op = frozen.operation
+            if (
+                row["metadata"] == raw
+                and op.target_kind == proposal.target_kind
+                and op.target_id == proposal.id
+                and op.action == proposal.action
+                and op.payload == proposal.payload
+                and op.base_revision == proposal.base_revision
+                and op.delete_epoch == proposal.delete_epoch
+            ):
+                return frozen
+            if set(previous["sources"]) & set(metadata["sources"]) and (
+                frozen.receipt is None or frozen.receipt.status != "applied"
+            ):
+                raise ValueError("Дождитесь подтверждения подготовленного изменения")
+        last = self._db.execute("SELECT id FROM sync_intents ORDER BY seq DESC LIMIT 1").fetchone()
+        item = SyncIntent(
+            id=uuid4(),
+            target_kind=proposal.target_kind,
+            target_id=proposal.id,
+            action=proposal.action,
+            payload=proposal.payload,
+            depends_on=_stored_uuid(last[0]) if last else None,
+        )
+        self._enqueue_sync_intent(item)
+        self._db.execute("INSERT INTO sync_prepared VALUES (?,?)", (str(item.id), raw))
+        return self._freeze_sync_intent(
+            item.id,
+            SyncBase(
+                server_id=binding.server_id,
+                target_kind=item.target_kind,
+                target_id=item.target_id,
+                revision=proposal.base_revision,
+                delete_epoch=proposal.delete_epoch,
+            ),
+        )
 
     def _accept_sync_prepared(self, frozen, receipt):
         row = self._db.execute(
@@ -213,4 +291,5 @@ class SyncPreparedMixin:
             barriers=frozenset(phases.get("barrier", ())),
             reschedules=frozenset(phases.get("reschedule_regular", ())),
             promotions=frozenset(phases.get("promote_regular", ())),
+            detaches=frozenset(phases.get("detach_occurrence", ())),
         )

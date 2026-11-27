@@ -1,4 +1,4 @@
-# Постоянная подготовка regular-команд
+# Постоянная подготовка regular/history команд
 
 Tasks schema v20; garden v7 и зависимости прежние. Это локальная часть T41c,
 не отправка, inbound или сервер. Новый `TaskStore.enqueue_sync_regular(context,
@@ -21,7 +21,7 @@ outbox; ошибка freeze откатывает также intent и metadata.
 конфликт на любой записи откатывает все соответствия и сам receipt. Rejected
 receipt не выдаёт фаз и соответствий. Повтор receipt не повторяет эффектов.
 `read_sync_prepared_state` проверяет наличие applied receipt для фаз и возвращает
-подтверждённые identities/barriers/reschedules/promotions. При следующей подготовке
+подтверждённые identities/barriers/reschedules/promotions/detaches. При следующей подготовке
 они подмешиваются в контекст автоматически, поэтому забытый после restart barrier
 не создаёт повторный prune.
 
@@ -33,11 +33,31 @@ receipt не выдаёт фаз и соответствий. Повтор recei
 
 ## Ещё не готово
 
-История пока не имеет аналогичного durable enqueue. Нет persistent baseline
-snapshot/receipt effects, окончательного retirement (один факт может участвовать
+Нет persistent baseline snapshot/receipt effects, окончательного retirement (один факт может участвовать
 в нескольких проекциях), full preparation loop и send coverage. Все исходные
 facts остаются в журнале, `next_sync_sendable` сохраняет общий regular barrier.
 Метод не разрешает обходить его ручной отправкой frozen request. Следующее:
-общая durable подготовка истории и baseline/effects/phase coverage, затем снятие
+baseline/effects/phase coverage для обеих проекций, затем снятие
 барьера только для действительно покрытых фактов, calendar/category/AI capture,
 inbound и runtime с подменным транспортом. UI/реальная сеть не включены.
+
+
+## История повторов
+
+`enqueue_sync_history(context, target_id)` использует тот же atomic persist/freeze
+и receipt ledger. Recompute выполняется под BEGIN IMMEDIATE по свежему журналу.
+Каждый completed offline slot получает отдельный occurrence target; подтверждение
+одного слота не поглощает ни соседние слоты, ни regular projection того же факта.
+Все исходные факты пока остаются. FIFO зависимости требуют подтверждения предыдущей
+команды. Identity ledger содержит лишь использованные payload/before node IDs,
+а не все произвольные соответствия из переданного контекста.
+
+HistoryContext.acknowledged_barriers и HistoryProposal.barrier_changes связывают
+prune/restore с конкретными исходными фактами. После applied receipt повтор
+prune/restore не создаётся; более позднее обычное редактирование готовит put.
+Старый подтверждённый restore не разрешает воскресить новую user_deleted отметку
+или отменить более позднее удаление узла сервером. Подтверждённый detach восстанавливается
+через PreparedState.detaches и подмешивается в context автоматически. Доказательства
+live before/type_changed mark/ordinary target остаются обязательными для planner.
+SQL schema v20, wire version и зависимости не менялись. Проверки выполняются на
+временных профилях без реальной отправки, UI/transport этим API не включаются.
