@@ -1,5 +1,14 @@
 # Проверка «Ритма»
 
+## Late offline delete
+
+608 sync tests passed (22,23 с), /tmp/ritm-late-delete-suite.log. Focused 9 passed
+(1,67 с) после дополнительной проверки полного snapshot: старое completion,
+forget vacant target→close rule, сохранение history, известный live target
+удаляется по своим counters, unknown/retention не выдают ложное подтверждение,
+wrong kind/base отвергаются, immutable requests/receipts переживают reopen.
+Ruff/diff passed. GUI/Windows/полный app suite не повторялись, сеть выключена.
+
 ## Late offline stop
 
 599 passed (20,87 с), /tmp/ritm-offline-stop-final.log; focused 55 passed

@@ -127,6 +127,8 @@ def _validate(operation):
         "prune",
         "stop_regular",
         "stop_offline",
+        "close_regular",
+        "forget_task",
         "rollover",
         "rollover_updated",
         "reschedule_regular",
@@ -143,7 +145,9 @@ def _validate(operation):
         "occurrence",
     ):
         raise SyncCodecError()
-    if operation.action == "create":
+    if operation.action == "forget_task" and operation.target_kind != "task":
+        raise SyncCodecError()
+    if operation.action in ("create", "forget_task"):
         if operation.base_revision != 0 or operation.delete_epoch != 0:
             raise SyncCodecError()
     elif operation.base_revision == 0:
@@ -156,11 +160,18 @@ def _validate(operation):
         raise SyncCodecError()
     if (
         operation.action
-        in ("rollover", "rollover_updated", "stop_regular", "stop_offline", "reschedule_regular")
+        in (
+            "rollover",
+            "rollover_updated",
+            "stop_regular",
+            "stop_offline",
+            "close_regular",
+            "reschedule_regular",
+        )
         and operation.target_kind != "regular"
     ):
         raise SyncCodecError()
-    if operation.action in ("delete", "stop_regular"):
+    if operation.action in ("delete", "stop_regular", "close_regular", "forget_task"):
         if operation.payload is not None:
             raise SyncCodecError("schema")
     else:
@@ -336,6 +347,8 @@ def verify_receipt(operation: Operation, receipt: Receipt) -> None:
             "restore",
             "stop_regular",
             "stop_offline",
+            "close_regular",
+            "forget_task",
             "prune",
             "reschedule_regular",
             "detach_occurrence",

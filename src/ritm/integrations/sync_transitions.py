@@ -176,6 +176,28 @@ def plan_regular_effects(
             previous,
             replacement,
         )
+    elif operation.action == "close_regular":
+        previous = (
+            history_record(regular)
+            if regular.current.task.completed
+            else RemovalRecord(
+                entity_kind="task",
+                entity_id=regular.current.task.id,
+                revision=receipt.revision,
+                delete_epoch=receipt.delete_epoch,
+                reason="retention",
+            )
+        )
+        entities = (
+            RemovalRecord(
+                entity_kind="regular",
+                entity_id=regular.id,
+                revision=receipt.revision,
+                delete_epoch=receipt.delete_epoch,
+                reason="user_deleted",
+            ),
+            previous,
+        )
     elif operation.action == "stop_regular":
         entities = (
             RemovalRecord(
@@ -342,5 +364,36 @@ def plan_promotion_effects(
         entries=tuple(
             SnapshotEntry(revision=receipt.revision, delete_epoch=receipt.delete_epoch, entity=x)
             for x in entities
+        ),
+    )
+
+
+@_guard
+def plan_forget_task_effects(
+    operation: Operation, receipt: Receipt, *, vacant_task_id: UUID | None = None
+) -> RegularEffects:
+    verify_receipt(operation, receipt)
+    if (
+        operation.action != "forget_task"
+        or operation.target_kind != "task"
+        or receipt.status != "applied"
+        or type(vacant_task_id) is not UUID
+        or vacant_task_id != operation.target_id
+    ):
+        raise SyncCodecError()
+    marker = RemovalRecord(
+        entity_kind="task",
+        entity_id=operation.target_id,
+        revision=receipt.revision,
+        delete_epoch=receipt.delete_epoch,
+        reason="user_deleted",
+    )
+    encode_entity(marker)
+    return RegularEffects(
+        receipt=receipt,
+        entries=(
+            SnapshotEntry(
+                revision=receipt.revision, delete_epoch=receipt.delete_epoch, entity=marker
+            ),
         ),
     )

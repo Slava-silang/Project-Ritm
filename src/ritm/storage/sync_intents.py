@@ -93,6 +93,8 @@ def _intent(intent):
             "prune",
             "stop_regular",
             "stop_offline",
+            "close_regular",
+            "forget_task",
             "rollover",
             "rollover_updated",
             "reschedule_regular",
@@ -105,7 +107,14 @@ def _intent(intent):
         raise ValueError("Общую настройку нельзя удалить этим действием")
     if (
         intent.action
-        in ("stop_regular", "stop_offline", "rollover", "rollover_updated", "reschedule_regular")
+        in (
+            "stop_regular",
+            "stop_offline",
+            "close_regular",
+            "rollover",
+            "rollover_updated",
+            "reschedule_regular",
+        )
         and intent.target_kind != "regular"
     ):
         raise ValueError("Действие требует регулярное расписание")
@@ -113,10 +122,12 @@ def _intent(intent):
         raise ValueError("Действие требует историю повтора")
     if intent.action == "promote_regular" and intent.target_kind not in ("task", "occurrence"):
         raise ValueError("Действие требует обычную задачу или историю")
+    if intent.action == "forget_task" and intent.target_kind != "task":
+        raise ValueError("Действие требует задачу")
     if intent.action == "prune" and intent.target_kind not in ("task", "regular", "occurrence"):
         raise ValueError("Действие требует дерево задачи")
     payload = None
-    if intent.action in ("delete", "stop_regular"):
+    if intent.action in ("delete", "stop_regular", "close_regular", "forget_task"):
         if intent.payload is not None:
             raise ValueError("Намерение удаления не должно содержать прежний текст")
     else:

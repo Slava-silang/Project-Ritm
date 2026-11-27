@@ -164,3 +164,23 @@ Stop proposal.transition_change указывает именно на исход�
 факты. Если server current уже впереди local stopped slot, known before также
 может быть закрыт без генерации новых repeat: destination всё равно выбран
 по локальному stop и требует verified vacancy.
+
+
+## Late offline delete: unpublished v1
+
+`forget_task` адресует только task с base_revision=0/delete_epoch=0 и null
+payload. Это tiny user_deleted tombstone для явно vacant удалённого экземпляра;
+caller проверяет vacancy в той же транзакции, отсутствие не выводится из
+неполной страницы. Applied receipt увеличивает epoch на 1. Pure
+plan_forget_task_effects требует явный vacant_task_id. Тело удалённой задачи
+не передаётся. Известный live task/occurrence удаляется обычным delete со своими
+counters; неизвестное основание/retention marker не заменяют удаление.
+
+`close_regular` адресует известный regular с positive base, null payload,
+applied epoch+1. Pure effects: regular user_deleted mark и неизменная completed
+history старого current либо task retention для unfinished current. Нового
+current/ordinary экземпляра не создаёт. Late delete planner сначала согласует
+old completion, затем forget/delete выбранного local slot, после verified
+terminal user_deleted mark готовит close_regular. Все facts остаются remaining;
+подготовка очереди/consumption/сеть ещё не включены. Старый строгий клиент новый
+action отклоняет; контракт v1 ещё не опубликован. Schema/deps прежние.

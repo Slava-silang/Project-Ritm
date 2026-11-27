@@ -1,5 +1,24 @@
 # Текущее состояние
 
+## Продолжение цели: late offline delete
+
+Добавлены forget_task (явно отсутствующий task target, base0/epoch0, только
+маленькая отметка без тела) и close_regular (закрыть известное правило, сохранив
+completed source как history, unfinished как retention). Late delete planner
+сначала согласует старое completion, затем удаляет известный выбранный слот
+или создаёт tombstone для доказанно vacant slot, после подтверждения закрывает
+правило. Unknown/retention/чужой root не считаются доказательством удаления.
+Никакого upload удалённого текста или создания нового повтора.
+608 sync tests passed (22,23 с), /tmp/ritm-late-delete-suite.log; итог focused
+9 passed (1,67 с) после добавления полного snapshot. Ruff/diff проверены отдельно.
+GUI/Windows/full application suite не повторялись. Schemas v19/v7/deps прежние.
+Checkpoint: `feat: preserve history when deleting offline regular tasks`.
+Цель desktop sync НЕ завершена. Следующий крупный шаг — durable подготовка
+proposals→intents с mappings/phase receipts и точным retirement facts, затем
+category/calendar/AI capture, inbound/merge/rewards и runtime на подменном
+транспорте. Structural/day guards не обходить. Сервер не начинать. Пользовательские
+assets/theme_* не тронуты.
+
 ## Продолжение цели: late offline stop
 
 Добавлен stop_offline wire/intent/receipt и pure effects из трёх записей:

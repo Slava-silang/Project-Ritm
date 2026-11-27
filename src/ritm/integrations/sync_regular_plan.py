@@ -309,6 +309,78 @@ def _offline_stop(rule, base, identities, context):
     return "stop_offline", mapped, pairs
 
 
+def _offline_delete(rule, base, identities, context):
+    source = next(c for c in reversed(rule.changes) if c.kind == "delete")
+    root = identities.get(source.root_id, source.root_id)
+    if (
+        type(context.terminal_bases) is not tuple
+        or len(context.terminal_bases) > MAX_SNAPSHOT_ITEMS
+    ):
+        raise ValueError("Некорректные terminal основания")
+    targets = {}
+    for target in context.terminal_bases:
+        if type(target) is not RegularBase or target.id in targets:
+            raise ValueError("Некорректное terminal основание")
+        checked_uuid(target.id)
+        targets[target.id] = target.entry
+    if root not in targets:
+        return "terminal_day_conflict"
+    entry = targets[root]
+    if entry is None:
+        if root in context.occupied_ids:
+            return "occupied_identity"
+        if not any(r.current.task.id == source.root_id for r in rule.snapshots):
+            return "local_snapshot_required"
+        return RegularProposal(
+            id=root,
+            target_kind="task",
+            action="forget_task",
+            base_revision=0,
+            delete_epoch=0,
+            payload=None,
+            identities=((source.root_id, root),),
+            source_changes=(source.id,),
+            transition_change=source.id,
+        )
+    if type(entry) is not SnapshotEntry:
+        raise ValueError("Некорректное terminal состояние")
+    checked_counter(entry.revision, positive=True)
+    checked_counter(entry.delete_epoch)
+    entity = entry.entity
+    checked_entity(entity)
+    if type(entity) is RemovalRecord:
+        actual_root = entity.entity_id if entity.entity_kind == "task" else entity.root_id
+        if (
+            actual_root != root
+            or entity.entity_kind not in ("task", "occurrence")
+            or entity.revision != entry.revision
+            or entity.delete_epoch != entry.delete_epoch
+        ):
+            raise ValueError("Terminal mark не соответствует root")
+        if entity.reason != "user_deleted":
+            return "terminal_delete_proof_required"
+        return "close_regular", None, ()
+    if type(entity) is TaskRecord:
+        kind, identifier, actual_root = "task", entity.task.id, entity.task.id
+    elif type(entity) is OccurrenceRecord:
+        kind, identifier, actual_root = "occurrence", entity.id, entity.current.task.id
+    else:
+        raise ValueError("Некорректное terminal представление")
+    if actual_root != root:
+        raise ValueError("Terminal root не совпадает")
+    return RegularProposal(
+        id=identifier,
+        target_kind=kind,
+        action="delete",
+        payload=None,
+        base_revision=entry.revision,
+        delete_epoch=entry.delete_epoch,
+        identities=((source.root_id, root),),
+        source_changes=(source.id,),
+        transition_change=source.id,
+    )
+
+
 def _next(rule, base, identities, context, today):
     if rule.blocked:
         return rule.blocked
@@ -349,6 +421,8 @@ def _next(rule, base, identities, context, today):
         return (
             _offline_stop(rule, base, identities, context)
             if rule.terminal == "stop"
+            else _offline_delete(rule, base, identities, context)
+            if rule.terminal == "delete"
             else "server_ahead"
         )
     late_terminal = (
@@ -356,8 +430,6 @@ def _next(rule, base, identities, context, today):
         and remote.current_day < latest.current_day
         and latest.current_day != due
     )
-    if late_terminal and rule.terminal != "stop":
-        return "terminal_day_conflict"
     same_day = [r for r in rule.snapshots if r.current_day == remote.current_day]
     if not same_day:
         return "local_snapshot_required"
@@ -419,7 +491,11 @@ def _next(rule, base, identities, context, today):
         )
         return action, mapped, pairs
     if late_terminal:
-        return _offline_stop(rule, base, identities, context)
+        return (
+            _offline_stop(rule, base, identities, context)
+            if rule.terminal == "stop"
+            else _offline_delete(rule, base, identities, context)
+        )
     if latest.current_day > remote.current_day:
         canonical = rollover_record(remote, due)
         births = [r for r in rule.snapshots if r.current_day == due]
@@ -496,6 +572,8 @@ def _reschedules(changes, rules, bases, identities, context, today):
             pending = _next(replace(rules[old], blocked=None), before, identities, context, today)
             if type(pending) is str:
                 reason = pending
+            elif type(pending) is RegularProposal:
+                proposed.append(pending)
             elif pending is not None:
                 action, payload, pairs = pending
                 proposed.append(
@@ -599,6 +677,8 @@ def plan_regular(changes, context: RegularContext, *, server_id: UUID) -> Regula
             blocked.append(RegularBlock(id=key, reason=decision, source_changes=sources))
         elif decision is None:
             unchanged.append(key)
+        elif type(decision) is RegularProposal:
+            proposals.append(decision)
         else:
             action, payload, pairs = decision
             proposals.append(
