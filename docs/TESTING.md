@@ -1,5 +1,19 @@
 # Проверка «Ритма»
 
+## Category capture и calendar write-path audit
+
+902 passed/6 GUI deselected (75,81 с), /tmp/ritm-catalog-capture-final-suite.log.
+Focused category 13 passed (1,20 с): category-before-task, no-op, known/unknown
+bootstrap, regular dependency, restart/suppression и атомарность category/task/
+AI proposal при SQL/material errors. Current writer subset 71 passed/1 GUI
+ deselected (3,85 с), /tmp/ritm-catalog-calendar-writers.log.
+GUI offscreen 3 passed (23,94 с), native X11 3 passed (23,32 с),
+/tmp/ritm-catalog-capture-gui.log и /tmp/ritm-catalog-capture-native.log.
+Ruff check/format 5 Python и diff passed. Schema/deps прежние. Windows/ручной
+осмотр/full app suite не выполнялись; сеть/личные профили не использовались.
+Второй блок ещё в работе: календарный capture/AI audit далее.
+
+
 ## Первый блок очереди принят — 27 ноября
 
 Приёмочные критерии и привязка к тестам: SYNC_BLOCK1_ACCEPTANCE.md.

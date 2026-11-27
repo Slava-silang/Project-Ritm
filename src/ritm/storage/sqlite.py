@@ -335,14 +335,19 @@ class TaskStore(
 
     def save_category(self, category: Category):
         with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
             self._write_category(category)
 
     def _write_category(self, category: Category):
+        before = self._db.execute(
+            "SELECT title FROM categories WHERE id=?", (str(category.id),)
+        ).fetchone()
         self._db.execute(
             "INSERT INTO categories VALUES (?,?) "
             "ON CONFLICT(id) DO UPDATE SET title=excluded.title",
             (str(category.id), category.title),
         )
+        self._capture_category_write(category, before[0] if before else None)
 
     def list_categories(self) -> tuple[Category, ...]:
         return tuple(
@@ -492,18 +497,7 @@ class TaskStore(
                         raise ValueError(
                             "Календарь изменился. Обновите предпросмотр перед подтверждением."
                         )
-                self._db.execute(
-                    "INSERT INTO work_blocks(id,task_id,starts_us,ends_us,title) "
-                    "VALUES (?,NULL,?,?,?) "
-                    "ON CONFLICT(id) DO UPDATE SET starts_us=excluded.starts_us,"
-                    "ends_us=excluded.ends_us,title=excluded.title",
-                    (
-                        str(block.id),
-                        instant_us(block.starts_at),
-                        instant_us(block.ends_at),
-                        block.title,
-                    ),
-                )
+                self._write_work_block(block, before=draft.before)
             revision = current_link.revision + 1 if current_link else 1
             self._db.execute(
                 "INSERT INTO source_links VALUES (?,?,?,?,?,?) ON CONFLICT(key) DO UPDATE SET "
@@ -569,17 +563,7 @@ class TaskStore(
             if any(b.starts_at < self._clock() for b in draft.blocks):
                 raise ValueError("Начало блока уже прошло. Сформируйте расписание заново.")
             for block in draft.blocks:
-                self._db.execute(
-                    "INSERT INTO work_blocks(id,task_id,starts_us,ends_us,title) "
-                    "VALUES (?,?,?,?,?)",
-                    (
-                        str(block.id),
-                        str(block.task_id),
-                        instant_us(block.starts_at),
-                        instant_us(block.ends_at),
-                        "",
-                    ),
-                )
+                self._write_work_block(block)
             self._db.execute(
                 "INSERT INTO applied_proposals VALUES (?,?,?)",
                 (str(draft.id), draft.digest, str(context.task.id)),
@@ -1002,11 +986,11 @@ class TaskStore(
         nearby = self.list_work_blocks(window_start=block.starts_at, window_end=block.ends_at)
         return task, nearby
 
-    def create_work_block(self, block: WorkBlock) -> tuple[Task | None, tuple[WorkBlock, ...]]:
-        with self._db:
-            self._db.execute("BEGIN IMMEDIATE")
-            if block.task_id is not None and self.get_task(block.task_id) is None:
-                raise KeyError(block.task_id)
+    def _write_work_block(self, block: WorkBlock, *, before: WorkBlock | None = None):
+        """One owning write path for manual, schedule and mail event proposals."""
+        if not self._db.in_transaction:
+            raise ValueError("Календарь нужно изменять внутри общей транзакции")
+        if before is None:
             self._db.execute(
                 "INSERT INTO work_blocks(id,task_id,starts_us,ends_us,title) VALUES (?,?,?,?,?)",
                 (
@@ -1017,6 +1001,25 @@ class TaskStore(
                     block.title,
                 ),
             )
+        else:
+            if block.id != before.id or block.task_id != before.task_id:
+                raise ValueError("Изменение блока должно сохранять его ID и связь с задачей")
+            self._db.execute(
+                "UPDATE work_blocks SET starts_us=?,ends_us=?,title=? WHERE id=?",
+                (
+                    instant_us(block.starts_at),
+                    instant_us(block.ends_at),
+                    block.title,
+                    str(block.id),
+                ),
+            )
+
+    def create_work_block(self, block: WorkBlock) -> tuple[Task | None, tuple[WorkBlock, ...]]:
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            if block.task_id is not None and self.get_task(block.task_id) is None:
+                raise KeyError(block.task_id)
+            self._write_work_block(block)
             return self._block_context(block)
 
     def update_work_block(
@@ -1031,15 +1034,7 @@ class TaskStore(
                 raise ValueError("Блок уже изменился. Обновите календарь и повторите действие")
             if current.task_id != block.task_id:
                 raise ValueError("Перенос времени не должен менять задачу рабочего блока")
-            self._db.execute(
-                "UPDATE work_blocks SET starts_us=?,ends_us=?,title=? WHERE id=?",
-                (
-                    instant_us(block.starts_at),
-                    instant_us(block.ends_at),
-                    block.title,
-                    str(block.id),
-                ),
-            )
+            self._write_work_block(block, before=current)
             return self._block_context(block)
 
     def work_block_context(

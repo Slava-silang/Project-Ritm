@@ -1,5 +1,13 @@
 # Окружение, запуск и выпуск
 
+## T41c5d: category capture
+
+К expanded набору добавить tests/test_sync_category_capture.py (он входит в
+ test_sync_*.py). Временные профили и fake snapshot/receipts, без модели/Google/
+сервера. Schema v21/garden v7/deps прежние. SYNC_CATEGORY_CAPTURE.md описывает
+проверенные category dependencies и следующий calendar hook.
+
+
 ## Очередь задач — первый блок принят
 
 К целевому набору относятся tests/test_sync_queue_acceptance.py и

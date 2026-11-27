@@ -1,5 +1,35 @@
 # Текущее состояние
 
+## Второй блок в работе: категории и owning calendar writer
+
+T41c5d: категории capture атомарны с category/task/regular/proposal записью.
+Новый sync_catalog_capture.py: create/put/no-op, known cache vs unknown absence,
+category-before-task dependency; Task intents теперь продолжают global FIFO.
+Regular journal тоже обеспечивает category до frame и сохраняет after_intent.
+Incoming/bootstrap suppression не даёт echo; default capture off.
+
+Все четыре календарных write paths сведены в TaskStore._write_work_block:
+ручной create/update, apply_schedule, mail independent event. Поведение/UI не
+изменены, parent transaction/receipt validation остаются у вызывающего API.
+Это подготовка hook, НЕ готовый calendar capture. AI task paths используют
+_write_task и уже проходят category dependency. Аудит: SYNC_CATEGORY_CAPTURE.md.
+
+Проверки актуального состояния: 902 passed/6 GUI deselected (75,81 с),
+/tmp/ritm-catalog-capture-final-suite.log; focused category 13 passed (1,20 с).
+Calendar/mail/AI writer subset 71 passed/1 deselected (3,85 с). GUI offscreen
+3 passed (23,94 с), /tmp/ritm-catalog-capture-gui.log; native X11 3 passed
+(23,32 с), /tmp/ritm-catalog-capture-native.log. Ruff check/format 5 Python и diff
+passed. Schema v21/garden v7/deps прежние; Windows/manual/full app suite не
+выполнялись. Пользовательские темы/личные профили/сеть/сервер не тронуты.
+
+Точное следующее действие: durable block journal/capture на общем writer плюс
+logical task archive/restore, parent task/regular dependency/local↔wire UUID,
+30-day retention/archived caption и AI batch/mail rollback/restart/backup checks.
+Затем аудит и приёмка всего второго блока. Transport/inbound не включать;
+server design/implementation не начинать. Первый блок остаётся принятым.
+Checkpoint: HEAD, «feat: capture category dependencies and unify calendar writes».
+
+
 ## Первый блок завершён: постоянная очередь задач
 
 27 ноября 2026, ветка codex/calendar-events. Приёмка:

@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 from ritm.domain.calendar import from_instant_us
 from ritm.integrations.sync_codec import RegularRecord, TaskRecord
+from ritm.storage.sync_catalog_capture import SyncCatalogCaptureMixin
 from ritm.storage.sync_intents import SyncIntent, _stored_uuid, _uuid
 from ritm.storage.sync_regular_capture import SyncRegularCaptureMixin
 
@@ -25,7 +26,7 @@ def _node_ids(task):
     }
 
 
-class SyncCaptureMixin(SyncRegularCaptureMixin):
+class SyncCaptureMixin(SyncCatalogCaptureMixin, SyncRegularCaptureMixin):
     def is_sync_task_capture_enabled(self):
         row = self._db.execute("SELECT enabled FROM sync_capture WHERE context_id=1").fetchone()
         if row is None:
@@ -120,9 +121,7 @@ class SyncCaptureMixin(SyncRegularCaptureMixin):
 
     def _append_captured_task(self, identifier, action, payload):
         parent = self._db.execute(
-            "SELECT id FROM sync_intents WHERE target_kind='task' AND target_id=? "
-            "ORDER BY seq DESC LIMIT 1",
-            (str(identifier),),
+            "SELECT id FROM sync_intents ORDER BY seq DESC LIMIT 1",
         ).fetchone()
         self._enqueue_sync_intent(
             SyncIntent(
@@ -136,6 +135,8 @@ class SyncCaptureMixin(SyncRegularCaptureMixin):
         )
 
     def _capture_task_write(self, before, task, *, restored, regular_before=None):
+        if before != task or restored:
+            self._ensure_category_dependency(task.category_id)
         if self._sync_capture_active() and type(regular_before) is RegularRecord:
             self._record_regular_change(
                 "restore" if restored else "save", regular_before, self._regular_sync_record(task)

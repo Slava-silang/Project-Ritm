@@ -149,6 +149,9 @@ class SyncRegularCaptureMixin:
     def _record_regular_change(self, kind, before, after, *, lineage=None):
         if not self._sync_capture_active() or before == after:
             return
+        if after is not None:
+            current = after.current if type(after) in (RegularRecord, OccurrenceRecord) else after
+            self._ensure_category_dependency(current.task.category_id)
         record = after if after is not None else before
         root = (
             record.current.task.id

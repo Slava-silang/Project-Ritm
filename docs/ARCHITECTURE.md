@@ -1,5 +1,14 @@
 # Архитектурная основа
 
+## Категории / второй блок
+
+SyncCaptureMixin включает SyncCatalogCaptureMixin: owning _write_category capture
+и ensure dependency перед task/regular записью. Task intents идут через global
+predecessor. Все календарные insert/update сведены в _write_work_block, включая
+AI schedule и mail events; его capture и logical task archive/restore — далее.
+Схема не менялась. Контракт/аудит — SYNC_CATEGORY_CAPTURE.md.
+
+
 ## Очередь задач: первый блок завершён
 
 sync_prepare_loop собирает contexts из полного snapshot + receipt ledger и
