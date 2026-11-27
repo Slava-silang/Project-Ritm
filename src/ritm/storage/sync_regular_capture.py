@@ -1,8 +1,7 @@
 """Durable local regular transitions; not prepared network operations."""
 
-from dataclasses import dataclass, field
 from datetime import date
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from ritm.domain.calendar import from_instant_us
 from ritm.integrations.sync_codec import (
@@ -13,6 +12,8 @@ from ritm.integrations.sync_codec import (
     encode_entity,
     history_id,
 )
+from ritm.integrations.sync_regular_changes import RegularChange
+from ritm.integrations.sync_regular_changes import validate_regular_change as _validate
 from ritm.storage.sync_intents import _stored_uuid
 
 REGULAR_CAPTURE_OBJECTS_V18 = ("sync_regular_changes",)
@@ -60,80 +61,6 @@ def migrate_regular_capture(db):
                     (str(record.current.task.id), str(record.id), record.current_day.isoformat()),
                 )
     db.execute("DROP TABLE sync_regular_changes_v18")
-
-
-@dataclass(frozen=True, kw_only=True)
-class RegularChange:
-    sequence: int
-    id: UUID
-    after_intent_id: UUID | None
-    kind: str
-    rule_id: UUID
-    root_id: UUID
-    before: RegularRecord | OccurrenceRecord | TaskRecord | None = field(repr=False)
-    after: RegularRecord | OccurrenceRecord | TaskRecord | None = field(repr=False)
-    day: date | None = None
-
-
-def _validate(change):
-    before, after = change.before, change.after
-    if change.kind in ("history", "detach", "root_save", "root_restore", "root_delete"):
-        expected = {
-            "history": (OccurrenceRecord, OccurrenceRecord),
-            "detach": (OccurrenceRecord, TaskRecord),
-            "root_save": (TaskRecord, TaskRecord),
-            "root_restore": (type(None), (OccurrenceRecord, TaskRecord)),
-            "root_delete": (type(None), type(None)),
-        }[change.kind]
-        valid = isinstance(before, expected[0]) and isinstance(after, expected[1])
-        valid = valid and type(change.day) is date
-        if not valid:
-            raise ValueError("Повреждён переход истории повторов")
-        for record in (before, after):
-            if record is None:
-                continue
-            root = record.current.task.id if type(record) is OccurrenceRecord else record.task.id
-            valid = valid and root == change.root_id
-            if type(record) is OccurrenceRecord:
-                valid = valid and record.rule_id == change.rule_id and record.day == change.day
-        if not valid:
-            raise ValueError("Повреждён переход истории повторов")
-        return
-    if change.day is not None:
-        raise ValueError("Неожиданный день перехода регулярной задачи")
-    if change.kind == "delete":
-        valid = before is None and after is None
-    elif change.kind == "stop":
-        valid = type(before) is RegularRecord and type(after) is TaskRecord
-        valid = valid and before.id == change.rule_id and after.task.id == change.root_id
-        valid = valid and before.current.task.id == change.root_id
-    elif change.kind == "rollover":
-        valid = type(before) is RegularRecord and type(after) is RegularRecord
-        valid = valid and before.id == after.id == change.rule_id
-        valid = valid and before.current_day < after.current_day
-        valid = valid and before.current.task.id != after.current.task.id
-        valid = valid and after.current.task.id == change.root_id
-    elif change.kind in ("save", "restore"):
-        valid = type(after) is RegularRecord and type(before) in (
-            type(None),
-            TaskRecord,
-            RegularRecord,
-            OccurrenceRecord,
-        )
-        if change.kind == "restore":
-            valid = valid and type(before) is RegularRecord
-        valid = valid and after.id == change.rule_id and after.current.task.id == change.root_id
-        if valid and before is not None:
-            root = (
-                before.current.task.id
-                if type(before) in (RegularRecord, OccurrenceRecord)
-                else before.task.id
-            )
-            valid = root == change.root_id
-    else:
-        valid = False
-    if not valid:
-        raise ValueError("Повреждён переход регулярной задачи")
 
 
 class SyncRegularCaptureMixin:
@@ -270,36 +197,50 @@ class SyncRegularCaptureMixin:
             ),
         )
 
+    def _read_sync_regular_changes(self, binding):
+        result = []
+        for row in self._db.execute("SELECT * FROM sync_regular_changes ORDER BY seq"):
+            if binding is None or row["context_id"] != 1:
+                raise ValueError("Повреждён контекст переходов регулярных задач")
+            change = RegularChange(
+                sequence=row["seq"],
+                id=_stored_uuid(row["id"]),
+                after_intent_id=_stored_uuid(row["after_intent_id"])
+                if row["after_intent_id"]
+                else None,
+                kind=row["kind"],
+                rule_id=_stored_uuid(row["rule_id"]),
+                root_id=_stored_uuid(row["root_id"]),
+                day=date.fromisoformat(row["occurrence_day"])
+                if row["occurrence_day"] is not None
+                else None,
+                before=decode_entity(row["before_json"])
+                if row["before_json"] is not None
+                else None,
+                after=decode_entity(row["after_json"]) if row["after_json"] is not None else None,
+            )
+            _validate(change)
+            result.append(change)
+        return tuple(result)
+
     def list_sync_regular_changes(self):
         """Read immutable local facts. Never freeze or send these as Operation DTOs."""
         if self._db.in_transaction:
             raise ValueError("Журнал повторов нельзя читать внутри другой транзакции")
-        result = []
+        with self._db:
+            self._db.execute("BEGIN")
+            return self._read_sync_regular_changes(self.get_sync_binding())
+
+    def prepare_sync_history(self, context):
+        """Read binding/facts in one snapshot, then prepare pure history proposals."""
+        from ritm.integrations.sync_history_plan import plan_history
+
+        if self._db.in_transaction:
+            raise ValueError("Историю нельзя готовить внутри другой транзакции")
         with self._db:
             self._db.execute("BEGIN")
             binding = self.get_sync_binding()
-            for row in self._db.execute("SELECT * FROM sync_regular_changes ORDER BY seq"):
-                if binding is None or row["context_id"] != 1:
-                    raise ValueError("Повреждён контекст переходов регулярных задач")
-                change = RegularChange(
-                    sequence=row["seq"],
-                    id=_stored_uuid(row["id"]),
-                    after_intent_id=_stored_uuid(row["after_intent_id"])
-                    if row["after_intent_id"]
-                    else None,
-                    kind=row["kind"],
-                    rule_id=_stored_uuid(row["rule_id"]),
-                    root_id=_stored_uuid(row["root_id"]),
-                    day=date.fromisoformat(row["occurrence_day"])
-                    if row["occurrence_day"] is not None
-                    else None,
-                    before=decode_entity(row["before_json"])
-                    if row["before_json"] is not None
-                    else None,
-                    after=decode_entity(row["after_json"])
-                    if row["after_json"] is not None
-                    else None,
-                )
-                _validate(change)
-                result.append(change)
-        return tuple(result)
+            if binding is None:
+                raise ValueError("Синхронизация не подключена")
+            changes = self._read_sync_regular_changes(binding)
+        return plan_history(changes, context, server_id=binding.server_id)

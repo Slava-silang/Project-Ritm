@@ -1,5 +1,12 @@
 # Окружение, запуск и выпуск
 
+## History proposals — T41c5c1
+
+К предыдущему целевому набору добавить `tests/test_sync_history_plan.py`.
+Подготовка работает только с временными профилями и явно подменным context.
+Tasks v19/garden v7 и зависимости прежние, миграции нет. API/границы:
+SYNC_HISTORY_PLAN.md; нет нового UI/HTTP/аккаунта или снятия send barrier.
+
 ## История повторов — T41c5b
 
 Текущая tasks schema **v19**, garden v7/dependencies прежние. К предыдущему

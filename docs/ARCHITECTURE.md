@@ -1,5 +1,16 @@
 # Архитектурная основа
 
+## T41c5c1 — чистая подготовка history proposals
+
+integrations/sync_regular_changes.py владеет DTO/проверкой RegularChange, storage
+их импортирует. integrations/sync_history_plan.py не зависит от SQL/Qt: полный
+журнал + явные server generation/bases/identity mappings → history proposals/
+blocked/unchanged. Все facts остаются remaining; нет enqueue/consumption/freeze.
+TaskStore.prepare_sync_history читает binding/facts одним snapshot и считает
+после release lock. Retention/delete/node/current/type/frozen guards, без
+выдуманного base/UUID/дат. SQL schemas v19/v7/dependencies прежние.
+Границы доверия и следующие resolver части — SYNC_HISTORY_PLAN.md.
+
 ## T41c5b — history/detach/restore, tasks v19
 
 sync_regular_capture расширяет факты до OccurrenceRecord и day; tiny

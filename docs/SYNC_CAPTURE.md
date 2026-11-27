@@ -50,6 +50,9 @@ TaskStore для incoming/profile_restore/bootstrap/regular. Он исключа
 
 ## Границы этапа
 
+T41c5c1 готовит только history proposals (SYNC_HISTORY_PLAN.md), без enqueue/
+retirement и снятия общего барьера отправки.
+
 T41c5a–b добавляют durable журнал current/history/rollover/stop/detach/restore
 (SYNC_REGULAR_CAPTURE.md). Это ещё не отправляемые intents: наличие фактов
 блокирует next_sync_sendable. Ниже граница обычного task capture T41c4.

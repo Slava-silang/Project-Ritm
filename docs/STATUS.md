@@ -1,5 +1,43 @@
 # Текущее состояние
 
+## T41c5c1 — history proposals готовы, 27 ноября
+
+Новый integrations/sync_history_plan.py: pure plan_history(RegularChange tuple,
+HistoryContext, expected server generation). Отдельные offline завершения →
+OccurrenceRecord по stable slot; явный bijective local/server UUID map для
+root/child/item и known base (None — только явно известное отсутствие).
+Предложения create/put/prune/restore/delete с исходными revision/epoch,
+provenance; blocked/unchanged фиксированы, bodies скрыты в repr. Retention не
+возвращает тело, user_deleted требует explicit restore, node resurrection
+не допускается обычным rebase. Current root/day/сетка/frozen/type transitions/
+unknown base/map блокируют цель. Не invent даты/null/UUID или server counters.
+
+RegularChange/validate вынесены в integrations/sync_regular_changes.py, storage
+сохраняет совместимые импорты; pure code больше не зависит от SQL/storage/Qt.
+TaskStore.prepare_sync_history читает binding/facts одним snapshot, считает
+после release lock. Нет writes/queue enqueue/freeze/HTTP/inbound/retire facts:
+все ID остаются remaining, общий send barrier прежний. Настоящие context/owner/
+server authority должен проверить будущий caller, DTO не авторизация.
+Контракт/границы — SYNC_HISTORY_PLAN.md. Tasks v19/garden v7/deps прежние.
+
+729 passed/6 GUI deselected (41,67 с), /tmp/ritm-history-plan-suite.log.
+GUI offscreen 5 passed (46,98 с), native Linux X11 5 passed (44,66 с).
+Все pytest шага зелёные. Ruff check/format 4 Python, diff passed.
+Full suite/Windows/Wayland/standalone/визуальный обзор/релизный аудит/личный
+профиль/аккаунты/реальная сеть не проверялись. Миграции/нового UI нет.
+
+Изменены новые sync_history_plan/sync_regular_changes/test_sync_history_plan,
+sync_regular_capture; docs SYNC_HISTORY_PLAN/REGULAR_CAPTURE/CAPTURE/SPEC/
+ARCHITECTURE/DEVELOPMENT/TASKS/TESTING/STATUS. assets/theme_* не затронуты.
+Сохранение: локальный коммит `feat: plan offline history changes against known server state`
+(ID — git log). T41c5c1 done; T41c5c/T41c5/T41c in_progress.
+Следующее точное действие: T41c5c2 current regular resolver/канонический rollover
+с local↔server UUID mapping и атомарными stop/detach/promotion/reschedule.
+Затем durable prepare→intent/receipt/retire facts и зависимости. Проверить full
+server graph/owner/context и не переписывать frozen; до завершения capture
+calendar/category/AI и resolver transport выключен. До inbound согласовать
+награды сада. Сервер/бот/размещение/публикация отдельно.
+
 ## T41c5b — история повторов и восстановление готовы, 27 ноября
 
 sync_regular_capture хранит OccurrenceRecord before/after с исходным rule/day/

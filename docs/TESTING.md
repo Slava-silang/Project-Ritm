@@ -1,5 +1,32 @@
 # Проверка «Ритма»
 
+## T41c5c1 — pure history proposals, 27 ноября
+
+Итоговый целевой набор DEVELOPMENT с test_sync_history_plan: **729 passed,
+6 GUI deselected (41,67 с)**, /tmp/ritm-history-plan-suite.log. 30 новых тестов
+используют настоящие disposable TaskStore journals: три offline completion,
+явное соответствие root/child/item UUID и сохранение дат/null, детерминированный
+результат/неизменные байты source, proposals кодируются как кандидаты occurrence
+Operation, unknown base/отсутствие mapping не выдумываются, current root/день/
+сетка/ordinary root/чужая server history блокируют цель. Проверены retained и
+user_deleted без возврата тела; явный restore с известным epoch, unchanged/put,
+prune и restore даже при совпадении финального тела, delete без payload и без
+неизвестного base, compound detach/promotion без половины перехода, frozen fact
+без reprepare, несовпадение root, дубли/порядок/счётчики/generation, limits, skip
+без фиктивной истории, запрет локального и серверного node resurrection.
+Read-only TaskStore API: один BEGIN для binding/facts, нет writes/снятия barrier,
+нет auto binding, внешний transaction не коммитится/не откатывается.
+
+Первые новые pytest — 22 passed (3,59 с); focused после shared DTO/guards —
+56 passed (6,82 с; пересекается с прежними tests). Все pytest шага зелёные.
+GUI regular/tasks capture off/on + backup: offscreen **5 passed (46,98 с)**,
+/tmp/ritm-history-plan-gui.log; native Linux X11 **5 passed (44,66 с)**,
+/tmp/ritm-history-plan-native.log. Отдельного визуального обзора не было.
+Ruff check/format четырёх Python, diff passed. Tasks v19/garden v7/dependencies
+прежние; миграции нет. Full pytest/Windows/Wayland/standalone/личный профиль/
+аккаунты/HTTP/сервер/inbound/релизный аудит не проверялись. Proposals не сохранены
+в queue и не являются разрешением отправки/retire facts; полный resolver далее.
+
 ## T41c5b — history/detach/restore, 27 ноября
 
 Итоговый целевой набор DEVELOPMENT с test_sync_history_capture: **699 passed,
