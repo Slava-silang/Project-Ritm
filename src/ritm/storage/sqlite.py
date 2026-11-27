@@ -23,6 +23,7 @@ from ritm.storage.recurrence import RECURRENCE_SCHEMA, RecurrenceMixin
 from ritm.storage.sync_capture import CAPTURE_SCHEMA, SyncCaptureMixin
 from ritm.storage.sync_intents import SYNC_SCHEMA, SyncIntentMixin
 from ritm.storage.sync_outbox import OUTBOX_SCHEMA, SyncOutboxMixin
+from ritm.storage.sync_prepare_loop import SyncPrepareLoopMixin
 from ritm.storage.sync_prepared import PREPARED_SCHEMA, SyncPreparedMixin
 from ritm.storage.sync_regular_capture import REGULAR_CAPTURE_SCHEMA, migrate_regular_capture
 from ritm.storage.sync_snapshot import SNAPSHOT_SCHEMA, SyncSnapshotMixin
@@ -195,6 +196,7 @@ ATTACHMENT_OWNER = """
 
 
 class TaskStore(
+    SyncPrepareLoopMixin,
     SyncSnapshotMixin,
     SyncPreparedMixin,
     SyncCaptureMixin,

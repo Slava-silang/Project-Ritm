@@ -33,8 +33,8 @@ receipt не выдаёт фаз и соответствий. Повтор recei
 
 ## Ещё не готово
 
-Persistent full snapshot/receipt реализованы в SYNC_SNAPSHOT.md (v21). Нет окончательного retirement (один факт может участвовать
-в нескольких проекциях), full preparation loop и send coverage. Все исходные
+Persistent full snapshot/receipt реализованы в SYNC_SNAPSHOT.md (v21). Cached preparation loop и settled retirement добавлены по SYNC_PREPARE_LOOP.md.
+Остаются непокрытые ordinary lineage/compound/type/retention случаи и send coverage. Все исходные
 facts остаются в журнале, `next_sync_sendable` сохраняет общий regular barrier.
 Метод не разрешает обходить его ручной отправкой frozen request. Следующее:
 cached context/preparation loop/phase coverage для обеих проекций, затем снятие

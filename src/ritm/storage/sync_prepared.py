@@ -31,6 +31,7 @@ class PreparedState:
     reschedules: frozenset[UUID]
     promotions: frozenset[UUID]
     detaches: frozenset[UUID]
+    stops: frozenset[UUID]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -98,31 +99,35 @@ class SyncPreparedMixin:
             raise ValueError("Подготовка требует отдельную транзакцию")
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
-            binding = self.get_sync_binding()
-            if binding is None:
-                raise ValueError("Синхронизация не подключена")
-            changes = self._read_sync_regular_changes(binding)
-            # Validate the original context before merging; never hide duplicate IDs.
-            plan_regular(changes, context, server_id=binding.server_id)
-            state = self._read_sync_prepared_state()
-            supplied = dict(context.identities)
-            for local, remote in state.identities:
-                if local in supplied and supplied[local] != remote:
-                    raise ValueError("Контекст меняет подтверждённое соответствие")
-                supplied[local] = remote
-            context = replace(
-                context,
-                identities=tuple(supplied.items()),
-                acknowledged_barriers=context.acknowledged_barriers | state.barriers,
-                acknowledged_reschedules=context.acknowledged_reschedules | state.reschedules,
-                acknowledged_promotions=context.acknowledged_promotions | state.promotions,
-            )
-            plan = plan_regular(changes, context, server_id=binding.server_id)
-            matches = [p for p in plan.proposals if p.id == target_id]
-            if len(matches) != 1:
-                raise ValueError("Нет однозначного готового изменения")
-            proposal = matches[0]
-            return self._persist_sync_proposal(proposal, binding, state)
+            return self._enqueue_sync_regular(context, target_id)
+
+    def _enqueue_sync_regular(self, context, target_id):
+        binding = self.get_sync_binding()
+        if binding is None:
+            raise ValueError("Синхронизация не подключена")
+        changes = self._read_sync_regular_changes(binding)
+        # Validate the original context before merging; never hide duplicate IDs.
+        plan_regular(changes, context, server_id=binding.server_id)
+        state = self._read_sync_prepared_state()
+        supplied = dict(context.identities)
+        for local, remote in state.identities:
+            if local in supplied and supplied[local] != remote:
+                raise ValueError("Контекст меняет подтверждённое соответствие")
+            supplied[local] = remote
+        context = replace(
+            context,
+            identities=tuple(supplied.items()),
+            acknowledged_barriers=context.acknowledged_barriers | state.barriers,
+            acknowledged_reschedules=context.acknowledged_reschedules | state.reschedules,
+            acknowledged_promotions=context.acknowledged_promotions | state.promotions,
+            acknowledged_stops=context.acknowledged_stops | state.stops,
+        )
+        plan = plan_regular(changes, context, server_id=binding.server_id)
+        matches = [p for p in plan.proposals if p.id == target_id]
+        if len(matches) != 1:
+            raise ValueError("Нет однозначного готового изменения")
+        proposal = matches[0]
+        return self._persist_sync_proposal(proposal, binding, state)
 
     def enqueue_sync_history(self, context, target_id):
         """Prepare one history projection atomically; never consume other completions."""
@@ -130,58 +135,57 @@ class SyncPreparedMixin:
             raise ValueError("Подготовка требует отдельную транзакцию")
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
-            binding = self.get_sync_binding()
-            if binding is None:
-                raise ValueError("Синхронизация не подключена")
-            changes = self._read_sync_regular_changes(binding)
-            plan_history(changes, context, server_id=binding.server_id)
-            state = self._read_sync_prepared_state()
-            supplied = dict(context.identities)
-            for local, remote in state.identities:
-                if local in supplied and supplied[local] != remote:
-                    raise ValueError("Контекст меняет подтверждённое соответствие")
-                supplied[local] = remote
-            context = replace(
-                context,
-                identities=tuple(supplied.items()),
-                acknowledged_detaches=context.acknowledged_detaches | state.detaches,
-                acknowledged_barriers=context.acknowledged_barriers | state.barriers,
-            )
-            plan = plan_history(changes, context, server_id=binding.server_id)
-            matches = [p for p in plan.proposals if p.id == target_id]
-            if len(matches) != 1:
-                raise ValueError("Нет однозначного готового изменения")
-            proposal = matches[0]
-            used = set()
-            for record in (
-                proposal.payload,
-                next(
-                    b.entry.entity
-                    for b in context.bases
-                    if b.id == target_id and b.entry is not None
-                )
-                if any(b.id == target_id and b.entry is not None for b in context.bases)
-                else None,
-            ):
-                if type(record) is OccurrenceRecord:
-                    used.update(task_node_ids(record.current.task))
-                elif type(record) is TaskRecord:
-                    used.update(task_node_ids(record.task))
-                elif type(record) is RemovalRecord and record.root_id is not None:
-                    used.add(record.root_id)
-            adapted = _PreparedProjection(
-                id=proposal.id,
-                target_kind="occurrence",
-                action=proposal.action,
-                base_revision=proposal.base_revision,
-                delete_epoch=proposal.delete_epoch,
-                payload=proposal.payload,
-                source_changes=proposal.source_changes,
-                barrier_changes=proposal.barrier_changes,
-                transition_change=proposal.transition_change,
-                identities=tuple((a, b) for a, b in context.identities if b in used),
-            )
-            return self._persist_sync_proposal(adapted, binding, state)
+            return self._enqueue_sync_history(context, target_id)
+
+    def _enqueue_sync_history(self, context, target_id):
+        binding = self.get_sync_binding()
+        if binding is None:
+            raise ValueError("Синхронизация не подключена")
+        changes = self._read_sync_regular_changes(binding)
+        plan_history(changes, context, server_id=binding.server_id)
+        state = self._read_sync_prepared_state()
+        supplied = dict(context.identities)
+        for local, remote in state.identities:
+            if local in supplied and supplied[local] != remote:
+                raise ValueError("Контекст меняет подтверждённое соответствие")
+            supplied[local] = remote
+        context = replace(
+            context,
+            identities=tuple(supplied.items()),
+            acknowledged_detaches=context.acknowledged_detaches | state.detaches,
+            acknowledged_barriers=context.acknowledged_barriers | state.barriers,
+        )
+        plan = plan_history(changes, context, server_id=binding.server_id)
+        matches = [p for p in plan.proposals if p.id == target_id]
+        if len(matches) != 1:
+            raise ValueError("Нет однозначного готового изменения")
+        proposal = matches[0]
+        used = set()
+        for record in (
+            proposal.payload,
+            next(b.entry.entity for b in context.bases if b.id == target_id and b.entry is not None)
+            if any(b.id == target_id and b.entry is not None for b in context.bases)
+            else None,
+        ):
+            if type(record) is OccurrenceRecord:
+                used.update(task_node_ids(record.current.task))
+            elif type(record) is TaskRecord:
+                used.update(task_node_ids(record.task))
+            elif type(record) is RemovalRecord and record.root_id is not None:
+                used.add(record.root_id)
+        adapted = _PreparedProjection(
+            id=proposal.id,
+            target_kind="occurrence",
+            action=proposal.action,
+            base_revision=proposal.base_revision,
+            delete_epoch=proposal.delete_epoch,
+            payload=proposal.payload,
+            source_changes=proposal.source_changes,
+            barrier_changes=proposal.barrier_changes,
+            transition_change=proposal.transition_change,
+            identities=tuple((a, b) for a, b in context.identities if b in used),
+        )
+        return self._persist_sync_proposal(adapted, binding, state)
 
     def _persist_sync_proposal(self, proposal, binding, state):
         raw = _metadata(proposal)
@@ -292,4 +296,6 @@ class SyncPreparedMixin:
             reschedules=frozenset(phases.get("reschedule_regular", ())),
             promotions=frozenset(phases.get("promote_regular", ())),
             detaches=frozenset(phases.get("detach_occurrence", ())),
+            stops=frozenset(phases.get("stop_regular", ()))
+            | frozenset(phases.get("stop_offline", ())),
         )

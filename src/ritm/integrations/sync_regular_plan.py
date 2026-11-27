@@ -46,6 +46,7 @@ class RegularContext:
     promotion_bases: tuple = field(default=(), repr=False)
     terminal_bases: tuple = field(default=(), repr=False)
     acknowledged_promotions: frozenset[UUID] = frozenset()
+    acknowledged_stops: frozenset[UUID] = frozenset()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -75,6 +76,7 @@ class RegularPlan:
     blocked: tuple[RegularBlock, ...]
     unchanged: tuple[UUID, ...]
     remaining_changes: tuple[UUID, ...]
+    projected_changes: tuple[UUID, ...]
 
 
 @dataclass
@@ -104,6 +106,7 @@ def _context(context, server_id):
         context.acknowledged_barriers,
         context.acknowledged_reschedules,
         context.acknowledged_promotions,
+        context.acknowledged_stops,
     ):
         if type(values) is not frozenset or len(values) > MAX_SNAPSHOT_ITEMS:
             raise ValueError("Превышены границы контекста повторов")
@@ -113,6 +116,7 @@ def _context(context, server_id):
         context.acknowledged_barriers
         | context.acknowledged_reschedules
         | context.acknowledged_promotions
+        | context.acknowledged_stops
     ):
         raise ValueError("Противоречивые подтверждения барьеров")
     if context.frozen_changes & context.acknowledged_promotions:
@@ -415,6 +419,27 @@ def _next(rule, base, identities, context, today):
             return "identity_conflict"
         return "create", latest, pairs
     if type(base.entity) is RemovalRecord:
+        if rule.terminal == "stop":
+            source = next(c for c in reversed(rule.changes) if c.kind == "stop")
+            if source.id in context.acknowledged_stops:
+                root = identities.get(source.after.task.id)
+                target = next((b.entry for b in context.terminal_bases if b.id == root), None)
+                if (
+                    base.entity.reason == "user_deleted"
+                    and target is not None
+                    and target.revision >= base.revision
+                    and target.delete_epoch >= base.delete_epoch
+                    and (
+                        (type(target.entity) is TaskRecord and target.entity.task.id == root)
+                        or (
+                            type(target.entity) is RemovalRecord
+                            and target.entity.entity_kind == "task"
+                            and target.entity.entity_id == root
+                        )
+                    )
+                ):
+                    return None
+                return "stop_ack_conflict"
         return None if rule.terminal == "delete" else "deleted"
     remote = base.entity
     if remote.current_day > latest.current_day:
@@ -684,9 +709,11 @@ def plan_regular(changes, context: RegularContext, *, server_id: UUID) -> Regula
             proposals.append(
                 _proposal(key, action, payload, pairs, rule, bases[key], context, sources)
             )
+    covered = {c.id for rule in rules.values() for c in rule.changes}
     return RegularPlan(
         proposals=tuple(proposals),
         blocked=tuple(blocked),
         unchanged=tuple(unchanged),
         remaining_changes=tuple(c.id for c in changes),
+        projected_changes=tuple(c.id for c in changes if c.id in covered),
     )

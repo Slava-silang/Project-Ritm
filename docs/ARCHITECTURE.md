@@ -1,5 +1,15 @@
 # Архитектурная основа
 
+## Cached preparation loop
+
+storage/sync_prepare_loop.py собирает regular/history contexts из durable full
+snapshot и phase ledger, продолжает FIFO intents и атомарно сохраняет следующую
+команду. Projected_changes обоих pure planners проверяет полное покрытие фактов;
+совместный settled позволяет atomic metadata retirement, не удаляя задачи/lineage/
+receipts. Stop provenance восстанавливается отдельным ack, поздние ordinary edits
+после detach не считаются обработанными. Контракт/границы SYNC_PREPARE_LOOP.md.
+
+
 ## Сохранённый full snapshot / tasks v21
 
 storage/sync_snapshot.py хранит валидированный bounded full remote snapshot

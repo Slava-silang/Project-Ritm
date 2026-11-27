@@ -75,6 +75,7 @@ class HistoryPlan:
     blocked: tuple[HistoryBlock, ...]
     unchanged: tuple[UUID, ...]
     remaining_changes: tuple[UUID, ...]  # No fact may be retired by this read-only planner.
+    projected_changes: tuple[UUID, ...]
 
 
 @dataclass
@@ -463,9 +464,18 @@ def plan_history(changes, context: HistoryContext, *, server_id: UUID) -> Histor
                 else (),
             )
         )
+    sequence = {c.id: c.sequence for c in changes}
+    detached_at = {c.before.id: c.sequence for c in changes if c.kind == "detach"}
+    covered = {
+        source
+        for identifier, candidate in candidates.items()
+        for source in candidate.sources
+        if identifier not in handled or sequence[source] <= detached_at[identifier]
+    }
     return HistoryPlan(
         proposals=tuple(proposals),
         blocked=tuple(blocked),
         unchanged=tuple(unchanged),
         remaining_changes=tuple(change.id for change in changes),
+        projected_changes=tuple(c.id for c in changes if c.id in covered),
     )

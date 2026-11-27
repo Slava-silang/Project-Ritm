@@ -1,5 +1,13 @@
 # Окружение, запуск и выпуск
 
+## Cached queue preparation
+
+К текущему целевому набору добавить tests/test_sync_prepare_loop.py. Реальные
+TaskStore queue/cache и restart, server responses только тестовые через pure
+transition validators. Schema v21/garden v7/deps прежние; HTTP/UI не включены.
+Контракт SYNC_PREPARE_LOOP.md. Ни один личный профиль не использовать.
+
+
 ## Tasks v21 / full snapshot cache
 
 Миграция v20→21 добавляет cache, сохраняет прежнюю очередь/ledger/facts; garden v7,

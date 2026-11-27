@@ -33,8 +33,8 @@ bytes/op_id, full snapshot сообщает актуальное состоян�
 
 `read_sync_snapshot()` восстанавливает полное состояние после reopen. Последующая
 подготовка может использовать его actual revision/epoch вместо ручных тестовых
-оснований. Автоматическая сборка context из cache, проекции фактов и retirement
-остаются следующим действием первого блока. Эти API не меняют nodes/trash/files,
+оснований. Автоматическая сборка context/queue step и settled retirement описаны в
+SYNC_PREPARE_LOOP.md; первый блок ещё требует покрытия оставшихся переходов. Эти API не меняют nodes/trash/files,
 не снимают общий send barrier и не являются inbound merge/начислением сада.
 
 Миграция v20→21 создаёт пустой cache, сохраняя intents/frozen bytes/facts/ledger.

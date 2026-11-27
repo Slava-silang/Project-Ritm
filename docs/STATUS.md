@@ -1,5 +1,36 @@
 # Текущее состояние
 
+## Первый крупный блок: автоматическая подготовка и settled retirement
+
+prepare_next_sync строит regular/history contexts из persisted snapshot+ledger,
+продолжает FIFO/frozen head без смены bytes/op_id и готовит по одной команде.
+Обычные captured intents тоже получают known cached base. Snapshot должен
+покрывать maximum revision всех applied receipts. Unknown/conflict/blocked
+не превращаются в create/успех. Future canonical slots не получают преждевременную
+self mapping: исправлен identity_conflict, найденный сквозным тестом.
+Четыре команды put→rollover→history create→history create с reopen после каждого
+receipt доходят до settled/idle без ручных planner contexts/fake accept. Также
+проверены create regular→reschedule→stop, ordinary create, pending/rejected head,
+receipt без свежего snapshot и local_refresh_required.
+Оба planner возвращают projected_changes — область ответственности. Только
+совместный settled без proposals/blocks с покрытием каждого fact позволяет
+atomic DELETE служебного журнала и его phase acks. User tasks/trash/lineage,
+UUID mappings и immutable requests/receipts сохраняются. SQL failure откатывает
+facts/acks вместе; retry старого receipt не воссоздаёт очищенную фазу.
+Stop ack требует provenance и обе known representations/counters. После detach
+его ack не покрывает последующие ordinary root edits: они остаются вне coverage.
+Expanded DEVELOPMENT: 843 passed/6 GUI deselected (56,32 с),
+/tmp/ritm-cached-loop-final-suite.log. До последнего coverage regression focused
+9 loop passed (1,92 с); pure/current/history subset 63 passed (8,55 с).
+Ruff check/format 7 Python, diff passed. Schema v21/garden v7/deps прежние.
+GUI/Windows/full application suite не повторялись; UI/transport не включены.
+Пользовательские темы/личные профили/сервер не тронуты. Контракт SYNC_PREPARE_LOOP.md.
+Первый блок ещё НЕ завершён. Следующее: ordinary lineage root_save/delete/restore
+после stop/detach и оставшиеся compound/type/retention случаи довести через тот же
+loop до settled; затем аудит coverage. Остальные четыре блока сохраняют порядок.
+Checkpoint: `feat: resume cached sync preparation and retire settled facts`.
+
+
 ## Первый крупный блок: очередь — сохранённый server snapshot
 
 Tasks v21: один full remote snapshot сохраняется отдельно от local nodes/trash/

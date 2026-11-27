@@ -1,5 +1,21 @@
 # Проверка «Ритма»
 
+## Cached preparation + settled retirement
+
+843 passed/6 GUI deselected (56,32 с), /tmp/ritm-cached-loop-final-suite.log:
+весь sync и актуальный expanded DEVELOPMENT storage/backup/recurrence/domain.
+Новые loop scenarios: реальные queue/cache + reopen после каждого из трёх offline
+completion, конечные settled→idle/retirement; create→reschedule→stop; ordinary
+capture; missing snapshot; pending/rejected head; receipt ahead of cache; stale
+local day; outer transaction. Fault-injected retirement откатывает phase cleanup
+и journal вместе, сохраняет tasks/lineage/immutable receipt. Отдельный coverage
+regression: detach ack не покрывает последующий ordinary root_save.
+Первый loop test нашёл преждевременное self mapping будущих canonical roots;
+исправлено, итоговый набор зелёный. Ruff check/format 7 Python и diff passed.
+GUI/Windows/полный application suite не повторялись: UI/схема/зависимости прежние.
+Ни реальная сеть, ни личный профиль не использовались. Send barrier остаётся.
+
+
 ## Remote snapshot / tasks v21
 
 Expanded DEVELOPMENT 830 passed/6 deselected (53,98 с), /tmp/ritm-snapshot-suite.log
