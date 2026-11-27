@@ -1,5 +1,14 @@
 # Проверка «Ритма»
 
+## Общий baseline локальной синхронизации, 27 ноября
+
+777 passed, 6 GUI deselected (44,27 с), /tmp/ritm-desktop-sync-baseline.log.
+Все test_sync_* вместе со storage/recurrence/backup/garden/focus/domain. Это
+общая проверка текущего checkpoint, не готовность полного desktop exchange.
+GUI/Windows/реальная сеть не запускались. Решение о новых remote garden rewards
+зафиксировано в SPEC: один раз, без повторного начисления за bootstrap/retry.
+
+
 ## Detach checkpoint, 27 ноября
 
 375 passed (4,89 с), /tmp/ritm-detach-check.log: test_sync_detach + codec/pages/operations/transitions/intents/outbox. Проверены root identity, wire roundtrip, snapshot с type_changed mark и ordinary root, неверные vacancy/base/epoch/root. Ruff check/format 6 Python, diff passed. Нет полного pytest/GUI/Windows/сети; planner integration ещё не готова.
