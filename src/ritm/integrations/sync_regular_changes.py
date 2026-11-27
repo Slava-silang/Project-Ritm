@@ -1,6 +1,6 @@
 """Shared local regular-change DTO validation, without SQLite or transport."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from uuid import UUID
 
@@ -134,3 +134,21 @@ def validate_regular_journal(changes, *, max_items=10000, max_bytes=32 * 1024 * 
         if size > max_bytes:
             raise ValueError("Журнал истории слишком велик")
         validate_regular_change(change)
+
+
+def mapped_task_record(record, identities):
+    """Map task node identities without forcing an ordinary task into a regular DTO."""
+    task = record.task
+    if not task_node_ids(task) <= identities.keys():
+        return None
+    children = tuple(
+        replace(
+            child,
+            id=identities[child.id],
+            items=tuple(replace(item, id=identities[item.id]) for item in child.items),
+        )
+        for child in task.subtasks
+    )
+    result = replace(record, task=replace(task, id=identities[task.id], subtasks=children))
+    checked_entity(result)
+    return result

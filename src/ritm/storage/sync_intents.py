@@ -92,6 +92,7 @@ def _intent(intent):
             "delete",
             "prune",
             "stop_regular",
+            "stop_offline",
             "rollover",
             "rollover_updated",
             "reschedule_regular",
@@ -103,7 +104,8 @@ def _intent(intent):
     if intent.target_kind == "calendar_settings" and intent.action not in ("create", "put"):
         raise ValueError("Общую настройку нельзя удалить этим действием")
     if (
-        intent.action in ("stop_regular", "rollover", "rollover_updated", "reschedule_regular")
+        intent.action
+        in ("stop_regular", "stop_offline", "rollover", "rollover_updated", "reschedule_regular")
         and intent.target_kind != "regular"
     ):
         raise ValueError("Действие требует регулярное расписание")
@@ -122,7 +124,7 @@ def _intent(intent):
             RegularRecord
             if intent.action == "promote_regular"
             else TaskRecord
-            if intent.action == "detach_occurrence"
+            if intent.action in ("detach_occurrence", "stop_offline")
             else PAYLOADS[intent.target_kind]
         ):
             raise ValueError("Тип данных не соответствует намерению")

@@ -101,6 +101,8 @@ def target_identity(record):
 
 
 def payload_matches_target(action, kind, identifier, payload):
+    if action == "stop_offline":
+        return kind == "regular" and type(payload) is TaskRecord
     if action == "promote_regular":
         return kind in ("task", "occurrence") and type(payload) is RegularRecord
     if action == "detach_occurrence":
@@ -124,6 +126,7 @@ def _validate(operation):
         "delete",
         "prune",
         "stop_regular",
+        "stop_offline",
         "rollover",
         "rollover_updated",
         "reschedule_regular",
@@ -152,7 +155,8 @@ def _validate(operation):
     ):
         raise SyncCodecError()
     if (
-        operation.action in ("rollover", "rollover_updated", "stop_regular", "reschedule_regular")
+        operation.action
+        in ("rollover", "rollover_updated", "stop_regular", "stop_offline", "reschedule_regular")
         and operation.target_kind != "regular"
     ):
         raise SyncCodecError()
@@ -164,7 +168,7 @@ def _validate(operation):
             RegularRecord
             if operation.action == "promote_regular"
             else TaskRecord
-            if operation.action == "detach_occurrence"
+            if operation.action in ("detach_occurrence", "stop_offline")
             else PAYLOADS[operation.target_kind]
         ):
             raise SyncCodecError()
@@ -331,6 +335,7 @@ def verify_receipt(operation: Operation, receipt: Receipt) -> None:
             "delete",
             "restore",
             "stop_regular",
+            "stop_offline",
             "prune",
             "reschedule_regular",
             "detach_occurrence",

@@ -146,7 +146,7 @@ def accept(proposal, context):
         acknowledged_reschedules=context.acknowledged_reschedules
         | (
             frozenset({proposal.transition_change})
-            if proposal.transition_change is not None
+            if proposal.action == "reschedule_regular" and proposal.transition_change is not None
             else frozenset()
         ),
     )
@@ -480,6 +480,9 @@ def test_stop_after_offline_rollovers_waits_for_the_matching_current_root(tmp_pa
         ),
         identities=tuple((i, i) for i in task_node_ids(original_base.current.task)),
     )
+    preparatory = plan(changes, delayed).proposals[0]
+    assert preparatory.action == "put"
+    delayed = accept(preparatory, delayed)
     assert plan(changes, delayed).blocked[0].reason == "terminal_day_conflict"
 
 

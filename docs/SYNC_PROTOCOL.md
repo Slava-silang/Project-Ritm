@@ -421,3 +421,12 @@ latest root/path UUID и сброшенные completion/date. Новые пол
 переписывания. Сетка/first/interval/latest day проверяются pure effects.
 Applied epoch не увеличивается, как rollover. Старые строгие v1 клиенты новый
 action отвергают. Новый opcode не является реализацией transport/server SQL.
+
+
+## stop_offline
+
+Неопубликованный v1: target regular, payload TaskRecord другого root, applied
+epoch+1. При known CAS/vacant_task_id эффекты old rule mark + previous current
+history/retention + ordinary target выдаются одной revision/epoch. Новый target
+не пересекается с IDs before. Нет исторического rollover/выдуманных новых
+экземпляров. Owner/vacancy/global graph/SQL transaction — future caller.

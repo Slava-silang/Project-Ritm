@@ -1,5 +1,26 @@
 # Текущее состояние
 
+## Продолжение цели: late offline stop
+
+Добавлен stop_offline wire/intent/receipt и pure effects из трёх записей:
+regular mark, source history/retention, выбранная ordinary task. Source completion
+сначала подготавливается отдельным put, затем закрытие без исторического
+rollover и без новых незамеченных повторов. Current planner требует явный
+terminal vacant base и birth/identity/occupied proofs. Task deadline сохраняется,
+общий mapped_task_record не помещает ordinary данные в недопустимый Regular DTO.
+599 sync tests passed (20,87 с), /tmp/ritm-offline-stop-final.log.
+Transition_change связан с stop fact; финальный повтор 599 passed (20,59 с),
+/tmp/ritm-offline-stop-final2.log. Focused
+55 passed (4,64 с), /tmp/ritm-offline-stop-focused-final.log. Старый тест missing
+terminal target уточнён: сначала допустим independent completion put, затем
+блокируется неизвестное закрытие. Ruff/diff passed; GUI/Windows/full app suite
+не повторялись. Schemas v19/v7/deps прежние, сервер/сеть не включены.
+Checkpoint: `feat: preserve selected tasks when stopping schedules offline`.
+Цель desktop sync НЕ завершена. Далее late delete/оставшиеся structural/day
+случаи, затем durable prepare/queue/receipts/mappings/retire, calendar/category/
+AI capture и inbound/merge/rewards. Пользовательские темы не тронуты.
+
+
 ## Продолжение цели: chains/template
 
 Reschedule chains проходят по одному подтверждённому звену, следующие ждут

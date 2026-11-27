@@ -19,6 +19,7 @@ from ritm.integrations.sync_regular_changes import (
     checked_counter,
     checked_entity,
     checked_uuid,
+    mapped_task_record,
     task_node_ids,
     validate_regular_journal,
 )
@@ -43,6 +44,7 @@ class RegularContext:
     acknowledged_barriers: frozenset[UUID] = frozenset()
     acknowledged_reschedules: frozenset[UUID] = frozenset()
     promotion_bases: tuple = field(default=(), repr=False)
+    terminal_bases: tuple = field(default=(), repr=False)
     acknowledged_promotions: frozenset[UUID] = frozenset()
 
 
@@ -52,7 +54,7 @@ class RegularProposal:
     action: str
     base_revision: int
     delete_epoch: int
-    payload: RegularRecord | None = field(repr=False)
+    payload: RegularRecord | TaskRecord | None = field(repr=False)
     identities: tuple[tuple[UUID, UUID], ...] = field(repr=False)
     source_changes: tuple[UUID, ...]
     barrier_changes: tuple[UUID, ...] = ()
@@ -217,23 +219,8 @@ def _merge_pairs(identities, pairs):
 
 
 def _map_record(record, identities):
-    task = record.current.task
-    if not task_node_ids(task) <= identities.keys():
-        return None
-    children = tuple(
-        replace(
-            child,
-            id=identities[child.id],
-            items=tuple(replace(item, id=identities[item.id]) for item in child.items),
-        )
-        for child in task.subtasks
-    )
-    return replace(
-        record,
-        current=replace(
-            record.current, task=replace(task, id=identities[task.id], subtasks=children)
-        ),
-    )
+    current = mapped_task_record(record.current, identities)
+    return replace(record, current=current) if current is not None else None
 
 
 def _birth_pairs(local, canonical):
@@ -278,6 +265,50 @@ def _barriers(rule, day, acknowledged):
     return initial or set(), restore, prune, invalid, tuple(markers)
 
 
+def _offline_stop(rule, base, identities, context):
+    stops = [c for c in rule.changes if c.kind == "stop"]
+    if not stops:
+        return "local_snapshot_required"
+    stop = stops[-1]
+    desired = stop.after
+    slots = {r.current.task.id for r in rule.snapshots}
+    if desired.task.id not in slots:
+        return "terminal_root_conflict"
+    if (
+        type(context.terminal_bases) is not tuple
+        or len(context.terminal_bases) > MAX_SNAPSHOT_ITEMS
+    ):
+        raise ValueError("Некорректные основания terminal задачи")
+    targets = {}
+    for target in context.terminal_bases:
+        if type(target) is not RegularBase or target.id in targets:
+            raise ValueError("Некорректное основание terminal задачи")
+        checked_uuid(target.id)
+        targets[target.id] = target.entry
+    mapping = dict(identities)
+    raw_ids = task_node_ids(desired.task)
+    root = mapping.get(desired.task.id, desired.task.id)
+    if root not in targets:
+        return "terminal_day_conflict"
+    if targets[root] is not None:
+        return "ordinary_target_exists"
+    if not raw_ids <= mapping.keys():
+        births = [r.current.task for r in rule.snapshots if r.current.task.id == desired.task.id]
+        if not births or not raw_ids <= task_node_ids(births[0]):
+            return "identity_mapping_required"
+        pairs = tuple((key, key) for key in sorted(raw_ids - mapping.keys()))
+        mapping = _merge_pairs(mapping, pairs)
+        if mapping is None:
+            return "identity_conflict"
+    mapped = mapped_task_record(desired, mapping)
+    if mapped.task.id == base.entity.current.task.id:
+        return "terminal_root_conflict"
+    if task_node_ids(mapped.task) & context.occupied_ids:
+        return "occupied_identity"
+    pairs = tuple((key, mapping[key]) for key in sorted(raw_ids))
+    return "stop_offline", mapped, pairs
+
+
 def _next(rule, base, identities, context, today):
     if rule.blocked:
         return rule.blocked
@@ -315,12 +346,17 @@ def _next(rule, base, identities, context, today):
         return None if rule.terminal == "delete" else "deleted"
     remote = base.entity
     if remote.current_day > latest.current_day:
-        return "server_ahead"
-    if (
+        return (
+            _offline_stop(rule, base, identities, context)
+            if rule.terminal == "stop"
+            else "server_ahead"
+        )
+    late_terminal = (
         rule.terminal is not None
         and remote.current_day < latest.current_day
         and latest.current_day != due
-    ):
+    )
+    if late_terminal and rule.terminal != "stop":
         return "terminal_day_conflict"
     same_day = [r for r in rule.snapshots if r.current_day == remote.current_day]
     if not same_day:
@@ -382,6 +418,8 @@ def _next(rule, base, identities, context, today):
             )
         )
         return action, mapped, pairs
+    if late_terminal:
+        return _offline_stop(rule, base, identities, context)
     if latest.current_day > remote.current_day:
         canonical = rollover_record(remote, due)
         births = [r for r in rule.snapshots if r.current_day == due]
@@ -511,6 +549,8 @@ def _reschedules(changes, rules, bases, identities, context, today):
 def _proposal(key, action, payload, pairs, rule, base, context, sources, *, transition_change=None):
     if payload is not None:
         checked_entity(payload)
+    if transition_change is None and action in ("stop_regular", "stop_offline"):
+        transition_change = next(c.id for c in reversed(rule.changes) if c.kind == "stop")
     return RegularProposal(
         id=key,
         action=action,

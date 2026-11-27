@@ -1,5 +1,15 @@
 # Проверка «Ритма»
 
+## Late offline stop
+
+599 passed (20,87 с), /tmp/ritm-offline-stop-final.log; focused 55 passed
+(4,64 с). Проверены old completion→stop_offline, три эффекта с валидным full
+snapshot, известная vacancy/неизвестный или занятый target, сохранение deadline
+ordinary task и retention вместо фиктивного completion. Старое ожидание immediate
+terminal_day_conflict заменено на preparatory completion put, затем тот же guard.
+Ruff/diff passed; GUI/Windows/full application suite не повторялись.
+
+
 ## Transition chains / updated templates
 
 593 sync tests passed (19,55 с), /tmp/ritm-chain-template-verified.log. Focused
@@ -1549,3 +1559,7 @@ SQLite v13/v6, зависимости и личные данные не меня
 ## R01 — первичная проверка репозитория, 25 ноября
 
 Локальная история на ece8ba9: 89 коммитов, 1292 blob/493 пути, совпадений с указанными в REPOSITORY_BOUNDARIES.md шаблонами нет. Проверены также байты бинарных объектов, без визуального обзора всех изображений. git check-ignore: 15 passed. Свежий offline-wheel /tmp/ritm-r01-wheel: 212 записей, запрещённых нет, Main.qml побайтно совпадает. diff --check passed. Runtime/GUI/авторизация/сервер не проверялись этим шагом. T39f отложен пользователем, код эффекта не добавлялся.
+
+Финальный повтор после stop provenance: 599 passed (20,59 с),
+/tmp/ritm-offline-stop-final2.log. Дополнительно проверен remote current впереди
+локального stopped slot без потери выбранного target/remaining facts.

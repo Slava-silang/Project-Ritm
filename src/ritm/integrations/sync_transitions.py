@@ -13,6 +13,7 @@ from ritm.integrations.sync_codec import (
     RegularRecord,
     RemovalRecord,
     SyncCodecError,
+    TaskRecord,
     decode_entity,
     encode_entity,
     history_id,
@@ -63,6 +64,7 @@ def plan_regular_effects(
     moment: datetime,
     *,
     vacant_rule_id: UUID | None = None,
+    vacant_task_id: UUID | None = None,
 ) -> RegularEffects:
     """One CAS transition over a known server aggregate; apply all entries atomically later."""
     if type(before) is not SnapshotEntry or type(before.entity) is not RegularRecord:
@@ -131,6 +133,47 @@ def plan_regular_effects(
                 delete_epoch=receipt.delete_epoch,
                 reason="user_deleted",
             ),
+            replacement,
+        )
+    elif operation.action == "stop_offline":
+        replacement = operation.payload
+        if (
+            type(replacement) is not TaskRecord
+            or type(vacant_task_id) is not UUID
+            or vacant_task_id != replacement.task.id
+            or replacement.task.id == regular.current.task.id
+        ):
+            raise SyncCodecError()
+
+        def ids(task):
+            return {
+                task.id,
+                *(x.id for x in task.subtasks),
+                *(y.id for x in task.subtasks for y in x.items),
+            }
+
+        if ids(replacement.task) & ids(regular.current.task):
+            raise SyncCodecError()
+        previous = (
+            history_record(regular)
+            if regular.current.task.completed
+            else RemovalRecord(
+                entity_kind="task",
+                entity_id=regular.current.task.id,
+                revision=receipt.revision,
+                delete_epoch=receipt.delete_epoch,
+                reason="retention",
+            )
+        )
+        entities = (
+            RemovalRecord(
+                entity_kind="regular",
+                entity_id=regular.id,
+                revision=receipt.revision,
+                delete_epoch=receipt.delete_epoch,
+                reason="user_deleted",
+            ),
+            previous,
             replacement,
         )
     elif operation.action == "stop_regular":

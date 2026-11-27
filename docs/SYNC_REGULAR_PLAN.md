@@ -143,3 +143,24 @@ Promotion→reschedule готовит сначала promotion без проти
 запись. Epoch как у обычного rollover не увеличивается. Это не разрешение
 переписать старую выполненную задачу ради нового шаблона. Если birth DTO
 невосстановим, остаётся local_birth_required. Auto enqueue/сеть ещё не включены.
+
+
+## Late offline stop
+
+При late stop и известном vacant ordinary target planner сначала согласует
+completion старого current, затем готовит stop_offline с TaskRecord выбранного
+экземпляра. Общий account day не вызывает создание незамеченных новых повторов.
+Контекст terminal_bases требует явного отсутствия destination, global occupied
+IDs и birth proof проверяются; неизвестное отсутствие не выдумывается.
+Pure effects требуют конкретный vacant_task_id и разные непересекающиеся
+деревья source/destination: old regular mark + old history/retention + ordinary
+target одной revision/epoch. Completed before сохраняется неизменным, skipped
+не объявляется completed. Deadline допустим только в ordinary target.
+Auto enqueue/retirement ещё впереди; позднее delete и занятые destination
+требуют оставшейся обработки.
+
+Stop proposal.transition_change указывает именно на исходный stop fact, а не
+все prerequisite/history frames. Его receipt не разрешает поглотить остальные
+факты. Если server current уже впереди local stopped slot, known before также
+может быть закрыт без генерации новых repeat: destination всё равно выбран
+по локальному stop и требует verified vacancy.
