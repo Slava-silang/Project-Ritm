@@ -626,6 +626,32 @@ ApplicationWindow {
         width: window.sidebarWidth
         visible: window.sidebarVisible
         color: window.appearance.usesSharedStyle ? window.appearance.colors.sidebar : "transparent"
+        Loader {
+            objectName: "jungleCornerFernLoader"
+            anchors.left: parent.left
+            anchors.bottom: parent.bottom
+            width: parent.width
+            height: Math.min(window.appearance.dp(208), sidebarFiller.height)
+            active: window.appearance.jungle && window.sidebarVisible
+                && height >= window.appearance.dp(92)
+            sourceComponent: Item {
+                clip: true
+                Image {
+                    objectName: "jungleCornerFern"
+                    anchors.left: parent.left
+                    anchors.leftMargin: -window.appearance.dp(8)
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: -window.appearance.dp(8)
+                    width: parent.width
+                    height: parent.height
+                    horizontalAlignment: Image.AlignLeft
+                    verticalAlignment: Image.AlignBottom
+                    fillMode: Image.PreserveAspectFit
+                    mipmap: true
+                    source: "jungle/corner-fern.png"
+                }
+            }
+        }
         Rectangle {
             anchors.right: parent.right
             height: parent.height
@@ -665,7 +691,10 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 implicitHeight: navigation.implicitHeight
             }
-            Item { Layout.fillHeight: true }
+            Item {
+                id: sidebarFiller
+                Layout.fillHeight: true
+            }
         }
     }
 

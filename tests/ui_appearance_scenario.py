@@ -63,6 +63,10 @@ def check_observatory(look):
 
 def check_jungle(look):
     assert gui.item("workspaceSidebar").isVisible()
+    fern = gui.item("jungleCornerFern")
+    menu = gui.item("appearanceButton")
+    assert fern.isVisible() and fern.property("sourceSize").width() > 0
+    assert fern.mapToScene(QPoint(0, 0)).y() >= menu.mapToScene(QPoint(0, int(menu.height()))).y()
     rain = gui.item("jungleRain")
     drops = gui.item("jungleRainTimer")
     drop = gui.item("jungleRainDrop")
@@ -109,6 +113,7 @@ def check_jungle(look):
     controller.saveAppearance("jungle", 150)
     gui.idle()
     assert not gui.item("workspaceSidebar").isVisible()
+    assert gui.item("jungleCornerFernLoader").property("item") is None
     assert not frog.isVisible()
     new_task = gui.item("newTaskButton")
     assert new_task.isVisible()
