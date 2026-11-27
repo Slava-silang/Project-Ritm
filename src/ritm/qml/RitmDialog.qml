@@ -28,20 +28,6 @@ Dialog {
         font.weight: dialog.appearance.usesSharedStyle ? Font.DemiBold : Font.Bold
         color: dialog.appearance.colors.text
         Loader {
-            x: dialog.appearance.dp(12)
-            y: -height + dialog.appearance.dp(9)
-            width: height * 1.75
-            height: Math.min(dialog.appearance.dp(65), dialog.y)
-            active: dialog.visible && dialog.appearance.jungle && dialog.visitorEnabled
-                && height >= dialog.appearance.dp(28)
-            sourceComponent: Image {
-                objectName: "jungleDialogLeaves"
-                source: "jungle/window-leaves.png"
-                fillMode: Image.PreserveAspectFit
-                mipmap: true
-            }
-        }
-        Loader {
             anchors.right: parent.right
             anchors.rightMargin: dialog.appearance.dp(22)
             width: dialog.appearance.dp(58)

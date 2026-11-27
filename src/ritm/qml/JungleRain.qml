@@ -12,7 +12,7 @@ Item {
     property int nextLocation: 0
     property point origin: locations[0]
     property real phase: 0
-    readonly property real slide: Math.max(0, (phase - 0.24) / 0.76)
+    readonly property real slide: Math.max(0, (phase - 0.18) / 0.82)
     clip: true
 
     Canvas {
@@ -71,7 +71,7 @@ Item {
         property: "phase"
         from: 0
         to: 1
-        duration: 1050
+        duration: 1350
     }
     Timer {
         objectName: "jungleRainTimer"

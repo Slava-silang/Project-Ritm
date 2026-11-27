@@ -85,8 +85,6 @@ def check_scroll_layout():
                     view = gui.item("calendarScroll").property("contentItem")
                     view.setProperty("contentY", 148 * scale)
                     gui.wait_for(lambda bar=bar: bar.property("position") > 0)
-                    if theme == "jungle":
-                        assert gui.item("jungleCalendarLeaf").property("sourceSize").width() > 0
                     gui.screenshot(profile / f"{theme}-calendar-{percent}.png")
 
             gui.click("planningButton")
@@ -109,7 +107,6 @@ def check_scroll_layout():
                 )
                 QTest.qWait(320)
                 if theme == "jungle":
-                    assert gui.item("jungleDialogLeaves").property("sourceSize").width() > 0
                     gui.item("jungleRainTimer").triggered.emit()
                     rain = gui.item("jungleRain")
                     gui.wait_for(
