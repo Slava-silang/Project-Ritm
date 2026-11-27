@@ -411,3 +411,13 @@ acknowledged_promotions. Новый sync_promotion_plan готовит пред�
 по известным source и vacant target, frozen/unknown/неверный ack блокируются.
 Подтверждение не потребляет journal и не является auto enqueue. HTTP/SQL owner/
 реальная vacancy/retirement — будущие этапы.
+
+
+## Explicit updated-template rollover
+
+rollover_updated (regular→regular, та же rule identity) использует canonical
+latest root/path UUID и сброшенные completion/date. Новые поля шаблона разрешены
+только в новом current; прежний before становится history/retention без
+переписывания. Сетка/first/interval/latest day проверяются pure effects.
+Applied epoch не увеличивается, как rollover. Старые строгие v1 клиенты новый
+action отвергают. Новый opcode не является реализацией transport/server SQL.

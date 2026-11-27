@@ -1,6 +1,6 @@
 """Pure proposed server effects for live regular tasks. No database or authority."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -83,9 +83,14 @@ def plan_regular_effects(
         or receipt.revision <= before.revision
     ):
         raise SyncCodecError()
-    if operation.action == "rollover":
+    if operation.action in ("rollover", "rollover_updated"):
         day = scheduled_day(regular.first_day, regular.interval_days, today)
-        expected = rollover_record(regular, day)
+        template = (
+            regular
+            if operation.action == "rollover"
+            else replace(regular, current=operation.payload.current)
+        )
+        expected = rollover_record(template, day)
         if operation.payload != expected:
             raise SyncCodecError()
         previous = (

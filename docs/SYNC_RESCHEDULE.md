@@ -69,8 +69,9 @@ SnapshotEntry: old-target receipt не становится автоматиче
 
 ## Оставшаяся часть compound resolver
 
-Несколько связанных reschedule за offline-период (A→B→C) пока блокируются
-reschedule_chain_required, без публикации A→B как будто вся цепь готова.
+Связанные reschedule (A→B→C) теперь проходят последовательно: один следующий
+переход, затем проверенный ack и новое основание. Зависимая часть получает
+transition_dependency, факты не объявляются поглощёнными всей цепочкой.
 Старое правило, ещё никогда не опубликованное, при known absence также не
 получает выдуманное reschedule основание; нужен отдельный план сведения.
 Исторический reschedule day, changed intermediate template, promotion/detach,

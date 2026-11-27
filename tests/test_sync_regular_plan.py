@@ -96,7 +96,13 @@ def accept(proposal, context):
         error=None,
     )
     before = next(base.entry for base in context.bases if base.id == proposal.id)
-    if op.action in ("rollover", "stop_regular", "delete", "reschedule_regular"):
+    if op.action in (
+        "rollover",
+        "rollover_updated",
+        "stop_regular",
+        "delete",
+        "reschedule_regular",
+    ):
         effects = plan_regular_effects(
             before,
             op,
@@ -115,7 +121,11 @@ def accept(proposal, context):
     mapping.update(proposal.identities)
     occupied = set(context.occupied_ids)
     if type(entry.entity) is RegularRecord:
-        if before is not None and type(before.entity) is RegularRecord and op.action != "rollover":
+        if (
+            before is not None
+            and type(before.entity) is RegularRecord
+            and op.action not in ("rollover", "rollover_updated")
+        ):
             occupied.difference_update(task_node_ids(before.entity.current.task))
         occupied.update(task_node_ids(entry.entity.current.task))
     return replace(
@@ -345,7 +355,7 @@ def test_server_removed_node_requires_explicit_restore(tmp_path):
     assert plan(changes, context).blocked[0].reason == "node_restore_required"
 
 
-def test_changed_template_across_skipped_days_requires_separate_resolution(tmp_path):
+def test_changed_template_uses_new_current_without_rewriting_old_history(tmp_path):
     path = tmp_path / "tasks.sqlite3"
     changes, context = seed(path, 1)
     with TaskStore(path) as store:
@@ -356,7 +366,27 @@ def test_changed_template_across_skipped_days_requires_separate_resolution(tmp_p
     context = replace(context, moment=NOW + timedelta(days=2))
     context = accept(plan(changes, context).proposals[0], context)
     result = plan(changes, context)
-    assert not result.proposals and result.blocked[0].reason == "template_transition_required"
+    assert len(result.proposals) == 1 and not result.blocked
+    proposal = result.proposals[0]
+    assert proposal.action == "rollover_updated"
+    assert proposal.payload.current.task.title == "Changed between days"
+    op = operation(proposal)
+    ack = Receipt(
+        op_id=op.op_id,
+        device_id=op.device_id,
+        server_id=op.server_id,
+        request_hash=operation_hash(op),
+        status="applied",
+        revision=op.base_revision + 1,
+        delete_epoch=op.delete_epoch,
+        error=None,
+    )
+    old = context.bases[0].entry
+    effects = plan_regular_effects(old, op, ack, context.settings, context.moment)
+    assert effects.entries[1].entity.current == old.entity.current
+    confirmed = accept(proposal, context)
+    final = plan(changes, confirmed)
+    assert not final.proposals and not final.blocked
 
 
 def test_store_preparation_reads_one_snapshot_and_leaves_all_facts(tmp_path):

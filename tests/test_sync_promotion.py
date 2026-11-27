@@ -173,3 +173,63 @@ def test_new_rule_id_cannot_reuse_source_tree_identity():
     )
     with pytest.raises(ValueError):
         operation_hash(op)  # The strict RegularRecord codec rejects this even before effects.
+
+
+def test_promotion_followed_by_reschedule_keeps_one_next_transition():
+    from test_sync_regular_plan import SERVER, accept
+
+    change, context, before = setup("task")
+    context = replace(context, server_id=SERVER)
+    replacement = replace(change.after, id=uuid4(), interval_days=3)
+    following = RegularChange(
+        sequence=2,
+        id=uuid4(),
+        after_intent_id=None,
+        kind="save",
+        rule_id=replacement.id,
+        root_id=change.root_id,
+        before=change.after,
+        after=replacement,
+    )
+    changes = (change, following)
+    context = replace(context, bases=(*context.bases, RegularBase(id=replacement.id, entry=None)))
+    first = plan_regular(changes, context, server_id=context.server_id)
+    assert len(first.proposals) == 1 and first.proposals[0].action == "promote_regular"
+    assert not any(b.id == change.after.id for b in first.blocked)
+    proposal = first.proposals[0]
+    op = Operation(
+        op_id=uuid4(),
+        device_id=uuid4(),
+        server_id=context.server_id,
+        target_kind=proposal.target_kind,
+        target_id=proposal.id,
+        action=proposal.action,
+        payload=proposal.payload,
+        base_revision=4,
+        delete_epoch=2,
+    )
+    ack = Receipt(
+        op_id=op.op_id,
+        device_id=op.device_id,
+        server_id=op.server_id,
+        request_hash=operation_hash(op),
+        status="applied",
+        revision=5,
+        delete_epoch=3,
+        error=None,
+    )
+    marker, active = plan_promotion_effects(
+        before, op, ack, context.settings, NOW, vacant_rule_id=change.after.id
+    ).entries
+    context = replace(
+        context,
+        bases=(RegularBase(id=change.after.id, entry=active), context.bases[1]),
+        promotion_bases=(PromotionBase(kind="task", id=proposal.id, entry=marker),),
+        acknowledged_promotions=frozenset({change.id}),
+    )
+    second = plan_regular(changes, context, server_id=context.server_id)
+    assert len(second.proposals) == 1 and second.proposals[0].action == "reschedule_regular"
+    context = accept(second.proposals[0], context)
+    final = plan_regular(changes, context, server_id=SERVER)
+    assert not final.proposals and not final.blocked
+    assert final.remaining_changes == tuple(c.id for c in changes)

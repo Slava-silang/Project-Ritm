@@ -93,6 +93,7 @@ def _intent(intent):
             "prune",
             "stop_regular",
             "rollover",
+            "rollover_updated",
             "reschedule_regular",
             "detach_occurrence",
             "promote_regular",
@@ -102,7 +103,7 @@ def _intent(intent):
     if intent.target_kind == "calendar_settings" and intent.action not in ("create", "put"):
         raise ValueError("Общую настройку нельзя удалить этим действием")
     if (
-        intent.action in ("stop_regular", "rollover", "reschedule_regular")
+        intent.action in ("stop_regular", "rollover", "rollover_updated", "reschedule_regular")
         and intent.target_kind != "regular"
     ):
         raise ValueError("Действие требует регулярное расписание")

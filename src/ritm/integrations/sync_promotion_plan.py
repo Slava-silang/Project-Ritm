@@ -101,7 +101,9 @@ def prepare_promotions(changes, context, bases, identities, today):
                 or type(old.entity) is not RemovalRecord
                 or old.entity.reason != "type_changed"
                 or new is None
-                or type(new.entity) is not RegularRecord
+                or type(new.entity) not in (RegularRecord, RemovalRecord)
+                or new.revision < old.revision
+                or new.delete_epoch < old.delete_epoch
             ):
                 reason = "promotion_ack_conflict"
             else:

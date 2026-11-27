@@ -125,6 +125,7 @@ def _validate(operation):
         "prune",
         "stop_regular",
         "rollover",
+        "rollover_updated",
         "reschedule_regular",
         "detach_occurrence",
         "promote_regular",
@@ -151,7 +152,7 @@ def _validate(operation):
     ):
         raise SyncCodecError()
     if (
-        operation.action in ("rollover", "stop_regular", "reschedule_regular")
+        operation.action in ("rollover", "rollover_updated", "stop_regular", "reschedule_regular")
         and operation.target_kind != "regular"
     ):
         raise SyncCodecError()
@@ -171,7 +172,7 @@ def _validate(operation):
             operation.action, operation.target_kind, operation.target_id, operation.payload
         ):
             raise SyncCodecError()
-    if operation.action == "rollover":
+    if operation.action in ("rollover", "rollover_updated"):
         record = operation.payload
         task = record.current.task
         if (

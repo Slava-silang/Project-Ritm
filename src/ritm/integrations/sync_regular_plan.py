@@ -386,13 +386,18 @@ def _next(rule, base, identities, context, today):
         canonical = rollover_record(remote, due)
         births = [r for r in rule.snapshots if r.current_day == due]
         pairs = _birth_pairs(births[0], canonical)
+        action = "rollover"
         if pairs is None:
-            return "template_transition_required"
+            canonical = rollover_record(replace(remote, current=births[0].current), due)
+            pairs = _birth_pairs(births[0], canonical)
+            action = "rollover_updated"
+        if pairs is None:
+            return "local_birth_required"
         if _merge_pairs(identities, pairs) is None:
             return "identity_conflict"
         if task_node_ids(canonical.current.task) & context.occupied_ids:
             return "occupied_identity"
-        return "rollover", canonical, pairs
+        return action, canonical, pairs
     if rule.terminal == "stop":
         if mapping.get(rule.terminal_root) != remote.current.task.id:
             return "terminal_root_conflict"
@@ -415,17 +420,13 @@ def _reschedules(changes, rules, bases, identities, context, today):
         and type(c.after) is RegularRecord
         and c.before.id != c.after.id
     ]
-    counts = {}
-    for edge in edges:
-        for key in (edge.before.id, edge.after.id):
-            counts[key] = counts.get(key, 0) + 1
     handled, proposed, blocked, unchanged = set(), [], [], []
     for edge in edges:
         old, new = edge.before.id, edge.after.id
         sources = tuple(dict.fromkeys(c.id for key in (old, new) for c in rules[key].changes))
         reason = None
-        if counts[old] > 1 or counts[new] > 1:
-            reason = "reschedule_chain_required"
+        if old in handled:
+            reason = "transition_dependency"
         elif context.frozen_changes.intersection(sources):
             reason = "frozen_change"
         elif old not in bases or new not in bases:
@@ -435,7 +436,9 @@ def _reschedules(changes, rules, bases, identities, context, today):
                 bases[old] is None
                 or type(bases[old].entity) is not RemovalRecord
                 or bases[new] is None
-                or type(bases[new].entity) is not RegularRecord
+                or type(bases[new].entity) not in (RegularRecord, RemovalRecord)
+                or bases[new].revision < bases[old].revision
+                or bases[new].delete_epoch < bases[old].delete_epoch
             ):
                 reason = "reschedule_ack_conflict"
             else:
@@ -539,6 +542,8 @@ def plan_regular(changes, context: RegularContext, *, server_id: UUID) -> Regula
         rules[key].blocked = None
     handled.update(phandled - released)
     proposals.extend(pproposals)
+    promotion_targets = {p.payload.id for p in pproposals if p.action == "promote_regular"}
+    blocked = [item for item in blocked if item.id not in promotion_targets]
     blocked.extend(pblocked)
     unchanged.extend(punchanged)
     for key, rule in rules.items():

@@ -1,5 +1,16 @@
 # Проверка «Ритма»
 
+## Transition chains / updated templates
+
+593 sync tests passed (19,55 с), /tmp/ritm-chain-template-verified.log. Focused
+50 passed (4,05 с). Обновлены ожидания blanket chain/template блокировки: теперь
+проверяются два последовательных reschedule ack, promotion→reschedule и отсутствие
+противоречивого blocked того же target. Rollover_updated кодируется и проходит
+pure effects, сохраняя старое current в history неизменным; после ack planner
+не повторяет команду. Ruff check/format 8 Python, diff passed. GUI/Windows/full
+application suite/реальная сеть не повторялись, desktop goal не завершена.
+
+
 ## Promotion integration
 
 592 sync tests passed (19,18 с), /tmp/ritm-promotion-final2.log. Focused до

@@ -1,5 +1,21 @@
 # Текущее состояние
 
+## Продолжение цели: chains/template
+
+Reschedule chains проходят по одному подтверждённому звену, следующие ждут
+transition_dependency. Promotion→reschedule больше не создаёт противоречивого
+blocked для готового promotion. Ack marker остаётся действителен после
+закрытия промежуточного правила последующим подтверждённым переходом; counters
+проверяются на монотонность. Добавлен rollover_updated для нового шаблона
+последнего current с canonical UUID: before history не переписывается, epoch
+как у rollover. Focused 50 passed (4,05 с), итог sync — 593 passed (19,55 с), /tmp/ritm-chain-template-verified.log.
+Ruff check/format 8 Python, diff passed; GUI/Windows/full app suite не повторялись.
+Следующие незавершённые части: terminal/day/структурные конфликты и durable
+prepare/queue/receipt/mappings/retire, calendar/category/AI, inbound/merge/rewards.
+Цель desktop sync активна, НЕ завершена. Сервер не начинать.
+Checkpoint: `feat: advance sync transition chains and updated templates`.
+
+
 ## Продолжение активной цели: promotion
 
 Добавлены promote_regular wire/intent и atomic effects task/occurrence→regular.

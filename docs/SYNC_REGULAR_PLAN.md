@@ -73,8 +73,9 @@ server due day; иначе local_refresh_required/future_local_day. Пользо
 из точного совпадения birth DTO с известным server DTO. Частичная/противоречивая
 карта не дополняется случайными значениями. Если шаблон изменился на промежуточных
 offline-днях и не совпадает с новым canonical tree, возвращается
-**template_transition_required**. Нельзя переписать старую выполненную историю
-ради шаблона нового экземпляра. Этот случай требует следующей части resolver.
+**rollover_updated** с canonical деревом нового шаблона. Нельзя переписать
+старую выполненную историю ради шаблона нового экземпляра. Без полного birth
+снимка остаётся local_birth_required.
 
 Новая локальная серия допускает create последнего current только при явном
 отсутствии server rule, исходном creation before=None и отсутствии коллизий:
@@ -124,3 +125,21 @@ TaskStore.prepare_sync_regular читает binding/facts одним BEGIN snaps
 После compound resolver нужны durable prepare→intent→receipt, хранение mappings/
 барьерных подтверждений и retirement только подтверждённых facts. Затем
 calendar/category/AI capture. До inbound отдельно согласовать награды сада.
+
+## Цепочки и изменённый шаблон
+
+Reschedule A→B→C готовится по одному звену с подтверждением предыдущего.
+Зависимая часть получает transition_dependency; подтверждённое старое звено
+может ссылаться на уже закрытое новым звеном правило, если его counters не старше
+предыдущего эффекта. Все исходные факты по-прежнему remaining.
+Promotion→reschedule готовит сначала promotion без противоречивой блокировки
+того же target, затем reschedule по известному созданному regular base.
+
+Новый action неопубликованного v1 rollover_updated позволяет явный изменённый
+шаблон **нового** экземпляра. Он сохраняет old current/history без изменений,
+передаёт canonical latest root/children/items с пустыми completion/date и общей
+сеткой расписания. Pure effects проверяют canonical tree от переданного нового
+шаблона и latest server day, сохраняя before как отдельную history/retention
+запись. Epoch как у обычного rollover не увеличивается. Это не разрешение
+переписать старую выполненную задачу ради нового шаблона. Если birth DTO
+невосстановим, остаётся local_birth_required. Auto enqueue/сеть ещё не включены.

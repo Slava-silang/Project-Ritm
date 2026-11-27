@@ -234,7 +234,7 @@ def test_old_current_is_completed_and_rolled_before_rescheduling(tmp_path):
     assert result.remaining_changes == tuple(c.id for c in changes)
 
 
-def test_reschedule_chain_is_not_partially_published(transition):
+def test_reschedule_chain_advances_one_confirmed_link_at_a_time(transition):
     path, _, context, _ = transition
     changes = mutate(
         path,
@@ -246,8 +246,17 @@ def test_reschedule_chain_is_not_partially_published(transition):
         context, bases=(*context.bases, RegularBase(id=changes[-1].after.id, entry=None))
     )
     result = plan(changes, context)
-    assert not result.proposals and len(result.blocked) == 3
-    assert {b.reason for b in result.blocked} == {"reschedule_chain_required"}
+    assert len(result.proposals) == 1
+    assert result.proposals[0].payload.id == changes[-1].before.id
+    assert {b.reason for b in result.blocked} == {"transition_dependency"}
+    context = accept(result.proposals[0], context)
+    second = plan(changes, context)
+    assert len(second.proposals) == 1
+    assert second.proposals[0].payload.id == changes[-1].after.id
+    context = accept(second.proposals[0], context)
+    final = plan(changes, context)
+    assert not final.proposals and not final.blocked
+    assert final.remaining_changes == tuple(c.id for c in changes)
 
 
 def test_reschedule_request_and_receipt_survive_reopen_without_changing_facts(transition):
