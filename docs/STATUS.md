@@ -1,5 +1,49 @@
 # Текущее состояние
 
+## T41c5c2a — current next-step proposals готовы, 27 ноября
+
+Новый integrations/sync_regular_plan.py: одно следующее действие на rule с
+известными base/epoch и account calendar day. Offline current completion сначала
+put, после проверенного ack — canonical rollover сразу в latest due day, затем
+правки нового current. Root/child/item local→server pairs доказываются точным
+birth DTO, не случайным fallback. Новая серия create только по явному absent
+base+creation provenance, waiting first day допустим. Stop/delete относятся
+только к правильному current root; delete-only existing rule после opt-in не
+требует прежнего body. Payload terminal null, локальная история прежняя.
+
+Acked prune/restore barrier markers предотвращают вечный repeat при совпадении
+финального DTO. Frozen/unknown base/map/root/node/counter/date/occupied guards.
+Reschedule/promotion/detach/изменённый промежуточный template и terminal day
+conflict остаются blocked; не публикуются половинами. Полный contract/границы —
+SYNC_REGULAR_PLAN.md. Shared journal/UUID/codec/counter/node helpers вынесены в
+sync_regular_changes, history planner использует их без изменения правил.
+TaskStore.prepare_sync_regular: один snapshot binding/facts, расчёт после release.
+
+Нет enqueue/freeze/HTTP/inbound/retire facts/mapping persistence: все факты
+remaining, send barrier прежний. Context/owner/server day/ack proofs обязан
+обеспечить будущий caller/ledger; DTO не авторизация. Tasks v19/garden v7/deps
+прежние, миграции/нового UI нет, личный профиль не открывался.
+
+754 passed/6 GUI deselected (43,76 с), /tmp/ritm-regular-plan-verified.log.
+GUI regression offscreen 5 passed (44,88 с), native Linux X11 5 passed (43,88 с).
+Последний pure delete-only случай после GUI включён в итоговый unit набор.
+Все pytest шага зелёные. Ruff check/format 5 Python, diff passed.
+Full suite/Windows/Wayland/standalone/визуальный обзор/релизный аудит/аккаунты/
+личные данные/реальная сеть не проверялись.
+
+Изменены новые sync_regular_plan/test_sync_regular_plan, sync_regular_changes/
+sync_history_plan/sync_regular_capture; docs SYNC_REGULAR_PLAN/HISTORY_PLAN/
+REGULAR_CAPTURE/SPEC/ARCHITECTURE/DEVELOPMENT/TASKS/TESTING/STATUS.
+assets/theme_* пользователя не затронуты. Сохранение: локальный коммит
+`feat: plan next regular sync step with canonical rollover` (ID — git log).
+T41c5c2a done; T41c5c2/T41c5c/T41c5/T41c in_progress.
+Следующее точное действие: T41c5c2b compound resolver promotion/detach/reschedule,
+intermediate template/terminal_day_conflict; не обходить блокировки отдельными
+put/delete. Затем durable prepare→intent/receipt, mapping/barrier proofs и
+retirement, full graph checks. Calendar/category/AI после regular. Transport
+до завершения выключен; до inbound согласовать награды сада. Сервер/бот/
+размещение/публикация отдельно.
+
 ## T41c5c1 — history proposals готовы, 27 ноября
 
 Новый integrations/sync_history_plan.py: pure plan_history(RegularChange tuple,

@@ -125,7 +125,8 @@ DDL failure откатывает rename/таблицы/версию; стары�
 Публичные копии исключают новую lineage-таблицу, аварийный pair rollback оставляет
 её в исходном профиле. Сохранённые локальные задачи/корзина/файлы не удаляются.
 
-T41c5c1 добавляет read-only history proposals, см. SYNC_HISTORY_PLAN.md.
+T41c5c1–c2a добавляют read-only history/current proposals,
+см. SYNC_HISTORY_PLAN.md и SYNC_REGULAR_PLAN.md.
 Это всё ещё факты, не подготовленные Operation. Общий барьер next_sync_sendable
 остаётся; применение серверных tombstones/retention и выбор create/restore по
 подтверждённому серверному состоянию — будущий resolver T41c5c. Наличие локального

@@ -9,12 +9,25 @@ from ritm.integrations.sync_codec import (
     RegularRecord,
     RemovalRecord,
     TaskRecord,
-    decode_entity,
     encode_entity,
     history_id,
 )
 from ritm.integrations.sync_pages import MAX_SNAPSHOT_ITEMS, MAX_STAGED_BYTES, SnapshotEntry
-from ritm.integrations.sync_regular_changes import RegularChange, validate_regular_change
+from ritm.integrations.sync_regular_changes import (
+    checked_counter as _counter,
+)
+from ritm.integrations.sync_regular_changes import (
+    checked_entity as _checked,
+)
+from ritm.integrations.sync_regular_changes import (
+    checked_uuid as _uuid,
+)
+from ritm.integrations.sync_regular_changes import (
+    task_node_ids as _nodes,
+)
+from ritm.integrations.sync_regular_changes import (
+    validate_regular_journal,
+)
 from ritm.integrations.sync_transitions import history_record
 
 
@@ -71,29 +84,6 @@ class _Candidate:
     removed: set[UUID] = field(default_factory=set)
     original_nodes: set[UUID] = field(default_factory=set)
     blocked: str | None = None
-
-
-def _uuid(value):
-    if type(value) is not UUID:
-        raise ValueError("Некорректный контекст подготовки истории")
-
-
-def _counter(value, *, positive=False):
-    if type(value) is not int or not (int(positive) <= value <= 2**63 - 1):
-        raise ValueError("Некорректное основание истории")
-
-
-def _checked(entity):
-    if decode_entity(encode_entity(entity)) != entity:
-        raise ValueError("Некорректное содержимое истории")
-
-
-def _nodes(task):
-    return {
-        task.id,
-        *(x.id for x in task.subtasks),
-        *(y.id for x in task.subtasks for y in x.items),
-    }
 
 
 def _context(context, server_id):
@@ -169,29 +159,9 @@ def _context(context, server_id):
 
 
 def _candidates(changes):
-    if type(changes) is not tuple or len(changes) > MAX_SNAPSHOT_ITEMS:
-        raise ValueError("Превышены границы журнала истории")
-    candidates, seen, previous, size = {}, set(), 0, 0
+    validate_regular_journal(changes, max_items=MAX_SNAPSHOT_ITEMS, max_bytes=MAX_STAGED_BYTES)
+    candidates = {}
     for change in changes:
-        if type(change) is not RegularChange:
-            raise ValueError("Некорректный журнал истории")
-        _uuid(change.id)
-        _uuid(change.rule_id)
-        _uuid(change.root_id)
-        if change.after_intent_id is not None:
-            _uuid(change.after_intent_id)
-        _counter(change.sequence, positive=True)
-        if change.id in seen or change.sequence <= previous:
-            raise ValueError("Нарушен порядок журнала истории")
-        seen.add(change.id)
-        previous = change.sequence
-        for record in (change.before, change.after):
-            if record is not None:
-                _checked(record)
-                size += len(encode_entity(record))
-        if size > MAX_STAGED_BYTES:
-            raise ValueError("Журнал истории слишком велик")
-        validate_regular_change(change)
         record, day, rule, root, compound = None, change.day, change.rule_id, change.root_id, False
         if change.kind == "rollover":
             if not change.before.current.task.completed:

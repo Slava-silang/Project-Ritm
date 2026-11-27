@@ -244,3 +244,17 @@ class SyncRegularCaptureMixin:
                 raise ValueError("Синхронизация не подключена")
             changes = self._read_sync_regular_changes(binding)
         return plan_history(changes, context, server_id=binding.server_id)
+
+    def prepare_sync_regular(self, context):
+        """Read-only next-step regular proposal, never enqueue or consume facts."""
+        from ritm.integrations.sync_regular_plan import plan_regular
+
+        if self._db.in_transaction:
+            raise ValueError("Повторы нельзя готовить внутри другой транзакции")
+        with self._db:
+            self._db.execute("BEGIN")
+            binding = self.get_sync_binding()
+            if binding is None:
+                raise ValueError("Синхронизация не подключена")
+            changes = self._read_sync_regular_changes(binding)
+        return plan_regular(changes, context, server_id=binding.server_id)

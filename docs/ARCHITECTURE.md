@@ -1,5 +1,16 @@
 # Архитектурная основа
 
+## T41c5c2a — current regular next-step proposals
+
+sync_regular_plan.py готовит одно действие на rule с известными counters:
+согласовать current body, затем canonical latest rollover, затем stop/delete
+точного root. Birth DTO proof даёт local/server UUID pairs; неподтверждённые
+барьеры/frozen/current-day/compound/template cases не обходятся. Acked barrier
+markers предотвращают вечное повторение prune/restore. Проверка журнала/UUID/
+codec/node IDs общая в sync_regular_changes.py. TaskStore.prepare_sync_regular
+читает binding/facts одним snapshot и считает после release. Без writes/retire/
+сети, schemas v19/v7/deps прежние. Полные границы — SYNC_REGULAR_PLAN.md.
+
 ## T41c5c1 — чистая подготовка history proposals
 
 integrations/sync_regular_changes.py владеет DTO/проверкой RegularChange, storage

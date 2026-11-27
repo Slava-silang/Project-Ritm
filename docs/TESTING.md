@@ -1,5 +1,37 @@
 # Проверка «Ритма»
 
+## T41c5c2a — current next-step proposals, 27 ноября
+
+Первый полный целевой набор с test_sync_regular_plan: **753 passed, 6 GUI
+deselected (45,58 с)**, /tmp/ritm-regular-plan-suite.log. Затем добавлен важный
+случай первого delete existing rule после opt-in без предыдущего body snapshot;
+финальный повтор — **754 passed, 6 GUI deselected (43,76 с)**,
+/tmp/ritm-regular-plan-verified.log.
+
+25 новых тестов: offline put completion→canonical latest rollover→unchanged,
+поздняя правка нового экземпляра после rollover, root/child/item mapping по birth,
+явное отсутствие/provenance для create, сохранение всех source facts, stop/delete
+с null body и настоящим pure effect planner на подменных Receipt, prune/restore
+без бесконечного повтора после ack markers, frozen/no mapping, общий due day,
+waiting first day, atomic reschedule block обеих сторон, запрет серверного node
+resurrection, changed intermediate template block, один BEGIN read-only prepare,
+внешний transaction/unbound/generation/counters/дубли/limits, offline stop после
+согласования current root и terminal_day_conflict при позднем reconnect.
+Delete-only fact готовится только по known base и точному root map, без тела.
+Старые history planner/DTO/storage/domain/backup проверки включены.
+Focused набор до последнего случая — **54 passed (7,12 с)**, пересекается с
+прежними тестами; /tmp/ritm-regular-plan-focused.log. Все pytest шага зелёные.
+
+GUI regular/tasks capture off/on + backup: offscreen **5 passed (44,88 с)**,
+/tmp/ritm-regular-plan-gui.log; native Linux X11 **5 passed (43,88 с)**,
+/tmp/ritm-regular-plan-native.log. Это regression существующих окон, без нового UI
+подключения и без отдельного визуального обзора. Последняя дополнительная правка
+касается только pure delete preparation и проверяется финальным unit набором.
+Ruff check/format пяти Python, diff passed. Tasks v19/garden v7/dependencies
+прежние; миграции нет. Full pytest/Windows/Wayland/standalone/личный профиль/
+аккаунты/HTTP/сервер/inbound/релизный аудит не проверялись. Compound/template
+случаи явно blocked, durable enqueue/retire и transport ещё не реализованы.
+
 ## T41c5c1 — pure history proposals, 27 ноября
 
 Итоговый целевой набор DEVELOPMENT с test_sync_history_plan: **729 passed,

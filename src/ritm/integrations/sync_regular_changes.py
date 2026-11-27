@@ -4,7 +4,13 @@ from dataclasses import dataclass, field
 from datetime import date
 from uuid import UUID
 
-from ritm.integrations.sync_codec import OccurrenceRecord, RegularRecord, TaskRecord
+from ritm.integrations.sync_codec import (
+    OccurrenceRecord,
+    RegularRecord,
+    TaskRecord,
+    decode_entity,
+    encode_entity,
+)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -79,3 +85,52 @@ def validate_regular_change(change):
         valid = False
     if not valid:
         raise ValueError("Повреждён переход регулярной задачи")
+
+
+def checked_uuid(value):
+    if type(value) is not UUID:
+        raise ValueError("Некорректный контекст подготовки истории")
+
+
+def checked_counter(value, *, positive=False):
+    if type(value) is not int or not (int(positive) <= value <= 2**63 - 1):
+        raise ValueError("Некорректное основание истории")
+
+
+def checked_entity(entity):
+    if decode_entity(encode_entity(entity)) != entity:
+        raise ValueError("Некорректное содержимое истории")
+
+
+def task_node_ids(task):
+    return {
+        task.id,
+        *(x.id for x in task.subtasks),
+        *(y.id for x in task.subtasks for y in x.items),
+    }
+
+
+def validate_regular_journal(changes, *, max_items=10000, max_bytes=32 * 1024 * 1024):
+    if type(changes) is not tuple or len(changes) > max_items:
+        raise ValueError("Превышены границы журнала истории")
+    seen, previous, size = set(), 0, 0
+    for change in changes:
+        if type(change) is not RegularChange:
+            raise ValueError("Некорректный журнал истории")
+        checked_uuid(change.id)
+        checked_uuid(change.rule_id)
+        checked_uuid(change.root_id)
+        if change.after_intent_id is not None:
+            checked_uuid(change.after_intent_id)
+        checked_counter(change.sequence, positive=True)
+        if change.id in seen or change.sequence <= previous:
+            raise ValueError("Нарушен порядок журнала истории")
+        seen.add(change.id)
+        previous = change.sequence
+        for record in (change.before, change.after):
+            if record is not None:
+                checked_entity(record)
+                size += len(encode_entity(record))
+        if size > max_bytes:
+            raise ValueError("Журнал истории слишком велик")
+        validate_regular_change(change)

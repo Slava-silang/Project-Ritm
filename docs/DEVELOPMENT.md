@@ -1,5 +1,12 @@
 # Окружение, запуск и выпуск
 
+## Current proposals — T41c5c2a
+
+К предыдущему набору добавить `tests/test_sync_regular_plan.py`. Контекст времени/
+bases/mappings и квитанции в тестах подменные; реальных запросов нет.
+API/порядок/blocked cases — SYNC_REGULAR_PLAN.md. Tasks v19/garden v7/dependencies
+прежние, миграции нет. Prepare не записывает очередь и не снимает send barrier.
+
 ## History proposals — T41c5c1
 
 К предыдущему целевому набору добавить `tests/test_sync_history_plan.py`.
