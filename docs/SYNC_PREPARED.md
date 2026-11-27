@@ -1,63 +1,36 @@
-# Постоянная подготовка regular/history команд
+# Постоянная подготовка команд задач
 
-Tasks schema v20; garden v7 и зависимости прежние. Это локальная часть T41c,
-не отправка, inbound или сервер. Новый `TaskStore.enqueue_sync_regular(context,
-target_id)` пересчитывает предложение по текущему журналу внутри BEGIN IMMEDIATE.
-Тот же commit сохраняет intent, метаданные фаз и неизменяемый BLOB запроса.
-Внешняя транзакция отвергается до записи. Основания сервера пока передаются
-явно; они не выдумываются из локального дерева. Контекст проверяется до
-объединения с сохранёнными UUID и фазами, чтобы не скрывать дубли/неверный ввод.
+Tasks schema v21 (ledger введён v20), garden v7/deps прежние. Storage
+`enqueue_sync_regular(context,target_id)` и `enqueue_sync_history(context,target_id)`
+пересчитывают proposal по locked journal и атомарно сохраняют intent, metadata
+и immutable frozen BLOB. Публичные методы отвергают внешнюю транзакцию. Общий
+production preparation step — SYNC_PREPARE_LOOP.md, приёмка — SYNC_BLOCK1_ACCEPTANCE.md.
 
-`sync_prepared` связывает intent с source UUID, предлагаемыми соответствиями,
-barrier UUID и transition UUID; текста задач в дополнительных метаданных нет.
-Повтор той же подготовки возвращает прежний запрос/op_id. Пока пересекающиеся
-исходные факты имеют pending/rejected команду, следующая не создаётся. Зависимость
-от последнего intent очереди и известное основание проходят обычные проверки
-outbox; ошибка freeze откатывает также intent и metadata.
+sync_prepared хранит source UUID, предлагаемые identity pairs, barrier UUID и
+transition UUID без дополнительного текста задач. Точное повторение возвращает
+прежние bytes/op_id. Pending/rejected пересечение facts не создаёт вторую команду.
+Ошибка freeze откатывает intent и metadata. Глобальная UUID ownership проверяется
+по полному cache: typed source может передать свой root/узлы, но не забрать другую
+live сущность. Type_changed marker не владеет уже переданным live root.
 
-`save_sync_receipt` сохраняет verified receipt и соответствия `sync_identities`,
-фазы `sync_phase_acks` одной транзакцией. До applied receipt предлагаемые UUID
-не считаются подтверждёнными. Соответствие взаимно однозначное и неизменяемое;
-конфликт на любой записи откатывает все соответствия и сам receipt. Rejected
-receipt не выдаёт фаз и соответствий. Повтор receipt не повторяет эффектов.
-`read_sync_prepared_state` проверяет наличие applied receipt для фаз и возвращает
-подтверждённые identities/barriers/reschedules/promotions/detaches. При следующей подготовке
-они подмешиваются в контекст автоматически, поэтому забытый после restart barrier
-не создаёт повторный prune.
+Verified applied receipt и sync_identities/sync_phase_acks сохраняются атомарно.
+Mappings взаимно однозначны и не переписываются; ошибка откатывает весь receipt.
+Rejected ничего не подтверждает. PreparedState восстанавливает identities,
+barriers, reschedules (regular/offline), promotions (regular/offline), detaches,
+stops и closures. Первоначальный context проверяется до объединения с ledger.
 
-Миграция v19→20 только создаёт три таблицы; прежние факты, frozen bytes и receipts
-сохраняются. Создание/импорт публичной резервной копии очищает таблицы ledger
-**в staged-копии**, до удаления очереди и binding. Рабочий профиль не очищается.
-Архивы v9–19 продолжают проходить проверку своей схемы и миграцию. Внутреннее
-аварийное восстановление пары сохраняет служебные данные, как прежде.
+Internal history preparation допускает только точное ordered подмножество
+реального immutable journal из той же транзакции: это нужно для source create/
+restore перед promotion и отдельной ordinary lineage projection. Изменение
+содержимого, дубли или подстановка чужого fact отвергаются.
 
-## Ещё не готово
+Pure prepare_sync_regular/prepare_sync_history остаются read-only; их remaining
+facts не означают готовность к retirement. Общее покрытие проверяет queue step.
+History prune/restore связаны с конкретными barrier facts и не повторяются после
+restart; старый restore не отменяет новую foreign deletion. Typed transition
+receipt, cached base и owner checks нужны для дальнейших команд нового типа.
 
-Persistent full snapshot/receipt реализованы в SYNC_SNAPSHOT.md (v21). Cached preparation loop и settled retirement добавлены по SYNC_PREPARE_LOOP.md.
-Остаются непокрытые ordinary lineage/compound/type/retention случаи и send coverage. Все исходные
-facts остаются в журнале, `next_sync_sendable` сохраняет общий regular barrier.
-Метод не разрешает обходить его ручной отправкой frozen request. Следующее:
-cached context/preparation loop/phase coverage для обеих проекций, затем снятие
-барьера только для действительно покрытых фактов, calendar/category/AI capture,
-inbound и runtime с подменным транспортом. UI/реальная сеть не включены.
-
-
-## История повторов
-
-`enqueue_sync_history(context, target_id)` использует тот же atomic persist/freeze
-и receipt ledger. Recompute выполняется под BEGIN IMMEDIATE по свежему журналу.
-Каждый completed offline slot получает отдельный occurrence target; подтверждение
-одного слота не поглощает ни соседние слоты, ни regular projection того же факта.
-Все исходные факты пока остаются. FIFO зависимости требуют подтверждения предыдущей
-команды. Identity ledger содержит лишь использованные payload/before node IDs,
-а не все произвольные соответствия из переданного контекста.
-
-HistoryContext.acknowledged_barriers и HistoryProposal.barrier_changes связывают
-prune/restore с конкретными исходными фактами. После applied receipt повтор
-prune/restore не создаётся; более позднее обычное редактирование готовит put.
-Старый подтверждённый restore не разрешает воскресить новую user_deleted отметку
-или отменить более позднее удаление узла сервером. Подтверждённый detach восстанавливается
-через PreparedState.detaches и подмешивается в context автоматически. Доказательства
-live before/type_changed mark/ordinary target остаются обязательными для planner.
-SQL schema v20, wire version и зависимости не менялись. Проверки выполняются на
-временных профилях без реальной отправки, UI/transport этим API не включаются.
+Миграции сохраняют старые intents/frozen bytes/receipts/facts. Публичный backup/
+import очищает ledger/cache в staged-копии перед binding, исходный профиль не
+очищается. Внутренний rollback сохраняет служебные данные. Сети/учётных данных
+в этом API нет. Следующие capture/inbound/runtime блоки отдельно от очереди.

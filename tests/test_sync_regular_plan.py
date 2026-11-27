@@ -92,7 +92,17 @@ def accept(proposal, context):
         status="applied",
         revision=op.base_revision + 1,
         delete_epoch=op.delete_epoch
-        + (op.action in ("delete", "stop_regular", "prune", "restore", "reschedule_regular")),
+        + (
+            op.action
+            in (
+                "delete",
+                "stop_regular",
+                "prune",
+                "restore",
+                "reschedule_regular",
+                "reschedule_offline",
+            )
+        ),
         error=None,
     )
     before = next(base.entry for base in context.bases if base.id == proposal.id)
@@ -102,6 +112,7 @@ def accept(proposal, context):
         "stop_regular",
         "delete",
         "reschedule_regular",
+        "reschedule_offline",
     ):
         effects = plan_regular_effects(
             before,
@@ -109,14 +120,18 @@ def accept(proposal, context):
             ack,
             context.settings,
             context.moment,
-            vacant_rule_id=op.payload.id if op.action == "reschedule_regular" else None,
+            vacant_rule_id=op.payload.id
+            if op.action in ("reschedule_regular", "reschedule_offline")
+            else None,
         )
         entry = effects.entries[0]
     else:
         entry = SnapshotEntry(
             revision=ack.revision, delete_epoch=ack.delete_epoch, entity=op.payload
         )
-    replacement_entry = effects.entries[1] if op.action == "reschedule_regular" else None
+    replacement_entry = (
+        effects.entries[-1] if op.action in ("reschedule_regular", "reschedule_offline") else None
+    )
     mapping = dict(context.identities)
     mapping.update(proposal.identities)
     occupied = set(context.occupied_ids)
@@ -146,7 +161,8 @@ def accept(proposal, context):
         acknowledged_reschedules=context.acknowledged_reschedules
         | (
             frozenset({proposal.transition_change})
-            if proposal.action == "reschedule_regular" and proposal.transition_change is not None
+            if proposal.action in ("reschedule_regular", "reschedule_offline")
+            and proposal.transition_change is not None
             else frozenset()
         ),
     )

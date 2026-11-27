@@ -4,8 +4,15 @@ import json
 from dataclasses import dataclass, field, replace
 from uuid import UUID, uuid4
 
-from ritm.integrations.sync_codec import Entity, OccurrenceRecord, RemovalRecord, TaskRecord
+from ritm.integrations.sync_codec import (
+    Entity,
+    OccurrenceRecord,
+    RegularRecord,
+    RemovalRecord,
+    TaskRecord,
+)
 from ritm.integrations.sync_history_plan import plan_history
+from ritm.integrations.sync_operations import target_identity
 from ritm.integrations.sync_regular_changes import task_node_ids
 from ritm.integrations.sync_regular_plan import plan_regular
 from ritm.storage.sync_intents import SyncIntent, _stored_uuid
@@ -24,6 +31,10 @@ PREPARED_SCHEMA = (
 )
 
 
+class SyncIdentityConflict(ValueError):
+    """A local tree would take an identity already owned by another remote record."""
+
+
 @dataclass(frozen=True, kw_only=True)
 class PreparedState:
     identities: tuple[tuple[UUID, UUID], ...] = field(repr=False)
@@ -32,6 +43,7 @@ class PreparedState:
     promotions: frozenset[UUID]
     detaches: frozenset[UUID]
     stops: frozenset[UUID]
+    closures: frozenset[UUID]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -121,6 +133,7 @@ class SyncPreparedMixin:
             acknowledged_reschedules=context.acknowledged_reschedules | state.reschedules,
             acknowledged_promotions=context.acknowledged_promotions | state.promotions,
             acknowledged_stops=context.acknowledged_stops | state.stops,
+            acknowledged_closures=context.acknowledged_closures | state.closures,
         )
         plan = plan_regular(changes, context, server_id=binding.server_id)
         matches = [p for p in plan.proposals if p.id == target_id]
@@ -137,11 +150,18 @@ class SyncPreparedMixin:
             self._db.execute("BEGIN IMMEDIATE")
             return self._enqueue_sync_history(context, target_id)
 
-    def _enqueue_sync_history(self, context, target_id):
+    def _enqueue_sync_history(self, context, target_id, *, projection_changes=None):
         binding = self.get_sync_binding()
         if binding is None:
             raise ValueError("Синхронизация не подключена")
         changes = self._read_sync_regular_changes(binding)
+        if projection_changes is not None:
+            if type(projection_changes) is not tuple:
+                raise ValueError("Нужна точная проекция исходного журнала")
+            selected = {c.id for c in projection_changes}
+            if tuple(c for c in changes if c.id in selected) != projection_changes:
+                raise ValueError("Проекция не соответствует текущему журналу")
+            changes = projection_changes
         plan_history(changes, context, server_id=binding.server_id)
         state = self._read_sync_prepared_state()
         supplied = dict(context.identities)
@@ -188,6 +208,44 @@ class SyncPreparedMixin:
         return self._persist_sync_proposal(adapted, binding, state)
 
     def _persist_sync_proposal(self, proposal, binding, state):
+        cached = self._read_sync_snapshot()
+        if cached is not None and proposal.payload is not None:
+            payload = proposal.payload
+            task = payload.task if type(payload) is TaskRecord else payload.current.task
+            wanted = task_node_ids(task)
+            if type(payload) is RegularRecord:
+                wanted |= {payload.id}
+            for entry in cached.entries:
+                entity = entry.entity
+                key = (
+                    (entity.entity_kind, entity.entity_id)
+                    if type(entity) is RemovalRecord
+                    else target_identity(entity)
+                )
+                ids = {key[1]}
+                old_task = None
+                if type(entity) in (OccurrenceRecord, RegularRecord):
+                    old_task = entity.current.task
+                elif type(entity) is TaskRecord:
+                    old_task = entity.task
+                if old_task is not None:
+                    ids |= task_node_ids(old_task)
+                if key == (proposal.target_kind, proposal.id):
+                    if old_task is None or old_task.id == task.id:
+                        continue
+                    ids.discard(key[1])
+                elif (
+                    type(entity) is RemovalRecord
+                    and entity.reason == "type_changed"
+                    and entity.entity_kind == "task"
+                    and entity.entity_id == task.id
+                ):
+                    # A historical type marker does not own the transferred live root.
+                    ids.discard(task.id)
+                if ids & wanted:
+                    raise SyncIdentityConflict(
+                        "Дерево содержит идентификатор другой облачной сущности"
+                    )
         raw = _metadata(proposal)
         metadata = _read_metadata(raw)
         confirmed = dict(state.identities)
@@ -293,9 +351,12 @@ class SyncPreparedMixin:
         return PreparedState(
             identities=identities,
             barriers=frozenset(phases.get("barrier", ())),
-            reschedules=frozenset(phases.get("reschedule_regular", ())),
-            promotions=frozenset(phases.get("promote_regular", ())),
+            reschedules=frozenset(phases.get("reschedule_regular", ()))
+            | frozenset(phases.get("reschedule_offline", ())),
+            promotions=frozenset(phases.get("promote_regular", ()))
+            | frozenset(phases.get("promote_offline", ())),
             detaches=frozenset(phases.get("detach_occurrence", ())),
+            closures=frozenset(phases.get("close_regular", ())),
             stops=frozenset(phases.get("stop_regular", ()))
             | frozenset(phases.get("stop_offline", ())),
         )

@@ -118,6 +118,8 @@ def plan_regular_effects(
             or type(vacant_rule_id) is not UUID
             or vacant_rule_id != replacement.id
             or replacement.id == regular.id
+            or replacement.current_day
+            > scheduled_day(replacement.first_day, replacement.interval_days, today)
             or (replacement.first_day, replacement.interval_days)
             == (regular.first_day, regular.interval_days)
             or replacement.current_day
@@ -135,6 +137,52 @@ def plan_regular_effects(
             ),
             replacement,
         )
+    elif operation.action == "reschedule_offline":
+        replacement = operation.payload
+        if (
+            type(replacement) is not RegularRecord
+            or type(vacant_rule_id) is not UUID
+            or vacant_rule_id != replacement.id
+            or replacement.id == regular.id
+            or replacement.current_day
+            > scheduled_day(replacement.first_day, replacement.interval_days, today)
+            or (replacement.first_day, replacement.interval_days)
+            == (regular.first_day, regular.interval_days)
+        ):
+            raise SyncCodecError()
+
+        def nodes(task):
+            return {
+                task.id,
+                *(c.id for c in task.subtasks),
+                *(i.id for c in task.subtasks for i in c.items),
+            }
+
+        moved = replacement.current.task.id != regular.current.task.id
+        if moved and nodes(replacement.current.task) & nodes(regular.current.task):
+            raise SyncCodecError()
+        marker = RemovalRecord(
+            entity_kind="regular",
+            entity_id=regular.id,
+            revision=receipt.revision,
+            delete_epoch=receipt.delete_epoch,
+            reason="user_deleted",
+        )
+        if moved:
+            previous = (
+                history_record(regular)
+                if regular.current.task.completed
+                else RemovalRecord(
+                    entity_kind="task",
+                    entity_id=regular.current.task.id,
+                    revision=receipt.revision,
+                    delete_epoch=receipt.delete_epoch,
+                    reason="retention",
+                )
+            )
+            entities = (marker, previous, replacement)
+        else:
+            entities = (marker, replacement)
     elif operation.action == "stop_offline":
         replacement = operation.payload
         if (
@@ -244,9 +292,23 @@ def plan_detach_effects(
     vacant_task_id: UUID | None = None,
 ) -> RegularEffects:
     """Detach history in one proposed transaction; vacancy/owner must be checked by caller."""
-    if type(before) is not SnapshotEntry or type(before.entity) is not OccurrenceRecord:
+    if type(before) is not SnapshotEntry or type(before.entity) not in (
+        OccurrenceRecord,
+        RemovalRecord,
+    ):
         raise SyncCodecError()
     history = decode_entity(encode_entity(before.entity))
+    if type(history) is RemovalRecord:
+        if history.entity_kind != "occurrence" or history.reason not in (
+            "retention",
+            "user_deleted",
+        ):
+            raise SyncCodecError()
+        if history.revision != before.revision or history.delete_epoch != before.delete_epoch:
+            raise SyncCodecError()
+        identifier, root = history.entity_id, history.root_id
+    else:
+        identifier, root = history.id, history.current.task.id
     verify_receipt(operation, receipt)
     replacement = operation.payload
     from ritm.integrations.sync_codec import TaskRecord
@@ -254,7 +316,7 @@ def plan_detach_effects(
     if (
         operation.action != "detach_occurrence"
         or operation.target_kind != "occurrence"
-        or operation.target_id != history.id
+        or operation.target_id != identifier
         or type(replacement) is not TaskRecord
         or receipt.status != "applied"
         or before.revision <= 0
@@ -262,20 +324,15 @@ def plan_detach_effects(
         or operation.delete_epoch != before.delete_epoch
         or type(vacant_task_id) is not UUID
         or vacant_task_id != replacement.task.id
-        or replacement.task.id != history.current.task.id
+        or replacement.task.id != root
     ):
         raise SyncCodecError()
 
-    def shape(task):
-        return (task.id, tuple((x.id, tuple(y.id for y in x.items)) for x in task.subtasks))
-
-    if shape(replacement.task) != shape(history.current.task):
-        raise SyncCodecError()
     entities = (
         RemovalRecord(
             entity_kind="occurrence",
-            entity_id=history.id,
-            root_id=history.current.task.id,
+            entity_id=identifier,
+            root_id=root,
             revision=receipt.revision,
             delete_epoch=receipt.delete_epoch,
             reason="type_changed",
@@ -317,7 +374,7 @@ def plan_promotion_effects(
     verify_receipt(operation, receipt)
     replacement = operation.payload
     if (
-        operation.action != "promote_regular"
+        operation.action not in ("promote_regular", "promote_offline")
         or operation.target_kind != kind
         or operation.target_id != identifier
         or type(replacement) is not RegularRecord
@@ -328,8 +385,15 @@ def plan_promotion_effects(
         or type(vacant_rule_id) is not UUID
         or vacant_rule_id != replacement.id
         or replacement.current_day
-        != scheduled_day(
+        > scheduled_day(
             replacement.first_day, replacement.interval_days, calendar_day(settings, moment)
+        )
+        or (
+            operation.action == "promote_regular"
+            and replacement.current_day
+            != scheduled_day(
+                replacement.first_day, replacement.interval_days, calendar_day(settings, moment)
+            )
         )
     ):
         raise SyncCodecError()
@@ -344,7 +408,10 @@ def plan_promotion_effects(
     }
     if replacement.id in node_ids | {identifier}:
         raise SyncCodecError()
-    if shape(current.task) != shape(replacement.current.task):
+    if current.task.id != replacement.current.task.id or (
+        operation.action == "promote_regular"
+        and shape(current.task) != shape(replacement.current.task)
+    ):
         raise SyncCodecError()
     entities = (
         RemovalRecord(

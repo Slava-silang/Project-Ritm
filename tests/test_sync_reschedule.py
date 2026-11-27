@@ -209,7 +209,7 @@ def test_later_edits_to_new_rule_wait_for_atomic_confirmation(transition):
     assert second.payload.current.task.title == "Later edit"
 
 
-def test_old_current_is_completed_and_rolled_before_rescheduling(tmp_path):
+def test_old_current_is_preserved_before_offline_rescheduling(tmp_path):
     from datetime import timedelta
 
     path = tmp_path / "tasks.sqlite3"
@@ -224,11 +224,11 @@ def test_old_current_is_completed_and_rolled_before_rescheduling(tmp_path):
         context, bases=(*context.bases, RegularBase(id=changes[-1].after.id, entry=None))
     )
     actions = []
-    for _ in range(3):
+    for _ in range(2):
         proposal = plan(changes, context).proposals[0]
         actions.append(proposal.action)
         context = accept(proposal, context)
-    assert actions == ["put", "rollover", "reschedule_regular"]
+    assert actions == ["put", "reschedule_offline"]
     result = plan(changes, context)
     assert not result.proposals and not result.blocked
     assert result.remaining_changes == tuple(c.id for c in changes)

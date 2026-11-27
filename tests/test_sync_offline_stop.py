@@ -102,7 +102,8 @@ def test_occupied_terminal_target_is_not_overwritten(stopped):
         id=target.task.id, entry=SnapshotEntry(revision=8, delete_epoch=0, entity=target)
     )
     result = plan(changes, replace(context, terminal_bases=(occupied,)))
-    assert not result.proposals and result.blocked[0].reason == "ordinary_target_exists"
+    assert result.proposals[0].action == "close_regular"
+    assert result.proposals[0].payload is None
 
 
 def test_offline_stop_keeps_deadline_only_on_ordinary_target(stopped):

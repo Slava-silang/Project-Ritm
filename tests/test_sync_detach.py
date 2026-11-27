@@ -86,3 +86,28 @@ def test_detach_rejects_invalid_proof(field):
         ack = replace(ack, request_hash=operation_hash(op))
     with pytest.raises(ValueError):
         plan_detach_effects(before, op, ack, vacant_task_id=vacant)
+
+
+@pytest.mark.parametrize("reason", ["retention", "user_deleted"])
+def test_explicit_restore_of_removed_history_as_ordinary_has_no_fake_completion(reason):
+    from ritm.integrations.sync_codec import RemovalRecord
+
+    before, op, ack = case()
+    before = replace(
+        before,
+        entity=RemovalRecord(
+            entity_kind="occurrence",
+            entity_id=op.target_id,
+            root_id=op.payload.task.id,
+            revision=before.revision,
+            delete_epoch=before.delete_epoch,
+            reason=reason,
+        ),
+    )
+    result = plan_detach_effects(before, op, ack, vacant_task_id=op.payload.task.id)
+    assert result.entries[0].entity.reason == "type_changed"
+    assert result.entries[1].entity == op.payload
+    assert not result.entries[1].entity.task.completed
+    inconsistent = replace(before, entity=replace(before.entity, revision=before.revision + 1))
+    with pytest.raises(ValueError):
+        plan_detach_effects(inconsistent, op, ack, vacant_task_id=op.payload.task.id)

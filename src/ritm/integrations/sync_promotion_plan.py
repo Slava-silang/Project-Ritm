@@ -1,6 +1,6 @@
 """Compound ordinary/history to regular proposals, without writes or authority."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from uuid import UUID
 
 from ritm.domain.recurrence import scheduled_day
@@ -10,6 +10,7 @@ from ritm.integrations.sync_regular_changes import (
     checked_counter,
     checked_entity,
     checked_uuid,
+    mapped_task_record,
     task_node_ids,
 )
 
@@ -109,7 +110,38 @@ def prepare_promotions(changes, context, bases, identities, today):
             else:
                 released.add(target)
                 continue
-        elif sources[key] is None or type(sources[key].entity) is RemovalRecord:
+        elif sources[key] is None:
+            record = change.before
+            mapped_source = mapped_task_record(local, identities)
+            parent = bases.get(record.rule_id) if kind == "occurrence" else None
+            if mapped_source is None:
+                reason = "identity_mapping_required"
+            elif root in context.occupied_ids or (
+                parent is not None
+                and type(parent.entity) is RegularRecord
+                and record.day >= parent.entity.current_day
+            ):
+                reason = "regular_transition_required"
+            else:
+                payload = (
+                    mapped_source if kind == "task" else replace(record, current=mapped_source)
+                )
+                proposals.append(
+                    RegularProposal(
+                        id=key[1],
+                        target_kind=kind,
+                        action="create",
+                        base_revision=0,
+                        delete_epoch=0,
+                        payload=payload,
+                        identities=tuple(
+                            (i, identities[i]) for i in sorted(task_node_ids(local.task))
+                        ),
+                        source_changes=(change.id,),
+                    )
+                )
+                continue
+        elif type(sources[key].entity) is RemovalRecord:
             reason = "live_source_required"
         elif bases[target] is not None:
             reason = "new_rule_exists"
@@ -119,15 +151,24 @@ def prepare_promotions(changes, context, bases, identities, today):
             mapped = _map_record(change.after, identities)
             if mapped is None:
                 reason = "identity_mapping_required"
-            elif mapped.current_day != scheduled_day(mapped.first_day, mapped.interval_days, today):
+            elif mapped.current_day > scheduled_day(mapped.first_day, mapped.interval_days, today):
                 reason = "promotion_day_conflict"
-            elif _shape(mapped.current.task) != _shape(remote.task):
-                reason = "promotion_tree_conflict"
+            elif (
+                set(identities[i] for i in task_node_ids(local.task) if i in identities)
+                - task_node_ids(remote.task)
+            ) & task_node_ids(mapped.current.task):
+                reason = "node_restore_required"
             else:
                 proposals.append(
                     RegularProposal(
                         id=key[1],
-                        action="promote_regular",
+                        action="promote_regular"
+                        if (
+                            mapped.current_day
+                            == scheduled_day(mapped.first_day, mapped.interval_days, today)
+                            and _shape(mapped.current.task) == _shape(remote.task)
+                        )
+                        else "promote_offline",
                         base_revision=before.revision,
                         delete_epoch=before.delete_epoch,
                         payload=mapped,

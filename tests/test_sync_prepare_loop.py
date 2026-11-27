@@ -28,6 +28,11 @@ def remote(context):
 def confirmed(snapshot, frozen, context):
     """Test-only server response, formed with the existing pure transition validator."""
     from ritm.integrations.sync_codec import RemovalRecord
+    from ritm.integrations.sync_transitions import (
+        plan_detach_effects,
+        plan_forget_task_effects,
+        plan_promotion_effects,
+    )
 
     def key(entity):
         return (
@@ -45,19 +50,71 @@ def confirmed(snapshot, frozen, context):
         status="applied",
         revision=snapshot.set_revision + 1,
         delete_epoch=op.delete_epoch
-        + (op.action in ("delete", "restore", "prune", "reschedule_regular", "stop_regular")),
+        + (
+            op.action
+            in (
+                "delete",
+                "restore",
+                "prune",
+                "reschedule_regular",
+                "reschedule_offline",
+                "stop_regular",
+                "stop_offline",
+                "close_regular",
+                "detach_occurrence",
+                "promote_regular",
+                "promote_offline",
+                "forget_task",
+            )
+        ),
         error=None,
     )
     entries = {key(e.entity): e for e in snapshot.entries}
-    if op.action in ("rollover", "reschedule_regular", "stop_regular"):
+    if op.target_kind == "regular" and op.action not in ("create", "put", "prune", "restore"):
         effects = plan_regular_effects(
             entries[("regular", op.target_id)],
             op,
             receipt,
             context.settings,
             context.moment,
-            vacant_rule_id=op.payload.id if op.action == "reschedule_regular" else None,
+            vacant_rule_id=op.payload.id
+            if op.action in ("reschedule_regular", "reschedule_offline")
+            else None,
+            vacant_task_id=op.payload.task.id if op.action == "stop_offline" else None,
         ).entries
+    elif op.action == "detach_occurrence":
+        effects = plan_detach_effects(
+            entries[(op.target_kind, op.target_id)], op, receipt, vacant_task_id=op.payload.task.id
+        ).entries
+    elif op.action in ("promote_regular", "promote_offline"):
+        effects = plan_promotion_effects(
+            entries[(op.target_kind, op.target_id)],
+            op,
+            receipt,
+            context.settings,
+            context.moment,
+            vacant_rule_id=op.payload.id,
+        ).entries
+    elif op.action == "forget_task":
+        effects = plan_forget_task_effects(op, receipt, vacant_task_id=op.target_id).entries
+    elif op.action == "delete":
+        old = entries[(op.target_kind, op.target_id)].entity
+        effects = (
+            SnapshotEntry(
+                revision=receipt.revision,
+                delete_epoch=receipt.delete_epoch,
+                entity=RemovalRecord(
+                    entity_kind=op.target_kind,
+                    entity_id=op.target_id,
+                    root_id=(old.root_id if type(old) is RemovalRecord else old.current.task.id)
+                    if op.target_kind == "occurrence"
+                    else None,
+                    revision=receipt.revision,
+                    delete_epoch=receipt.delete_epoch,
+                    reason="user_deleted",
+                ),
+            ),
+        )
     else:
         effects = (
             SnapshotEntry(

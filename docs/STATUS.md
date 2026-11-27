@@ -1,5 +1,53 @@
 # Текущее состояние
 
+## Первый блок завершён: постоянная очередь задач
+
+27 ноября 2026, ветка codex/calendar-events. Приёмка:
+**docs/SYNC_BLOCK1_ACCEPTANCE.md**. Очередь ordinary/current/history/ordinary lineage
+полностью проходит подготовку → immutable request → verified receipt/full snapshot
+→ typed phase/UUID mapping → settled retirement на временных Linux-профилях.
+Перезапуск и новые правки во время pending не теряют выполнение/историю/корзину.
+
+Доделаны root_save/delete/restore после stop/detach, current restore как ordinary,
+history source create/restore перед promotion, structural/actual historical
+reschedule_offline/promote_offline, completed intermediate slots в chains,
+late terminal с absent/history/retained destination. Explicit restore former
+history не создаёт fake completed record. Global UUID owner gate, exact cached
+bases, own typed-effect ancestry и empty policy marker rules отделяют fresh
+known revision от foreign deletion epoch. Последний сохраняется как conflict,
+не перепривязывает старое дерево и не очищает facts.
+
+Source coverage regular/history/lineage проверяется совместно. Tasks/files/trash,
+completion dates, lineage, immutable bytes/receipts/maps сохраняются; SQL failure
+откатывает journal/phase cleanup. Приёмочные сценарии и pure proof tests готовы.
+Contracts обновлены без старых «не реализовано» в текущих planner docs.
+
+Проверки: **886 expanded passed / 6 GUI deselected (73,77 с)**,
+/tmp/ritm-block1-final-verified.log; **3 дополнительных lifecycle passed (1,15 с)**,
+/tmp/ritm-block1-extra-acceptance.log. GUI offscreen **3 passed (24,45 с)**,
+/tmp/ritm-block1-gui-ready.log; native X11 **3 passed (23,38 с)**,
+/tmp/ritm-block1-native-ready.log. Первый native run дал transient early-click
+failure; readiness ожидание исправлено в tests/gui_support.py, production UI
+не менялся; isolated probe не воспроизвёл сбой, его точная причина не доказана.
+Ruff check/format 19 Python и diff passed. Windows/manual/full app suite не проверены.
+
+Schema v21/garden v7/deps прежние. Пользовательские assets/theme_* не тронуты,
+личный профиль/аккаунты/реальный server/HTTP не использовались. Global send barrier
+остаётся до полного category/calendar/AI capture. Этот checkpoint НЕ завершает
+всю desktop sync и не начинает server design/implementation.
+
+**Точное следующее действие: T41c5d, второй из пяти блоков** — проверить owning
+SQLite mutation methods категорий/календаря и AI tools, реализовать atomic capture/
+dependencies и fault/restart/backup evidence. Затем inbound/merge/garden rewards,
+runtime/UI на fake transport и сквозные два клиента. Не менять порядок блоков.
+Локальный checkpoint: HEAD, «feat: complete the first desktop sync queue block».
+
+## Архив предыдущих checkpointов
+
+Ниже сохранены исторические передачи работы. Их «не завершено» относится к
+прошлым состояниям; текущая готовность первого блока описана выше.
+
+
 ## Первый крупный блок: автоматическая подготовка и settled retirement
 
 prepare_next_sync строит regular/history contexts из persisted snapshot+ledger,

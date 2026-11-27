@@ -1,13 +1,19 @@
 # Архитектурная основа
 
-## Cached preparation loop
+## Очередь задач: первый блок завершён
 
-storage/sync_prepare_loop.py собирает regular/history contexts из durable full
-snapshot и phase ledger, продолжает FIFO intents и атомарно сохраняет следующую
-команду. Projected_changes обоих pure planners проверяет полное покрытие фактов;
-совместный settled позволяет atomic metadata retirement, не удаляя задачи/lineage/
-receipts. Stop provenance восстанавливается отдельным ack, поздние ordinary edits
-после detach не считаются обработанными. Контракт/границы SYNC_PREPARE_LOOP.md.
+sync_prepare_loop собирает contexts из полного snapshot + receipt ledger и
+последовательно готовит regular/history/ordinary lineage. sync_lineage_plan
+обрабатывает Task после выхода из повторов, также retained former-history при
+explicit restore. Reschedule/promotion offline variants сохраняют фактические
+первые экземпляры и промежуточные completion. Source history может сначала
+создаваться/восстанавливаться отдельной фазой. Frozen bytes не меняются.
+
+Cross-target generation известна только с explicit cached base и собственной
+verified typed-transition ancestry; unrelated foreign epoch сохраняет conflict.
+Global UUID owner gate предшествует freeze. Только общий settled с покрытием
+каждого fact очищает journal/phases в той же транзакции. Данные пользователя,
+lineage, maps и receipts сохраняются. Приёмка/ограничения — SYNC_BLOCK1_ACCEPTANCE.md.
 
 
 ## Сохранённый full snapshot / tasks v21

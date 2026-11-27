@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from uuid import UUID
 
 from ritm.integrations._sync_wire import _number_text
+from ritm.integrations.sync_codec import RegularRecord, RemovalRecord, TaskRecord
 from ritm.integrations.sync_operations import (
     Operation,
     Receipt,
@@ -12,6 +13,7 @@ from ritm.integrations.sync_operations import (
     encode_operation,
     encode_receipt,
     operation_hash,
+    target_identity,
     verify_receipt,
 )
 from ritm.storage.sync_intents import _read_intent, _uuid
@@ -22,6 +24,10 @@ OUTBOX_SCHEMA = (
     "request BLOB NOT NULL CHECK(typeof(request)='blob'), request_hash TEXT NOT NULL, "
     "receipt BLOB CHECK(receipt IS NULL OR typeof(receipt)='blob'))",
 )
+
+
+class SyncBaseConflict(ValueError):
+    """A fresh command cannot safely continue from a different deletion epoch."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -152,6 +158,39 @@ class SyncOutboxMixin:
             raise ValueError("Нужно связать намерение с предыдущим изменением этого объекта")
         return derived
 
+    def _own_effect_base(self, intent):
+        """Receipt provenance for a destination written by our typed transition.
+
+        This is never a replacement for the explicit full-snapshot target base.
+        """
+        chain = []
+        parent_id = intent.depends_on
+        while parent_id is not None:
+            _, parent = self._sync_intent_row(parent_id)
+            frozen = self._frozen_sync_request(parent_id)
+            if frozen is None or frozen.receipt is None or frozen.receipt.status != "applied":
+                return None
+            chain.append(frozen)
+            parent_id = parent.depends_on
+        roots, result = {}, None
+        wanted = (intent.target_kind, intent.target_id)
+        for frozen in reversed(chain):
+            op, receipt = frozen.operation, frozen.receipt
+            effects = {(op.target_kind, op.target_id)}
+            if type(op.payload) is RegularRecord:
+                roots[op.payload.id] = op.payload.current.task.id
+                effects.add(("regular", op.payload.id))
+            if (
+                op.action in ("detach_occurrence", "stop_offline")
+                and type(op.payload) is TaskRecord
+            ):
+                effects.add(("task", op.payload.task.id))
+            if op.action == "stop_regular" and op.target_id in roots:
+                effects.add(("task", roots[op.target_id]))
+            if wanted in effects:
+                result = (receipt.revision, receipt.delete_epoch)
+        return result
+
     def freeze_sync_intent(self, identifier: UUID, base: SyncBase | None = None) -> FrozenRequest:
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
@@ -175,7 +214,64 @@ class SyncOutboxMixin:
         derived = self._sync_dependency_base(queued, intent)
         if derived is not None:
             if base is not None and base != derived:
-                raise ValueError("Основание не совпадает с подтверждённым предшественником")
+                _validate_base(base, binding, intent)
+                snapshot = self._read_sync_snapshot()
+                known = (
+                    None
+                    if snapshot is None
+                    else next(
+                        (
+                            entry
+                            for entry in snapshot.entries
+                            if (
+                                (entry.entity.entity_kind, entry.entity.entity_id)
+                                if type(entry.entity) is RemovalRecord
+                                else target_identity(entry.entity)
+                            )
+                            == (base.target_kind, base.target_id)
+                        ),
+                        None,
+                    )
+                )
+                effect = (
+                    self._own_effect_base(intent)
+                    if base.delete_epoch != derived.delete_epoch
+                    else None
+                )
+                same_epoch = base.delete_epoch == derived.delete_epoch
+                own_transition = (
+                    effect is not None
+                    and effect[1] == base.delete_epoch
+                    and derived.revision <= effect[0] <= base.revision
+                    and base.delete_epoch >= derived.delete_epoch
+                )
+                harmless_marker = (
+                    known is not None
+                    and type(known.entity) is RemovalRecord
+                    and base.delete_epoch >= derived.delete_epoch
+                    and (
+                        (
+                            intent.action == "delete"
+                            and known.entity.reason in ("retention", "user_deleted")
+                        )
+                        or (
+                            intent.action in ("restore", "detach_occurrence")
+                            and known.entity.reason == "retention"
+                        )
+                    )
+                )
+                # Empty policy markers may be explicitly removed/restored without
+                # discarding a live foreign generation. All other epoch changes need provenance.
+                if (
+                    not (same_epoch or own_transition or harmless_marker)
+                    or base.revision < derived.revision
+                    or known is None
+                    or (known.revision, known.delete_epoch) != (base.revision, base.delete_epoch)
+                ):
+                    raise SyncBaseConflict(
+                        "Основание не совпадает с подтверждённым предшественником"
+                    )
+                derived = base
             base = derived
         if base is None and intent.action == "create":
             base = SyncBase(

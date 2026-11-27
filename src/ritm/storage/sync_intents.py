@@ -98,8 +98,10 @@ def _intent(intent):
             "rollover",
             "rollover_updated",
             "reschedule_regular",
+            "reschedule_offline",
             "detach_occurrence",
             "promote_regular",
+            "promote_offline",
         )
     ):
         raise ValueError("Неизвестное действие синхронизации")
@@ -114,13 +116,17 @@ def _intent(intent):
             "rollover",
             "rollover_updated",
             "reschedule_regular",
+            "reschedule_offline",
         )
         and intent.target_kind != "regular"
     ):
         raise ValueError("Действие требует регулярное расписание")
     if intent.action == "detach_occurrence" and intent.target_kind != "occurrence":
         raise ValueError("Действие требует историю повтора")
-    if intent.action == "promote_regular" and intent.target_kind not in ("task", "occurrence"):
+    if intent.action in ("promote_regular", "promote_offline") and intent.target_kind not in (
+        "task",
+        "occurrence",
+    ):
         raise ValueError("Действие требует обычную задачу или историю")
     if intent.action == "forget_task" and intent.target_kind != "task":
         raise ValueError("Действие требует задачу")
@@ -133,7 +139,7 @@ def _intent(intent):
     else:
         if type(intent.payload) is not (
             RegularRecord
-            if intent.action == "promote_regular"
+            if intent.action in ("promote_regular", "promote_offline")
             else TaskRecord
             if intent.action in ("detach_occurrence", "stop_offline")
             else PAYLOADS[intent.target_kind]

@@ -120,7 +120,8 @@ def test_unknown_or_retained_slot_is_not_delete_proof(deleted):
         ),
     )
     result = plan(changes, context)
-    assert not result.proposals and result.blocked[0].reason == "terminal_delete_proof_required"
+    assert result.proposals[0].action == "delete"
+    assert result.proposals[0].payload is None
 
 
 def test_delete_known_live_slot_uses_its_counters(deleted):

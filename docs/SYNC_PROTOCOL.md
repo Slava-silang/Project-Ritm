@@ -1,5 +1,11 @@
 # Синхронизация и Telegram — схема T41a
 
+Локальная очередь задач (первый блок) принята 27 ноября 2026:
+SYNC_BLOCK1_ACCEPTANCE.md. Нормативные offline transfer/restore уточнения в конце
+этого документа дополняют исходные planning sections. SQL/HTTPS/auth сервера,
+inbound и runtime/UI подключения здесь не объявляются реализованными.
+
+
 ## T41c3 — persisted frozen requests/receipts, 26 ноября
 
 TaskStore v16 хранит frozen canonical bytes и checked Receipt отдельно от
@@ -409,8 +415,9 @@ Task type_changed mark не резервирует root для удаления,
 PromotionContext-данные передаются через RegularContext.promotion_bases и
 acknowledged_promotions. Новый sync_promotion_plan готовит предложение только
 по известным source и vacant target, frozen/unknown/неверный ack блокируются.
-Подтверждение не потребляет journal и не является auto enqueue. HTTP/SQL owner/
-реальная vacancy/retirement — будущие этапы.
+Pure подтверждение не потребляет journal; общий queue step сохраняет phase и
+выполняет controlled retirement по SYNC_PREPARE_LOOP.md. HTTP/SQL owner/реальная
+server vacancy проверяются будущим сервером.
 
 
 ## Explicit updated-template rollover
@@ -429,7 +436,8 @@ action отвергают. Новый opcode не является реализ�
 epoch+1. При known CAS/vacant_task_id эффекты old rule mark + previous current
 history/retention + ordinary target выдаются одной revision/epoch. Новый target
 не пересекается с IDs before. Нет исторического rollover/выдуманных новых
-экземпляров. Owner/vacancy/global graph/SQL transaction — future caller.
+экземпляров. Client owner checks выполняются по полному cache под SQLite transaction;
+authoritative owner/vacancy/global graph/SQL transaction проверяет будущий сервер.
 
 
 ## Late offline delete: unpublished v1
@@ -447,6 +455,48 @@ applied epoch+1. Pure effects: regular user_deleted mark и неизменная
 history старого current либо task retention для unfinished current. Нового
 current/ordinary экземпляра не создаёт. Late delete planner сначала согласует
 old completion, затем forget/delete выбранного local slot, после verified
-terminal user_deleted mark готовит close_regular. Все facts остаются remaining;
-подготовка очереди/consumption/сеть ещё не включены. Старый строгий клиент новый
+terminal user_deleted mark готовит close_regular. Pure facts остаются remaining; общий cached queue step готовит команды и
+контролирует retirement по SYNC_PREPARE_LOOP.md. Сеть не включена. Старый строгий клиент новый
 action отклоняет; контракт v1 ещё не опубликован. Schema/deps прежние.
+
+
+## Offline transfers и явное восстановление: принятый первый блок
+
+Дополнительные actions неопубликованного v1:
+
+| Action | Target/payload | Условия/effects |
+| --- | --- | --- |
+| reschedule_offline | known regular / new RegularRecord | Positive source base, vacant new rule, changed schedule, actual current day не позже account due. Same root: old rule mark + new rule; different root: непересекающиеся деревья, old completed history/unfinished retention + new rule. Applied epoch+1. |
+| promote_offline | known task/occurrence / new RegularRecord | Positive source base, vacant new rule, тот же root, edited tree/actual past current разрешены при known ownership/restore guards. Old source type_changed mark + new rule, одна revision/epoch+1. |
+
+Fast reschedule_regular/promote_regular сохраняют прежние строгие условия
+структуры/latest day. Offline variant не создаёт phantom new instances: сначала
+передаётся actual captured first instance, затем выполняются его последующие
+rollovers/edits. Владельцы всех UUID, vacant target и CAS проверяются authoritative
+caller в одной транзакции; pure effects/vacancy flag не являются авторизацией.
+
+Detach occurrence→ordinary сохраняет root, но позволяет subtree edits вместе с
+reopen/new item/deadline. Существовавшие before nodes, удалённые сервером, не
+возрождаются без explicit restore. Дополнительно detach_occurrence может
+восстановить **удалённую/retained history как ordinary** по её положительному mark
+base и явно переданному TaskRecord: tiny occurrence type_changed mark + ordinary
+Task одной revision/epoch+1, без промежуточного fake completed history. Source mark
+kind/root/revision/epoch и target vacancy обязательны. Queue использует этот путь
+только для explicit root_restore; простой rename/reopen поверх foreign deletion
+не получает разрешение на restore автоматически.
+
+Новая несохранённая команда с тем же epoch может принять более свежий known base
+из validated full snapshot. Переход epoch требует собственного verified typed
+transition в predecessor chain **и** явного cached target base. Собственные
+side effects (stop/detach/promotion/reschedule) учитываются после retirement без
+подмены request bytes. Cross-target receipt сам по себе не выводит новый base;
+без explicit known input прежний строгий outbox отказ остаётся.
+
+Empty retention mark можно явно удалить/восстановить. User_deleted empty mark
+можно снова явно удалить, не возвращая данных. Чужой новый epoch live или
+user_deleted сущности не перепривязывается к старому дереву автоматически —
+queue возвращает conflict и сохраняет facts. Frozen retry никогда не меняется.
+
+First-block client preparation/acks/retirement проверены на временных профилях.
+Серверное исполнение этих правил, TLS/учётные записи и multi-client delivery
+остаются T41d/runtime, категория/календарь/AI capture — следующий локальный блок.

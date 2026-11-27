@@ -103,11 +103,11 @@ def target_identity(record):
 def payload_matches_target(action, kind, identifier, payload):
     if action == "stop_offline":
         return kind == "regular" and type(payload) is TaskRecord
-    if action == "promote_regular":
+    if action in ("promote_regular", "promote_offline"):
         return kind in ("task", "occurrence") and type(payload) is RegularRecord
     if action == "detach_occurrence":
         return kind == "occurrence" and type(payload) is TaskRecord
-    if action == "reschedule_regular":
+    if action in ("reschedule_regular", "reschedule_offline"):
         return kind == "regular" and type(payload) is RegularRecord and payload.id != identifier
     return target_identity(payload) == (kind, identifier)
 
@@ -132,15 +132,17 @@ def _validate(operation):
         "rollover",
         "rollover_updated",
         "reschedule_regular",
+        "reschedule_offline",
         "detach_occurrence",
         "promote_regular",
+        "promote_offline",
     ):
         raise SyncCodecError()
     if operation.target_kind == "calendar_settings" and operation.action not in ("create", "put"):
         raise SyncCodecError()
     if operation.action == "detach_occurrence" and operation.target_kind != "occurrence":
         raise SyncCodecError()
-    if operation.action == "promote_regular" and operation.target_kind not in (
+    if operation.action in ("promote_regular", "promote_offline") and operation.target_kind not in (
         "task",
         "occurrence",
     ):
@@ -167,6 +169,7 @@ def _validate(operation):
             "stop_offline",
             "close_regular",
             "reschedule_regular",
+            "reschedule_offline",
         )
         and operation.target_kind != "regular"
     ):
@@ -177,7 +180,7 @@ def _validate(operation):
     else:
         if type(operation.payload) is not (
             RegularRecord
-            if operation.action == "promote_regular"
+            if operation.action in ("promote_regular", "promote_offline")
             else TaskRecord
             if operation.action in ("detach_occurrence", "stop_offline")
             else PAYLOADS[operation.target_kind]
@@ -351,8 +354,10 @@ def verify_receipt(operation: Operation, receipt: Receipt) -> None:
             "forget_task",
             "prune",
             "reschedule_regular",
+            "reschedule_offline",
             "detach_occurrence",
             "promote_regular",
+            "promote_offline",
         )
         if (
             receipt.revision <= operation.base_revision

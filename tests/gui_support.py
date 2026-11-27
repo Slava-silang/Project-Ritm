@@ -23,6 +23,7 @@ def load_offscreen_fonts(app):
 class GuiHarness:
     def __init__(self, app, window, controller):
         self.app, self.window, self.controller = app, window, controller
+        self.wait_for(window.isExposed, "main window exposed")
 
     def wait_for(self, predicate, message="condition"):
         deadline = time.monotonic() + 10
@@ -92,7 +93,7 @@ class GuiHarness:
         ):
             self.click("parametersButton")
             self.wait_for(target.isVisible, "parameters menu opens")
-        assert target.isVisible() and target.isEnabled(), name
+        self.wait_for(lambda: target.isVisible() and target.isEnabled(), f"{name} ready")
         self.reveal(target, full=True)
         point = target.mapToScene(QPointF(target.width() / 2, target.height() / 2)).toPoint()
         assert 0 <= point.x() < self.window.width() and 0 <= point.y() < self.window.height(), (

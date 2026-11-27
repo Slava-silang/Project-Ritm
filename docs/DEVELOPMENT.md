@@ -1,11 +1,14 @@
 # Окружение, запуск и выпуск
 
-## Cached queue preparation
+## Очередь задач — первый блок принят
 
-К текущему целевому набору добавить tests/test_sync_prepare_loop.py. Реальные
-TaskStore queue/cache и restart, server responses только тестовые через pure
-transition validators. Schema v21/garden v7/deps прежние; HTTP/UI не включены.
-Контракт SYNC_PREPARE_LOOP.md. Ни один личный профиль не использовать.
+К целевому набору относятся tests/test_sync_queue_acceptance.py и
+ tests/test_sync_offline_transfers.py (дополнительно к всему test_sync_*).
+Команды, evidence и границы — SYNC_BLOCK1_ACCEPTANCE.md. Pure fake responses,
+реальные disposable TaskStore/cache/queue, restart на каждом шаге. Schema v21,
+garden v7/deps прежние. Следующее T41c5d: category/calendar/AI capture; сеть/реальные
+аккаунты по-прежнему не включать. GuiHarness ждёт фактической готовности окна/
+контрола, production UI не менялся.
 
 
 ## Tasks v21 / full snapshot cache

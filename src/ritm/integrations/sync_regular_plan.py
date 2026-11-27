@@ -47,6 +47,7 @@ class RegularContext:
     terminal_bases: tuple = field(default=(), repr=False)
     acknowledged_promotions: frozenset[UUID] = frozenset()
     acknowledged_stops: frozenset[UUID] = frozenset()
+    acknowledged_closures: frozenset[UUID] = frozenset()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -107,6 +108,7 @@ def _context(context, server_id):
         context.acknowledged_reschedules,
         context.acknowledged_promotions,
         context.acknowledged_stops,
+        context.acknowledged_closures,
     ):
         if type(values) is not frozenset or len(values) > MAX_SNAPSHOT_ITEMS:
             raise ValueError("Превышены границы контекста повторов")
@@ -117,6 +119,7 @@ def _context(context, server_id):
         | context.acknowledged_reschedules
         | context.acknowledged_promotions
         | context.acknowledged_stops
+        | context.acknowledged_closures
     ):
         raise ValueError("Противоречивые подтверждения барьеров")
     if context.frozen_changes & context.acknowledged_promotions:
@@ -294,8 +297,6 @@ def _offline_stop(rule, base, identities, context):
     root = mapping.get(desired.task.id, desired.task.id)
     if root not in targets:
         return "terminal_day_conflict"
-    if targets[root] is not None:
-        return "ordinary_target_exists"
     if not raw_ids <= mapping.keys():
         births = [r.current.task for r in rule.snapshots if r.current.task.id == desired.task.id]
         if not births or not raw_ids <= task_node_ids(births[0]):
@@ -307,6 +308,56 @@ def _offline_stop(rule, base, identities, context):
     mapped = mapped_task_record(desired, mapping)
     if mapped.task.id == base.entity.current.task.id:
         return "terminal_root_conflict"
+    existing = targets[root]
+    pairs = tuple((key, mapping[key]) for key in sorted(raw_ids))
+    if existing is not None:
+        if type(existing) is not SnapshotEntry:
+            raise ValueError("Некорректное terminal состояние")
+        checked_entity(existing.entity)
+        checked_counter(existing.revision, positive=True)
+        checked_counter(existing.delete_epoch)
+        entity = existing.entity
+        if type(entity) in (OccurrenceRecord, TaskRecord):
+            original = mapped_task_record(stop.before.current, mapping)
+            remote_task = entity.current.task if type(entity) is OccurrenceRecord else entity.task
+            if original is None:
+                return "identity_mapping_required"
+            if (task_node_ids(original.task) - task_node_ids(remote_task)) & task_node_ids(
+                mapped.task
+            ):
+                return "node_restore_required"
+        if type(entity) is OccurrenceRecord and entity.current.task.id == root:
+            return RegularProposal(
+                id=entity.id,
+                target_kind="occurrence",
+                action="detach_occurrence",
+                base_revision=existing.revision,
+                delete_epoch=existing.delete_epoch,
+                payload=mapped,
+                identities=pairs,
+                source_changes=(stop.id,),
+            )
+        if type(entity) is TaskRecord and entity.task.id == root:
+            if mapped != entity:
+                action = (
+                    "prune" if task_node_ids(entity.task) - task_node_ids(mapped.task) else "put"
+                )
+                return RegularProposal(
+                    id=root,
+                    target_kind="task",
+                    action=action,
+                    base_revision=existing.revision,
+                    delete_epoch=existing.delete_epoch,
+                    payload=mapped,
+                    identities=pairs,
+                    source_changes=(stop.id,),
+                )
+            return "close_regular", None, ()
+        if type(entity) is RemovalRecord and entity.reason in ("user_deleted", "retention"):
+            actual_root = entity.entity_id if entity.entity_kind == "task" else entity.root_id
+            if actual_root == root:
+                return "close_regular", None, ()
+        return "ordinary_target_exists"
     if task_node_ids(mapped.task) & context.occupied_ids:
         return "occupied_identity"
     pairs = tuple((key, mapping[key]) for key in sorted(raw_ids))
@@ -333,7 +384,9 @@ def _offline_delete(rule, base, identities, context):
     if entry is None:
         if root in context.occupied_ids:
             return "occupied_identity"
-        if not any(r.current.task.id == source.root_id for r in rule.snapshots):
+        if source.root_id not in identities and not any(
+            r.current.task.id == source.root_id for r in rule.snapshots
+        ):
             return "local_snapshot_required"
         return RegularProposal(
             id=root,
@@ -361,9 +414,21 @@ def _offline_delete(rule, base, identities, context):
             or entity.delete_epoch != entry.delete_epoch
         ):
             raise ValueError("Terminal mark не соответствует root")
+        if entity.reason == "retention":
+            return RegularProposal(
+                id=entity.entity_id,
+                target_kind=entity.entity_kind,
+                action="delete",
+                base_revision=entry.revision,
+                delete_epoch=entry.delete_epoch,
+                payload=None,
+                identities=((source.root_id, root),),
+                source_changes=(source.id,),
+                transition_change=source.id,
+            )
         if entity.reason != "user_deleted":
             return "terminal_delete_proof_required"
-        return "close_regular", None, ()
+        return None if type(base.entity) is RemovalRecord else ("close_regular", None, ())
     if type(entity) is TaskRecord:
         kind, identifier, actual_root = "task", entity.task.id, entity.task.id
     elif type(entity) is OccurrenceRecord:
@@ -385,7 +450,7 @@ def _offline_delete(rule, base, identities, context):
     )
 
 
-def _next(rule, base, identities, context, today):
+def _next(rule, base, identities, context, today, *, closing=False):
     if rule.blocked:
         return rule.blocked
     if set(c.id for c in rule.changes) & context.frozen_changes:
@@ -396,17 +461,25 @@ def _next(rule, base, identities, context, today):
         if base is None:
             return "terminal_requires_base"
         if type(base.entity) is RemovalRecord:
-            return None
+            return (
+                _offline_delete(rule, base, identities, context) if context.terminal_bases else None
+            )
         root = base.entity.current.task.id
         if identities.get(rule.terminal_root) != root:
-            return "identity_mapping_required"
+            return (
+                _offline_delete(rule, base, identities, context)
+                if context.terminal_bases
+                else "identity_mapping_required"
+            )
         return "delete", None, ((rule.terminal_root, root),)
     latest = rule.snapshots[-1]
     due = scheduled_day(latest.first_day, latest.interval_days, today)
-    if rule.terminal is None and latest.current_day != due:
+    if rule.terminal is None and not closing and latest.current_day != due:
         return "local_refresh_required" if latest.current_day < due else "future_local_day"
+    if latest.current_day > due:
+        return "future_local_day"
     if base is None:
-        if rule.terminal is not None:
+        if rule.terminal is not None and not rule.new:
             return "terminal_requires_base"
         if not rule.new:
             return "creation_provenance_required"
@@ -421,26 +494,44 @@ def _next(rule, base, identities, context, today):
     if type(base.entity) is RemovalRecord:
         if rule.terminal == "stop":
             source = next(c for c in reversed(rule.changes) if c.kind == "stop")
-            if source.id in context.acknowledged_stops:
+            if source.id in context.acknowledged_stops | context.acknowledged_closures:
                 root = identities.get(source.after.task.id)
                 target = next((b.entry for b in context.terminal_bases if b.id == root), None)
                 if (
                     base.entity.reason == "user_deleted"
                     and target is not None
-                    and target.revision >= base.revision
-                    and target.delete_epoch >= base.delete_epoch
+                    and (
+                        source.id in context.acknowledged_closures
+                        or (
+                            target.revision >= base.revision
+                            and target.delete_epoch >= base.delete_epoch
+                        )
+                    )
                     and (
                         (type(target.entity) is TaskRecord and target.entity.task.id == root)
                         or (
                             type(target.entity) is RemovalRecord
-                            and target.entity.entity_kind == "task"
-                            and target.entity.entity_id == root
+                            and (
+                                (
+                                    target.entity.entity_kind == "task"
+                                    and target.entity.entity_id == root
+                                )
+                                or (
+                                    source.id in context.acknowledged_closures
+                                    and target.entity.entity_kind == "occurrence"
+                                    and target.entity.root_id == root
+                                )
+                            )
                         )
                     )
                 ):
                     return None
                 return "stop_ack_conflict"
-        return None if rule.terminal == "delete" else "deleted"
+        if rule.terminal == "delete":
+            return (
+                _offline_delete(rule, base, identities, context) if context.terminal_bases else None
+            )
+        return "deleted"
     remote = base.entity
     if remote.current_day > latest.current_day:
         return (
@@ -521,6 +612,8 @@ def _next(rule, base, identities, context, today):
             if rule.terminal == "stop"
             else _offline_delete(rule, base, identities, context)
         )
+    if closing:
+        return None
     if latest.current_day > remote.current_day:
         canonical = rollover_record(remote, due)
         births = [r for r in rule.snapshots if r.current_day == due]
@@ -587,14 +680,33 @@ def _reschedules(changes, rules, bases, identities, context, today):
                 rules[new].blocked = None
                 continue
         elif bases[old] is None:
-            reason = "old_rule_absent"
+            if rules[old].new and bases[new] is None:
+                record = rules[old].snapshots[-1]
+                ids = task_node_ids(record.current.task)
+                pairs = tuple((key, key) for key in sorted(ids, key=str))
+                if record.current_day > scheduled_day(
+                    record.first_day, record.interval_days, today
+                ):
+                    reason = "future_local_day"
+                elif ids & context.occupied_ids or _merge_pairs(identities, pairs) is None:
+                    reason = "occupied_identity"
+                else:
+                    proposed.append(
+                        _proposal(old, "create", record, pairs, rules[old], None, context, sources)
+                    )
+                    handled.update((old, new))
+                    continue
+            else:
+                reason = "old_rule_absent"
         elif type(bases[old].entity) is RemovalRecord:
             reason = "reschedule_confirmation_required"
         elif bases[new] is not None:
             reason = "new_rule_exists"
         if not reason:
             before = bases[old]
-            pending = _next(replace(rules[old], blocked=None), before, identities, context, today)
+            pending = _next(
+                replace(rules[old], blocked=None), before, identities, context, today, closing=True
+            )
             if type(pending) is str:
                 reason = pending
             elif type(pending) is RegularProposal:
@@ -605,15 +717,20 @@ def _reschedules(changes, rules, bases, identities, context, today):
                     _proposal(old, action, payload, pairs, rules[old], before, context, sources)
                 )
             else:
-                target = _map_record(edge.after, identities)
+                # Transfer the actual first instance; later local slots keep their
+                # own history instead of becoming skipped remnants of the old rule.
+                local = edge.after
+                mapping = dict(identities)
+                missing = task_node_ids(local.current.task) - mapping.keys()
+                if not missing & context.occupied_ids:
+                    mapping = _merge_pairs(mapping, tuple((key, key) for key in missing))
+                target = _map_record(local, mapping) if mapping is not None else None
                 if target is None:
                     reason = "identity_mapping_required"
-                elif target.current_day != scheduled_day(
+                elif target.current_day > scheduled_day(
                     target.first_day, target.interval_days, today
                 ):
                     reason = "reschedule_day_conflict"
-                elif _shape(target.current.task) != _shape(before.entity.current.task):
-                    reason = "reschedule_tree_change"
                 elif (target.first_day, target.interval_days) == (
                     before.entity.first_day,
                     before.entity.interval_days,
@@ -625,13 +742,19 @@ def _reschedules(changes, rules, bases, identities, context, today):
                     reason = "occupied_identity"
                 else:
                     pairs = tuple(
-                        (key, identities[key])
-                        for key in sorted(task_node_ids(edge.after.current.task), key=str)
+                        (key, mapping[key])
+                        for key in sorted(task_node_ids(local.current.task), key=str)
                     )
                     proposed.append(
                         _proposal(
                             old,
-                            "reschedule_regular",
+                            "reschedule_regular"
+                            if (
+                                _shape(target.current.task) == _shape(before.entity.current.task)
+                                and target.current_day
+                                == scheduled_day(target.first_day, target.interval_days, today)
+                            )
+                            else "reschedule_offline",
                             target,
                             pairs,
                             rules[old],
@@ -652,6 +775,8 @@ def _reschedules(changes, rules, bases, identities, context, today):
 def _proposal(key, action, payload, pairs, rule, base, context, sources, *, transition_change=None):
     if payload is not None:
         checked_entity(payload)
+    if transition_change is None and action == "close_regular":
+        transition_change = next(c.id for c in reversed(rule.changes) if c.kind == rule.terminal)
     if transition_change is None and action in ("stop_regular", "stop_offline"):
         transition_change = next(c.id for c in reversed(rule.changes) if c.kind == "stop")
     return RegularProposal(
@@ -685,7 +810,9 @@ def plan_regular(changes, context: RegularContext, *, server_id: UUID) -> Regula
         rules[key].blocked = None
     handled.update(phandled - released)
     proposals.extend(pproposals)
-    promotion_targets = {p.payload.id for p in pproposals if p.action == "promote_regular"}
+    promotion_targets = {
+        p.payload.id for p in pproposals if p.action in ("promote_regular", "promote_offline")
+    }
     blocked = [item for item in blocked if item.id not in promotion_targets]
     blocked.extend(pblocked)
     unchanged.extend(punchanged)
@@ -709,6 +836,8 @@ def plan_regular(changes, context: RegularContext, *, server_id: UUID) -> Regula
             proposals.append(
                 _proposal(key, action, payload, pairs, rule, bases[key], context, sources)
             )
+    order = {c.id: c.sequence for c in changes}
+    proposals.sort(key=lambda p: min(order[source] for source in p.source_changes))
     covered = {c.id for rule in rules.values() for c in rule.changes}
     return RegularPlan(
         proposals=tuple(proposals),

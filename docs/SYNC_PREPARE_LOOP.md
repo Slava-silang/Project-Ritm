@@ -1,68 +1,81 @@
-# Подготовка очереди из сохранённого снимка
+# Постоянная очередь: первый блок завершён
 
-`TaskStore.prepare_next_sync(moment)` выполняет один атомарный шаг на BEGIN
-IMMEDIATE. Аккаунт/capture должны быть предварительно включены через будущий
-проверенный bootstrap; метод не подключает пользователя самостоятельно.
-Схема tasks v21/garden v7 и зависимости не меняются.
+Область первого блока: локально записанные изменения задач, повторов и истории
+превращаются в неизменяемые команды; подтверждения и полный облачный снимок
+сохраняются; только обработанный журнал очищается. Приёмка —
+[SYNC_BLOCK1_ACCEPTANCE.md](SYNC_BLOCK1_ACCEPTANCE.md).
 
-## Порядок
+## Публичный шаг очереди
 
-1. Прочитать binding, журнал и полный cached snapshot. Найти первый неготовый
-   intent. Frozen pending возвращается с теми же bytes/op_id, rejected — conflict.
-   Обычный несохранённый intent готовится по known cached base; create требует
-   явного отсутствия, запись поверх marker требует явного restore/delete.
-2. Для новой команды snapshot должен покрывать maximum revision всех applied
-   receipts. Без снимка/после отдельного receipt без актуального снимка вернуть
-   needs_snapshot, не изобретая отсутствие или успешное применение.
-3. Собрать RegularContext/HistoryContext по одному full snapshot, журналу и
-   receipt-backed identity/phase ledger. Наличие/отсутствие target проверяется
-   в полном снимке; timezone берётся из CalendarRecord. Global occupied IDs,
-   ordinary roots, terminal/promotion/task/history bases передаются явно.
-4. Сначала готовить regular projection, потом history: это позволяет подтвердить
-   canonical current/root mapping до независимых offline history create. UUID
-   будущих canonical слотов не связываются заранее с локальными UUID. При иной
-   known birth identity остаётся блокировка, а не догадка о новом соответствии.
-5. Готовую команду пересчитать/сохранить через тот же internal atomic enqueue/
-   freeze helper. Следующий вызов вернёт pending, новый op_id не создаётся.
+`TaskStore.prepare_next_sync(moment)` работает под BEGIN IMMEDIATE. Требуются
+binding и предварительно включённый capture. Сам метод не подключает аккаунт.
+Он читает immutable intents, журнал, receipt-backed UUID/phase ledger и bounded
+полный snapshot текущего server generation. Без snapshot или если его watermark
+не покрывает maximum revision applied receipts возвращается needs_snapshot.
 
-При отсутствии proposals, но наличии blocks вернуть blocked с причинами. Без
-блокировок оба planner дополнительно возвращают projected_changes: **область
-ответственности**, не доказательство выполнения сама по себе. Их объединение
-должно покрывать каждый journal fact. Только совместно с отсутствием proposals/
-blocks и покрывающим full snapshot это позволяет удалить settled журнал.
-`retired_facts` сообщает число удалённых служебных facts, `remaining_facts` —
-оставшихся. Следующий вызов возвращает idle. Один pending/blocked/непредставленный
-fact запрещает retirement всего прочитанного набора. Новые записи не могут
-появиться между проверкой и удалением из-за BEGIN IMMEDIATE.
+FIFO head имеет приоритет. Frozen pending возвращается с теми же bytes/op_id;
+rejected возвращается как conflict. Несохранённый ordinary intent получает
+известное основание из snapshot; create требует отсутствия, запись поверх mark
+не превращается в обычный put. Частичные/чужие/старые снимки не используются.
 
-Фазы retired UUID удаляются в той же транзакции. Intents, immutable request bytes,
-receipts, UUID mapping, sync_regular_roots lineage и пользовательские данные не
-удаляются. Повтор receipt после retirement не воссоздаёт старые фазы. Сбой SQL
-откатывает facts и фазы вместе. Тест с тремя offline completion после каждого
-receipt/reopen доходит до settled/idle без ручных contexts или fake accept.
+Для journal facts собираются три проекции:
 
-## Закрытые расписания и отделённые задачи
+- regular: current, canonical rollover, stop/delete и переходы расписаний;
+- history: самостоятельные completed offline slots, edit/prune/delete/restore,
+  detach, подготовка source перед promotion;
+- ordinary lineage: последующие правки/удаление/восстановление после stop/detach.
 
-RegularContext.acknowledged_stops/PreparedState.stops восстанавливают stop_regular/
-stop_offline provenance. Для settled closed rule нужны user_deleted regular mark
-и ordinary task/mark с тем же root и counters не старше закрытия. Сама отметка
-удаления правила без receipt по-прежнему не подтверждает наш stop.
+Переходы выполняются по capture-порядку. Переносится фактический экземпляр в
+момент смены правила, затем обрабатываются последующие выполнения нового правила.
+Это сохраняет completion один раз и не создаёт пропущенных во время offline
+экземпляров. Будущие canonical UUID не связываются заранее с локальными UUID.
+History source перед promotion может потребовать отдельного create/restore;
+используется точное подмножество immutable journal, проверенное против SQLite.
 
-History detach ack покрывает предыдущую history и сам detach, но **не более
-поздние ordinary root_save/delete/restore**. Такие поздние факты не входят в его
-projected_changes; отсутствие отдельного resolver проявляется projection_missing
-или соответствующим blocked. Они не поглощаются успешным предыдущим detach.
+Следующая команда сохраняется атомарно через internal enqueue/freeze. Пока её
+receipt не получен, вызов возвращает pending. Новая локальная правка во время
+pending добавляет факт и будет подготовлена после подтверждения прежних bytes.
 
-## Границы
+## Состояния и границы
 
-Это автоматическая preparation, не HTTP и не разрешение обходить
-next_sync_sendable coverage barrier. UI не включает синхронизацию. Внешняя
-транзакция отвергается до записи. Local refresh по account day пока выполняется
-существующим recurrence worker: stale local day даёт local_refresh_required,
-фантомные выполнения не создаются.
+prepared/pending содержат FrozenRequest; needs_snapshot требует нового полного
+снимка; blocked содержит конкретную причину (например, local_refresh_required,
+неизвестное основание/узел или смена типа, требующая разбора). conflict сохраняет
+данные при rejected receipt, чужом deletion epoch или UUID другого объекта.
+Ни один такой исход не считается выполнением и не очищает факты.
 
-Первый крупный блок ещё не завершён: ordinary lineage после stop/detach, оставшиеся
-compound/type/retention случаи должны проходить автоматический цикл до settled,
-после чего нужен общий аудит покрытия перед transport. Далее исходный порядок:
-calendar/category/AI capture, inbound/merge/rewards, runtime/UI на fake transport,
-сквозные проверки. Реальный сервер не реализуется этим шагом.
+Более свежий revision той же generation/epoch разрешён только с точным known
+cached base. Другой epoch разрешён при доказанном собственном typed transition
+в цепочке applied receipts и явном base из snapshot. Ранее замороженный запрос
+не меняется. Пустые retention marks можно явно удалить/восстановить; user_deleted
+с чужим новым epoch не позволяет автоматически вернуть прежнее дерево.
+
+Данные retention остаются локальными: простое переименование не возвращает их
+в облако. Удаление передаёт только mark. Явное восстановление former-history как
+ordinary может атомарно заменить occurrence mark на type_changed и создать Task
+без промежуточного фиктивного completed history. Глобальные владельцы UUID
+проверяются до freeze, receipt/snapshot проходят собственные counter/graph gates.
+
+## Retirement
+
+Pure planners возвращают projected_changes как область ответственности, а не
+самостоятельное доказательство выполнения. После отсутствия proposals/blocks
+объединение regular/history/lineage/confirmed promotion coverage должно покрывать
+каждый fact. Все intents должны иметь applied receipts, snapshot — покрывать их.
+Тогда в той же транзакции удаляется journal и phase acks retired UUID, возвращается
+settled с retired_facts. Следующий шаг — idle.
+
+Один pending/blocked/непредставленный fact запрещает retirement прочитанного
+набора. Сбой SQL откатывает facts и phase cleanup вместе. Tasks/trash/files,
+completion dates, sync_regular_roots, UUID maps и immutable requests/receipts не
+удаляются. Retry старого receipt не воссоздаёт очищенные фазы. Detach ack сам по
+себе не покрывает последующие ordinary правки — за них отвечает lineage resolver.
+
+## Следующие блоки
+
+Следующий второй блок — category/calendar mutations и все AI paths capture.
+Затем inbound/merge/однократные garden rewards, runtime/UI на fake transport,
+сквозные два клиента. `next_sync_sendable` сохраняет общий coverage barrier до
+полноты capture; returning PreparedStep не разрешает ручную сетевую отправку.
+HTTP/аккаунты/сервер/Mini App здесь не включены. Tasks schema v21, garden v7,
+зависимости прежние. Windows/полная desktop синхронизация не объявляются готовыми.

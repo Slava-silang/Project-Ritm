@@ -1,83 +1,43 @@
-# Атомарная смена расписания — T41c5c2b1
+# Атомарная смена расписания
 
-Согласованный порядок T41 сохраняется. Это ограниченная часть compound resolver,
-без сервера/HTTP/inbound/изменения интерфейса. Tasks v19/garden v7/deps прежние.
+Неопубликованный wire v1 поддерживает reschedule_regular и reschedule_offline.
+Оба адресуют known old regular, payload — RegularRecord другого fresh rule ID.
+Positive base_revision, server/device/op/hash, applied receipt и epoch+1 обязательны.
+Caller в той же authoritative транзакции проверяет owner и отсутствие new rule;
+флаг vacant_rule_id сам по себе не доказывает право или отсутствие.
 
-## Команда неопубликованного wire v1
+reschedule_regular сохраняет root/структуру UUID, first/interval меняются,
+current_day соответствует account due. Pure effects одной revision/epoch:
+old regular user_deleted mark + new regular. Source current сначала согласуется
+put/prune/restore по known counters; более поздние правки — последующие команды.
 
-`reschedule_regular`: target_kind=regular, target_id=старый rule UUID,
-payload=новый RegularRecord с **другим** rule UUID. Это единственное действие,
-где ID payload отличается от target_id. Для остальных create/put/restore/prune/
-rollover прежнее соответствие обязательно. Тип payload/kind/action проверяется
-в Operation и SyncIntent одним payload_matches_target helper. Пустое тело,
-тот же rule UUID, другой target kind и обычный put с чужим payload ID запрещены.
+reschedule_offline переносит фактический экземпляр при structural edits или
+пропущенных днях. New current не может лежать позже account due, исторический
+фактический first instance разрешён. При том же root old mark + new regular;
+при ином root деревья не пересекаются, old completed current сохраняется history,
+unfinished — retention, затем публикуется new regular. Global owner checks
+запрещают забрать UUID другого live объекта. Даты выполнения не меняются.
 
-Base revision/epoch относятся к старому правилу. Applied Receipt связан с
-исходным op/device/server/hash, требует revision>base и epoch+1. Замороженный
-request не переписывается при retry; смена основания требует отдельного
-разрешения, как раньше. Это расширение ещё не опубликованного v1, не downgrade:
-старый строгий клиент должен отказать, а не пропустить новый action.
+Queue переносит именно edge.after, а не последний local snapshot нового rule:
+иначе его первый completed instance можно ошибочно записать как skipped remnant
+старого rule. После transfer обрабатываются local changes/rollovers нового rule.
+Так chains A→B→C с завершёнными intermediate slots не теряют и не дублируют историю.
+Old never-uploaded rule при known absence материализуется фактическим saved
+экземпляром, после чего выполняется тот же atomic transfer. Future clock conflict
+блокируется, не превращается в новый repeat.
 
-## Два эффекта одной операции
+Acknowledged reschedule освобождает dependent link только по verified receipt
+и обоим effects. Intermediate new rule впоследствии может быть закрыт следующим
+link, если его counters не старше предыдущего effect. IDs/counters cross-target
+не выводятся из произвольного receipt без explicit known cached base.
 
-`plan_regular_effects(..., vacant_rule_id=new_id)` требует known live old rule,
-точные CAS/counters/applied receipt и конкретный новый UUID, для которого будущий
-server caller проверил отсутствие **внутри той же SQL-транзакции**. Параметр UUID
-сам по себе не доказывает отсутствие/owner/auth; это чистый planner, не сервер.
+Frozen requests immutable. Новая несохранённая команда может использовать более
+свежий revision того же epoch из полного снимка. Другой epoch требует собственной
+typed-transition provenance в ancestor chain и cached target либо безопасного
+explicit действия над пустым retention mark. Чужой восстановленный live root
+не перезаписывается прежним деревом.
 
-Условия: другой rule ID, действительно изменён first_day/interval, current_day
-нового правила равен scheduled_day по общему account timezone/server moment;
-root и структура node IDs/позиций совпадают с известным старым деревом. Поля,
-названия, веса и выполнение могут измениться вместе со сменой расписания.
-Добавление/удаление/перестановка node IDs этим ограниченным переходом не допускается.
-
-Результат — ровно две SnapshotEntry с общей receipt revision/epoch:
-
-1. user_deleted mark старого regular, без текста и root tombstone;
-2. новый live RegularRecord с тем же root/child/item UUID.
-
-Старое completed history не удаляется. Root не копируется и не превращается
-в отдельную ordinary task между правилами. Новый UUID не может быть существующей
-записью или tombstone. Ошибка не возвращает половину результата. Реальная запись
-обоих эффектов/owner isolation/replay ledger — T41d, пока не реализована.
-
-## Подготовка из local journal
-
-Current planner распознаёт один save OldRegular→NewRegular и проверяет известные
-bases **обеих** сторон. Для нового rule нужен явный absent base, не пропуск в
-snapshot. Новый tombstone/существующая запись, frozen source, неизвестные UUID/
-base, смена структуры, неактуальный день или конфликт свободных IDs блокируют
-обе стороны; отдельный delete/create не предлагается.
-
-Если старый current ещё не согласован, сначала выдаётся его обычный следующий
-шаг: put/prune/restore либо canonical rollover с известным base. После нового
-проверенного context готовится reschedule_regular. ID самого root сохраняется;
-предложение содержит transition_change UUID именно исходного reschedule fact,
-а не всех последующих правок.
-
-`RegularContext.acknowledged_reschedules` допускает этот fact только после
-проверенной receipt/обоих эффектов из будущего ledger. Один похожий snapshot
-без такого подтверждения не принимается за нашу выполненную смену расписания.
-Противоречие acknowledgement и bases блокируется. Frozen/ack sets не могут
-пересекаться. Новый target после перехода использует собственный известный
-SnapshotEntry: old-target receipt не становится автоматически его SyncBase.
-
-Поздние правки new rule не помечаются применёнными одним reschedule ack:
-они готовятся следующим put на новом rule с его подтверждёнными counters.
-Все journal facts остаются remaining, mappings/ack marks ещё не сохраняются
-автоматически. Наличие regular facts продолжает блокировать отправку.
-
-## Оставшаяся часть compound resolver
-
-Связанные reschedule (A→B→C) теперь проходят последовательно: один следующий
-переход, затем проверенный ack и новое основание. Зависимая часть получает
-transition_dependency, факты не объявляются поглощёнными всей цепочкой.
-Старое правило, ещё никогда не опубликованное, при known absence также не
-получает выдуманное reschedule основание; нужен отдельный план сведения.
-Исторический reschedule day, changed intermediate template, promotion/detach,
-сложные terminal day и structural transitions остаются следующими частями
-T41c5c2b. Это явные границы, не завершённые функции.
-
-Storage умеет сохранить/freeze/прочитать новую **явно добавленную** SyncIntent и
-Receipt, но автоматическое превращение фактов в durable очередь/retire facts/
-server transport этим шагом не подключается. Схема БД/публичные копии прежние.
+Pure validation/effects не являются сервером. Actual queue/FIFO/restart/coverage/
+retirement — SYNC_PREPARE_LOOP.md; приёмка — SYNC_BLOCK1_ACCEPTANCE.md. Старый строгий
+клиент новый action отвергает, не выполняет половину перехода. SQLite v21/garden v7
+и зависимости прежние. HTTP/inbound/UI подключения остаются следующими блоками.

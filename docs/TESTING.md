@@ -1,5 +1,34 @@
 # Проверка «Ритма»
 
+## Первый блок очереди принят — 27 ноября
+
+Приёмочные критерии и привязка к тестам: SYNC_BLOCK1_ACCEPTANCE.md.
+Итоговый expanded DEVELOPMENT: **886 passed, 6 GUI deselected (73,77 с)**,
+/tmp/ritm-block1-final-verified.log. Дополнительные завершающие current child
+restore / skipped slot / raw ordinary full lifecycle: **3 passed (1,15 с)**,
+/tmp/ritm-block1-extra-acceptance.log. Production code после общего прогона
+не менялся. Тестовый fake response использует реальные pure validators и полный
+SnapshotCollector; готовность реального сервера этим не доказывается.
+
+GUI backup+regular offscreen **3 passed (24,45 с)**,
+/tmp/ritm-block1-gui-ready.log; native X11 **3 passed (23,38 с)**,
+/tmp/ritm-block1-native-ready.log. В первом native run был один early-click
+repeatEnabled failure, isolated readiness probe его не воспроизвёл. GuiHarness
+теперь ожидает exposed window и visible/enabled target; production UI не изменён.
+Root cause первого transient сбоя не доказана, повторные проверки прошли.
+Windows/ручной визуальный осмотр/full application suite не выполнялись.
+
+Ruff check/format всех 19 изменённых Python файлов и git diff --check passed.
+Секреты/личные профили/сеть/сервер не использовались. Schema v21/garden v7/deps
+прежние; staged backup stripping/миграции/paired rollback входят в общий набор.
+Далее второй блок category/calendar/AI capture; transport barrier сохраняется.
+
+## Архив результатов предыдущих checkpointов
+
+Числа и оговорки ниже отражают состояние в соответствующий момент; актуальная
+приёмка первого блока приведена выше.
+
+
 ## Cached preparation + settled retirement
 
 843 passed/6 GUI deselected (56,32 с), /tmp/ritm-cached-loop-final-suite.log:

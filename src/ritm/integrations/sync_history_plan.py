@@ -269,12 +269,24 @@ def _detach_proposals(changes, context, bases, identities, occupied):
         _uuid(base.id)
         if base.entry is not None:
             entry = base.entry
-            if type(entry) is not SnapshotEntry or type(entry.entity) is not TaskRecord:
-                raise ValueError("Нужно известное живое ordinary представление")
+            if type(entry) is not SnapshotEntry or type(entry.entity) not in (
+                TaskRecord,
+                RemovalRecord,
+            ):
+                raise ValueError("Нужно известное ordinary представление")
             _counter(entry.revision, positive=True)
             _counter(entry.delete_epoch)
             _checked(entry.entity)
-            if entry.entity.task.id != base.id:
+            if type(entry.entity) is TaskRecord:
+                valid = entry.entity.task.id == base.id
+            else:
+                valid = (
+                    entry.entity.entity_kind == "task"
+                    and entry.entity.entity_id == base.id
+                    and entry.entity.revision == entry.revision
+                    and entry.entity.delete_epoch == entry.delete_epoch
+                )
+            if not valid:
                 raise ValueError("Не совпадает ordinary root")
         tasks[base.id] = base.entry
     proposals, blocks, unchanged, handled = [], [], [], set()
@@ -310,7 +322,12 @@ def _detach_proposals(changes, context, bases, identities, occupied):
                 continue
         elif root in occupied:
             reason = "current_root"
-        elif tasks[root] is not None:
+        elif tasks[root] is not None and not (
+            type(tasks[root].entity) is RemovalRecord
+            and tasks[root].entity.reason == "type_changed"
+            and bases.get(identifier) is not None
+            and tasks[root].delete_epoch <= bases[identifier].delete_epoch
+        ):
             reason = "ordinary_target_exists"
         elif bases[identifier] is None or type(bases[identifier].entity) is not OccurrenceRecord:
             reason = "live_history_required"
@@ -320,15 +337,15 @@ def _detach_proposals(changes, context, bases, identities, occupied):
             if mapped is None:
                 reason = "identity_mapping_required"
             else:
-
-                def shape(task):
-                    return (
-                        task.id,
-                        tuple((x.id, tuple(y.id for y in x.items)) for x in task.subtasks),
-                    )
-
-                if shape(mapped.task) != shape(before.entity.current.task):
+                original = _mapped(change.before, identities)
+                if mapped.task.id != before.entity.current.task.id:
                     reason = "detach_tree_conflict"
+                elif original is None:
+                    reason = "identity_mapping_required"
+                elif (_nodes(original.current.task) - _nodes(before.entity.current.task)) & _nodes(
+                    mapped.task
+                ):
+                    reason = "node_restore_required"
                 else:
                     proposals.append(
                         HistoryProposal(
