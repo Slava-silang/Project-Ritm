@@ -8,7 +8,7 @@ from uuid import UUID
 
 from ritm.domain.tasks import Task
 from ritm.integrations.sync_codec import Entity, TaskRecord, decode_entity, encode_entity
-from ritm.integrations.sync_operations import PAYLOADS, target_identity
+from ritm.integrations.sync_operations import PAYLOADS, payload_matches_target
 
 SYNC_OBJECTS = ("sync_binding", "sync_intents", "sync_intents_target")
 SYNC_SCHEMA = (
@@ -79,12 +79,24 @@ def _intent(intent):
         or intent.target_kind not in PAYLOADS
         or type(intent.action) is not str
         or intent.action
-        not in ("create", "put", "restore", "delete", "prune", "stop_regular", "rollover")
+        not in (
+            "create",
+            "put",
+            "restore",
+            "delete",
+            "prune",
+            "stop_regular",
+            "rollover",
+            "reschedule_regular",
+        )
     ):
         raise ValueError("Неизвестное действие синхронизации")
     if intent.target_kind == "calendar_settings" and intent.action not in ("create", "put"):
         raise ValueError("Общую настройку нельзя удалить этим действием")
-    if intent.action in ("stop_regular", "rollover") and intent.target_kind != "regular":
+    if (
+        intent.action in ("stop_regular", "rollover", "reschedule_regular")
+        and intent.target_kind != "regular"
+    ):
         raise ValueError("Действие требует регулярное расписание")
     if intent.action == "prune" and intent.target_kind not in ("task", "regular", "occurrence"):
         raise ValueError("Действие требует дерево задачи")
@@ -96,7 +108,9 @@ def _intent(intent):
         if type(intent.payload) is not PAYLOADS[intent.target_kind]:
             raise ValueError("Тип данных не соответствует намерению")
         payload = encode_entity(intent.payload).decode("utf-8")
-        if target_identity(intent.payload) != (intent.target_kind, intent.target_id):
+        if not payload_matches_target(
+            intent.action, intent.target_kind, intent.target_id, intent.payload
+        ):
             raise ValueError("Идентификатор данных не соответствует намерению")
     return (identifier, dependency, intent.target_kind, target, intent.action, payload)
 

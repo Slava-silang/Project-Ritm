@@ -1,5 +1,34 @@
 # Проверка «Ритма»
 
+## T41c5c2b1 — atomic reschedule, 27 ноября
+
+Итоговый целевой набор DEVELOPMENT с test_sync_reschedule: **772 passed,
+6 GUI deselected (47,39 с)**, /tmp/ritm-reschedule-suite.log. 18 новых проверок:
+wire roundtrip и Receipt epoch+1, два эффекта одной revision/epoch с прежним
+root и валидный full SnapshotCollector, отсутствие/неверный vacancy proof,
+чужой root/узлы/неизменный schedule/неактуальный day/base, неверный receipt epoch/
+тот же rule ID/обычный put с чужим payload ID. Проверены ack provenance против
+похожего snapshot, неизвестная vacancy и frozen source обеих сторон, поздний
+edit нового rule отдельным put на новом base, old completion→canonical rollover
+→atomic reschedule, chain block без половины публикации, новый target tombstone
+не переиспользуется. Storage enqueue/freeze/reopen/applied receipt сохраняют
+байты и факты; old-target ack не выводит автоматически base нового target.
+
+Обновлён прежний тест, ожидавший blanket atomic_schedule_change: простой
+reschedule теперь допустим, compound chains по-прежнему blocked. Первый прогон
+до обновления ожидания: 180 passed/1 failed. Затем current 25 passed (2,76 с),
+focused reschedule/current 42 passed (4,19 с); наборы пересекаются. Финальный
+общий прогон выше зелёный.
+
+GUI regular/tasks capture off/on + backup: offscreen **5 passed (45,90 с)**,
+/tmp/ritm-reschedule-gui.log; native Linux X11 **5 passed (44,59 с)**,
+/tmp/ritm-reschedule-native.log. Это regression реальных окон, не реальный обмен
+и не отдельный визуальный обзор. Ruff check/format 6 Python, diff passed.
+Schemas v19/v7/dependencies прежние, миграции нет; расширен action неопубликованного
+wire v1, старый строгий клиент должен отвергать неизвестный action. Full pytest/
+Windows/Wayland/standalone/личный профиль/аккаунты/HTTP/server SQL/inbound/
+релизный аудит не проверялись. Двухэффектный план пока не пишет настоящий сервер.
+
 ## T41c5c2a — current next-step proposals, 27 ноября
 
 Первый полный целевой набор с test_sync_regular_plan: **753 passed, 6 GUI

@@ -92,17 +92,25 @@ def accept(proposal, context):
         status="applied",
         revision=op.base_revision + 1,
         delete_epoch=op.delete_epoch
-        + (op.action in ("delete", "stop_regular", "prune", "restore")),
+        + (op.action in ("delete", "stop_regular", "prune", "restore", "reschedule_regular")),
         error=None,
     )
     before = next(base.entry for base in context.bases if base.id == proposal.id)
-    if op.action in ("rollover", "stop_regular", "delete"):
-        effects = plan_regular_effects(before, op, ack, context.settings, context.moment)
+    if op.action in ("rollover", "stop_regular", "delete", "reschedule_regular"):
+        effects = plan_regular_effects(
+            before,
+            op,
+            ack,
+            context.settings,
+            context.moment,
+            vacant_rule_id=op.payload.id if op.action == "reschedule_regular" else None,
+        )
         entry = effects.entries[0]
     else:
         entry = SnapshotEntry(
             revision=ack.revision, delete_epoch=ack.delete_epoch, entity=op.payload
         )
+    replacement_entry = effects.entries[1] if op.action == "reschedule_regular" else None
     mapping = dict(context.identities)
     mapping.update(proposal.identities)
     occupied = set(context.occupied_ids)
@@ -113,11 +121,24 @@ def accept(proposal, context):
     return replace(
         context,
         bases=tuple(
-            RegularBase(id=b.id, entry=entry) if b.id == proposal.id else b for b in context.bases
+            RegularBase(id=b.id, entry=entry)
+            if b.id == proposal.id
+            else (
+                RegularBase(id=b.id, entry=replacement_entry)
+                if replacement_entry is not None and b.id == replacement_entry.entity.id
+                else b
+            )
+            for b in context.bases
         ),
         identities=tuple(mapping.items()),
         occupied_ids=frozenset(occupied),
         acknowledged_barriers=context.acknowledged_barriers | frozenset(proposal.barrier_changes),
+        acknowledged_reschedules=context.acknowledged_reschedules
+        | (
+            frozenset({proposal.transition_change})
+            if proposal.transition_change is not None
+            else frozenset()
+        ),
     )
 
 
@@ -287,7 +308,7 @@ def test_future_first_day_can_be_created_without_spurious_rollover(tmp_path):
     assert proposal.action == "create" and proposal.payload.current_day == DAY + timedelta(days=5)
 
 
-def test_reschedule_is_blocked_for_both_rules(tmp_path):
+def test_reschedule_replaces_both_rules_in_one_command(tmp_path):
     path = tmp_path / "tasks.sqlite3"
     changes, context = seed(path)
     changes = mutate(
@@ -299,8 +320,15 @@ def test_reschedule_is_blocked_for_both_rules(tmp_path):
     new = changes[-1].after
     context = replace(context, bases=(*context.bases, RegularBase(id=new.id, entry=None)))
     result = plan(changes, context)
-    assert not result.proposals and len(result.blocked) == 2
-    assert {b.reason for b in result.blocked} == {"atomic_schedule_change"}
+    assert len(result.proposals) == 1 and not result.blocked
+    proposal = result.proposals[0]
+    assert proposal.action == "reschedule_regular" and proposal.id == changes[-1].before.id
+    assert proposal.payload.id == new.id
+    assert proposal.transition_change == changes[-1].id
+    context = accept(proposal, context)
+    confirmed = plan(changes, context)
+    assert not confirmed.proposals and not confirmed.blocked
+    assert set(confirmed.unchanged) == {proposal.id, new.id}
 
 
 def test_server_removed_node_requires_explicit_restore(tmp_path):

@@ -1,5 +1,16 @@
 # Архитектурная основа
 
+## T41c5c2b1 — atomic reschedule
+
+Wire/intent reschedule_regular адресует old rule, payload new rule с тем же
+root/структурой UUID; общий payload_matches_target сохраняет прежнюю строгость
+остальных действий. Applied epoch+1; pure effects — old regular mark + new
+regular одной revision/epoch при явном vacant_rule_id. Current planner сначала
+согласует старый current, затем reschedule; подтверждение относится к одному
+transition_change, поздние новые правки не поглощаются. Два known bases и
+future ledger ack нужны, cross-target base не угадывается. Цепочки/другие
+compound cases далее, HTTP/auto enqueue/retire нет. SYNC_RESCHEDULE.md.
+
 ## T41c5c2a — current regular next-step proposals
 
 sync_regular_plan.py готовит одно действие на rule с известными counters:

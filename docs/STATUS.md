@@ -1,5 +1,49 @@
 # Текущее состояние
 
+## T41c5c2b1 — atomic reschedule готов, 27 ноября
+
+Сохранён прежний порядок T41 по уточнению пользователя, перестановок этапов нет.
+Новый action неопубликованного v1 reschedule_regular: target old rule,
+payload new RegularRecord с другим rule UUID. Shared payload_matches_target
+сохраняет строгие прежние ID проверки остальных действий в wire/intent.
+Applied receipt требует epoch+1. Pure plan_regular_effects при явном новом
+vacant_rule_id выдаёт old regular mark + new regular одной revision/epoch,
+с тем же root/структурой UUID, без промежуточной ordinary task/дубликата.
+Серверную vacancy/owner/CAS/replay/SQL атомарность ещё должен реализовать T41d.
+
+Current planner требует known bases обеих сторон (new явно absent), сначала
+согласует old current (put/rollover при необходимости), затем compound command.
+Transition_change/acknowledged_reschedules связывают доказательство с одним
+исходным фактом. Один похожий snapshot не считается нашим подтверждением;
+поздние новые правки не поглощаются. New target после ack использует отдельный
+known base, не угадывает его из cross-target receipt. Frozen/retry bytes прежние.
+Chains/structural/historical-day/template/terminal cases и promotion/detach ещё
+blocked. Полный контракт/границы — SYNC_RESCHEDULE.md.
+
+Schemas tasks v19/garden v7/deps прежние, миграции нет. Новая команда может
+явно сохраняться/freeze/читать receipt через storage API; автоматического
+facts→durable enqueue/retire/mapping persistence/HTTP/inbound/UI подключения нет.
+Send barrier прежний, личный профиль не открывался.
+
+772 passed/6 GUI deselected (47,39 с), /tmp/ritm-reschedule-suite.log.
+GUI offscreen 5 passed (45,90 с), native Linux X11 5 passed (44,59 с).
+Ruff check/format 6 Python, diff passed. Старое blanket-block ожидание теста
+обновлено, детали TESTING.md. Full suite/Windows/Wayland/standalone/визуальный
+обзор/релизный аудит/аккаунты/реальный сервер/сеть не проверялись.
+
+Изменены sync_operations/sync_transitions/sync_regular_plan/sync_intents,
+новый test_sync_reschedule, test_sync_regular_plan; docs SYNC_RESCHEDULE/
+REGULAR_PLAN/HISTORY_PLAN/PROTOCOL/SPEC/ARCHITECTURE/DEVELOPMENT/TASKS/TESTING/STATUS.
+assets/theme_* пользователя не затронуты. Сохранение: локальный коммит
+`feat: prepare atomic regular schedule replacement` (ID — git log).
+T41c5c2b1 done; T41c5c2b/T41c5c2/T41c5c/T41c5/T41c in_progress.
+Следующее точное действие: T41c5c2b2 promotion/detach (ordinary/history↔regular)
+с сохранением root и атомарным удалением прежнего представления. Затем chains/
+structural/day/template/terminal conflicts, durable prepare/receipt/mappings/
+retire и full graph checks; calendar/category/AI после regular. Transport
+выключен до полного покрытия; до inbound согласовать награды сада. Сервер/бот/
+размещение/публикация отдельно.
+
 ## T41c5c2a — current next-step proposals готовы, 27 ноября
 
 Новый integrations/sync_regular_plan.py: одно следующее действие на rule с

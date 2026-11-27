@@ -1,5 +1,12 @@
 # Окружение, запуск и выпуск
 
+## Reschedule — T41c5c2b1
+
+К предыдущему целевому набору добавить `tests/test_sync_reschedule.py`.
+Квитанции/vacancy/context подменные, никакого server/HTTP. Расширен action
+неопубликованного v1, schemas v19/v7/deps прежние. Старый строгий клиент новый
+action не пропускает; контракт — SYNC_RESCHEDULE.md. GUI regression прежний.
+
 ## Current proposals — T41c5c2a
 
 К предыдущему набору добавить `tests/test_sync_regular_plan.py`. Контекст времени/

@@ -41,6 +41,7 @@ class RegularContext:
     occupied_ids: frozenset[UUID] = frozenset()
     frozen_changes: frozenset[UUID] = frozenset()
     acknowledged_barriers: frozenset[UUID] = frozenset()
+    acknowledged_reschedules: frozenset[UUID] = frozenset()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -53,6 +54,7 @@ class RegularProposal:
     identities: tuple[tuple[UUID, UUID], ...] = field(repr=False)
     source_changes: tuple[UUID, ...]
     barrier_changes: tuple[UUID, ...] = ()
+    transition_change: UUID | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -91,12 +93,17 @@ def _context(context, server_id):
     for values in (context.bases, context.identities):
         if type(values) is not tuple or len(values) > MAX_SNAPSHOT_ITEMS:
             raise ValueError("Превышены границы контекста повторов")
-    for values in (context.occupied_ids, context.frozen_changes, context.acknowledged_barriers):
+    for values in (
+        context.occupied_ids,
+        context.frozen_changes,
+        context.acknowledged_barriers,
+        context.acknowledged_reschedules,
+    ):
         if type(values) is not frozenset or len(values) > MAX_SNAPSHOT_ITEMS:
             raise ValueError("Превышены границы контекста повторов")
         for value in values:
             checked_uuid(value)
-    if context.frozen_changes & context.acknowledged_barriers:
+    if context.frozen_changes & (context.acknowledged_barriers | context.acknowledged_reschedules):
         raise ValueError("Противоречивые подтверждения барьеров")
     identities, inverse = {}, set()
     for pair in context.identities:
@@ -383,12 +390,139 @@ def _next(rule, base, identities, context, today):
     return None
 
 
+def _shape(task):
+    return (
+        task.id,
+        tuple((child.id, tuple(item.id for item in child.items)) for child in task.subtasks),
+    )
+
+
+def _reschedules(changes, rules, bases, identities, context, today):
+    edges = [
+        c
+        for c in changes
+        if type(c.before) is RegularRecord
+        and type(c.after) is RegularRecord
+        and c.before.id != c.after.id
+    ]
+    counts = {}
+    for edge in edges:
+        for key in (edge.before.id, edge.after.id):
+            counts[key] = counts.get(key, 0) + 1
+    handled, proposed, blocked, unchanged = set(), [], [], []
+    for edge in edges:
+        old, new = edge.before.id, edge.after.id
+        sources = tuple(dict.fromkeys(c.id for key in (old, new) for c in rules[key].changes))
+        reason = None
+        if counts[old] > 1 or counts[new] > 1:
+            reason = "reschedule_chain_required"
+        elif context.frozen_changes.intersection(sources):
+            reason = "frozen_change"
+        elif old not in bases or new not in bases:
+            reason = "unknown_base"
+        elif edge.id in context.acknowledged_reschedules:
+            if (
+                bases[old] is None
+                or type(bases[old].entity) is not RemovalRecord
+                or bases[new] is None
+                or type(bases[new].entity) is not RegularRecord
+            ):
+                reason = "reschedule_ack_conflict"
+            else:
+                # The verified receipt and both effects are supplied by the future ledger.
+                handled.add(old)
+                unchanged.append(old)
+                rules[new].blocked = None
+                continue
+        elif bases[old] is None:
+            reason = "old_rule_absent"
+        elif type(bases[old].entity) is RemovalRecord:
+            reason = "reschedule_confirmation_required"
+        elif bases[new] is not None:
+            reason = "new_rule_exists"
+        if not reason:
+            before = bases[old]
+            pending = _next(replace(rules[old], blocked=None), before, identities, context, today)
+            if type(pending) is str:
+                reason = pending
+            elif pending is not None:
+                action, payload, pairs = pending
+                proposed.append(
+                    _proposal(old, action, payload, pairs, rules[old], before, context, sources)
+                )
+            else:
+                target = _map_record(edge.after, identities)
+                if target is None:
+                    reason = "identity_mapping_required"
+                elif target.current_day != scheduled_day(
+                    target.first_day, target.interval_days, today
+                ):
+                    reason = "reschedule_day_conflict"
+                elif _shape(target.current.task) != _shape(before.entity.current.task):
+                    reason = "reschedule_tree_change"
+                elif (target.first_day, target.interval_days) == (
+                    before.entity.first_day,
+                    before.entity.interval_days,
+                ):
+                    reason = "reschedule_schedule_conflict"
+                elif task_node_ids(target.current.task) & (
+                    context.occupied_ids - task_node_ids(before.entity.current.task)
+                ):
+                    reason = "occupied_identity"
+                else:
+                    pairs = tuple(
+                        (key, identities[key])
+                        for key in sorted(task_node_ids(edge.after.current.task), key=str)
+                    )
+                    proposed.append(
+                        _proposal(
+                            old,
+                            "reschedule_regular",
+                            target,
+                            pairs,
+                            rules[old],
+                            before,
+                            context,
+                            sources,
+                            transition_change=edge.id,
+                        )
+                    )
+        handled.update((old, new))
+        if reason:
+            for key in (old, new):
+                if not any(b.id == key for b in blocked):
+                    blocked.append(RegularBlock(id=key, reason=reason, source_changes=sources))
+    return handled, proposed, blocked, unchanged
+
+
+def _proposal(key, action, payload, pairs, rule, base, context, sources, *, transition_change=None):
+    if payload is not None:
+        checked_entity(payload)
+    return RegularProposal(
+        id=key,
+        action=action,
+        base_revision=base.revision if base is not None else 0,
+        delete_epoch=base.delete_epoch if base is not None else 0,
+        payload=payload,
+        identities=pairs,
+        source_changes=sources,
+        transition_change=transition_change,
+        barrier_changes=_barriers(rule, payload.current_day, context.acknowledged_barriers)[4]
+        if action in ("prune", "restore")
+        else (),
+    )
+
+
 def plan_regular(changes, context: RegularContext, *, server_id: UUID) -> RegularPlan:
     """One proposal per rule; never infer dependent revisions or retire source facts."""
     bases, identities, today = _context(context, server_id)
     rules = _rules(changes)
-    proposals, blocked, unchanged = [], [], []
+    handled, proposals, blocked, unchanged = _reschedules(
+        changes, rules, bases, identities, context, today
+    )
     for key, rule in rules.items():
+        if key in handled:
+            continue
         sources = tuple(c.id for c in rule.changes)
         decision = (
             "unknown_base"
@@ -401,24 +535,8 @@ def plan_regular(changes, context: RegularContext, *, server_id: UUID) -> Regula
             unchanged.append(key)
         else:
             action, payload, pairs = decision
-            if payload is not None:
-                checked_entity(payload)
-            base = bases[key]
             proposals.append(
-                RegularProposal(
-                    id=key,
-                    action=action,
-                    base_revision=base.revision if base is not None else 0,
-                    delete_epoch=base.delete_epoch if base is not None else 0,
-                    payload=payload,
-                    identities=pairs,
-                    source_changes=sources,
-                    barrier_changes=_barriers(
-                        rule, payload.current_day, context.acknowledged_barriers
-                    )[4]
-                    if action in ("prune", "restore")
-                    else (),
-                )
+                _proposal(key, action, payload, pairs, rule, bases[key], context, sources)
             )
     return RegularPlan(
         proposals=tuple(proposals),

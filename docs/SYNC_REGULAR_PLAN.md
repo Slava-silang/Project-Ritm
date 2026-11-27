@@ -104,7 +104,8 @@ Deleted server rule не возрождается от старого save. Дл
 доказательством принятия именно нашего stop.
 
 History→regular/ordinary→regular promotion блокируется atomic_type_transition,
-reschedule — atomic_schedule_change для обеих сторон. Detach покрыт history
+Один reschedule теперь обрабатывается атомарно по SYNC_RESCHEDULE.md;
+цепочки/структурные и исторические случаи всё ещё блокируются для обеих сторон. Detach покрыт history
 planner блокировкой атомарной смены типа. Шаблон между пропущенными днями,
 эти compound cases и terminal_day_conflict — следующая T41c5c2b, **не выполнены**
 этим шагом. Не публиковать отдельно половину такого перехода.

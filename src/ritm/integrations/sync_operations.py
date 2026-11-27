@@ -100,6 +100,12 @@ def target_identity(record):
     raise SyncCodecError()
 
 
+def payload_matches_target(action, kind, identifier, payload):
+    if action == "reschedule_regular":
+        return kind == "regular" and type(payload) is RegularRecord and payload.id != identifier
+    return target_identity(payload) == (kind, identifier)
+
+
 def occurrence_id(rule_id: UUID, day: date) -> UUID:
     if type(rule_id) is not UUID or type(day) is not date:
         raise SyncCodecError()
@@ -115,6 +121,7 @@ def _validate(operation):
         "prune",
         "stop_regular",
         "rollover",
+        "reschedule_regular",
     ):
         raise SyncCodecError()
     if operation.target_kind == "calendar_settings" and operation.action not in ("create", "put"):
@@ -130,7 +137,10 @@ def _validate(operation):
         "occurrence",
     ):
         raise SyncCodecError()
-    if operation.action in ("rollover", "stop_regular") and operation.target_kind != "regular":
+    if (
+        operation.action in ("rollover", "stop_regular", "reschedule_regular")
+        and operation.target_kind != "regular"
+    ):
         raise SyncCodecError()
     if operation.action in ("delete", "stop_regular"):
         if operation.payload is not None:
@@ -138,7 +148,9 @@ def _validate(operation):
     else:
         if type(operation.payload) is not PAYLOADS[operation.target_kind]:
             raise SyncCodecError()
-        if target_identity(operation.payload) != (operation.target_kind, operation.target_id):
+        if not payload_matches_target(
+            operation.action, operation.target_kind, operation.target_id, operation.payload
+        ):
             raise SyncCodecError()
     if operation.action == "rollover":
         record = operation.payload
@@ -295,7 +307,13 @@ def verify_receipt(operation: Operation, receipt: Receipt) -> None:
     ):
         raise SyncCodecError()
     if receipt.status == "applied":
-        increment = operation.action in ("delete", "restore", "stop_regular", "prune")
+        increment = operation.action in (
+            "delete",
+            "restore",
+            "stop_regular",
+            "prune",
+            "reschedule_regular",
+        )
         if (
             receipt.revision <= operation.base_revision
             or receipt.delete_epoch != operation.delete_epoch + increment

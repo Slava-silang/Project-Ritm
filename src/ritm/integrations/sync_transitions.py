@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from ritm.domain.recurrence import scheduled_day
@@ -60,6 +61,8 @@ def plan_regular_effects(
     receipt: Receipt,
     settings: CalendarRecord,
     moment: datetime,
+    *,
+    vacant_rule_id: UUID | None = None,
 ) -> RegularEffects:
     """One CAS transition over a known server aggregate; apply all entries atomically later."""
     if type(before) is not SnapshotEntry or type(before.entity) is not RegularRecord:
@@ -97,6 +100,34 @@ def plan_regular_effects(
             )
         )
         entities = (expected, previous)
+    elif operation.action == "reschedule_regular":
+        replacement = operation.payload
+
+        def shape(task):
+            return (task.id, tuple((x.id, tuple(y.id for y in x.items)) for x in task.subtasks))
+
+        if (
+            type(replacement) is not RegularRecord
+            or type(vacant_rule_id) is not UUID
+            or vacant_rule_id != replacement.id
+            or replacement.id == regular.id
+            or (replacement.first_day, replacement.interval_days)
+            == (regular.first_day, regular.interval_days)
+            or replacement.current_day
+            != scheduled_day(replacement.first_day, replacement.interval_days, today)
+            or shape(replacement.current.task) != shape(regular.current.task)
+        ):
+            raise SyncCodecError()
+        entities = (
+            RemovalRecord(
+                entity_kind="regular",
+                entity_id=regular.id,
+                revision=receipt.revision,
+                delete_epoch=receipt.delete_epoch,
+                reason="user_deleted",
+            ),
+            replacement,
+        )
     elif operation.action == "stop_regular":
         entities = (
             RemovalRecord(

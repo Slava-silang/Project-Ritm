@@ -91,7 +91,8 @@ TaskStore.prepare_sync_history читает binding и журнал одним B
 Сохраняется общий барьер next_sync_sendable при regular facts.
 
 T41c5c2a готовит next-step current/canonical rollover (SYNC_REGULAR_PLAN.md);
-compound cases ещё T41c5c2b. Далее отображение UUID и
+один reschedule добавлен в T41c5c2b1 (SYNC_RESCHEDULE.md), остальные compound
+cases ещё T41c5c2b. Далее отображение UUID и
 атомарные переходы типов; затем durable prepare/связь proposal→intent→receipt и
 потребление только подтверждённых фактов. Календарь/категории/AI paths после
 regular. Общий account timezone/transport/inbound/награды сада ещё впереди.
