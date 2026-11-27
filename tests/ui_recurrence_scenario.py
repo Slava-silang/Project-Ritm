@@ -88,6 +88,26 @@ try:
         gui.click("saveTaskButton")
         assert len(controller.regularTasks) == 1 and not controller.error
         assert controller.regularTasks[0]["category"] == "Чтение"
+        if "--capture" in sys.argv:
+            controller.selectTask(task_id)
+            gui.idle()
+            controller.renameNode(task_id, "Прошлое чтение")
+            gui.idle()
+            controller.setCompleted(task_id, False)
+            gui.idle()
+            assert not controller.error and controller.detail.get("repeatDays", "") == ""
+            controller.setCompleted(task_id, True)
+            gui.idle()
+            controller.deleteNode(task_id)
+            gui.idle()
+            with TaskStore(profile / "tasks.sqlite3") as inspect:
+                entry = next(row["id"] for row in inspect.list_trash() if row["task_id"] == task_id)
+            controller.restoreEntry(entry)
+            gui.idle()
+            assert not controller.error
+            assert controller.detail["id"] == task_id
+            assert controller.detail.get("repeatDays", "") == ""
+            assert len(controller.regularTasks) == 1
 finally:
     controller.close()
     if "--capture" in sys.argv:
@@ -100,6 +120,9 @@ finally:
                 row.before.current.task.completed for row in changes if row.kind == "rollover"
             )
             assert saved.list_frozen_sync_requests() == ()
+            assert "history" in kinds and "detach" in kinds
+            assert "root_save" in kinds and "root_restore" in kinds
+            assert saved.next_sync_sendable() is None
     window.close()
     engine = None
     app.processEvents()

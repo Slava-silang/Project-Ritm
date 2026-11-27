@@ -133,6 +133,7 @@ def test_no_trash_files_focus_garden_credentials_or_queue_read_or_writes(tmp_pat
             "sync_intents",
             "sync_binding",
             "sync_outbox",
+            "sync_regular_roots",
             "sync_regular_changes",
             "sync_capture",
             "sync_task_presence",

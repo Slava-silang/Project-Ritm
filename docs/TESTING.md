@@ -1,5 +1,32 @@
 # Проверка «Ритма»
 
+## T41c5b — history/detach/restore, 27 ноября
+
+Итоговый целевой набор DEVELOPMENT с test_sync_history_capture: **699 passed,
+6 GUI deselected (39,67 с)**, /tmp/ritm-history-verified.log. Новый отдельный
+набор — **13 passed (1,80 с)**, /tmp/ritm-history-focused-final2.log. Проверены
+history edit с исходной датой/stable slot ID, reopen/deadline detach с сохранением
+root и активной серии, recomplete/restart остаётся ordinary в LocalData,
+stop→edit→delete→restore→purge/запрет ID reuse, current restore без запуска серии,
+history restore как occurrence, current subtree restore явным видом факта,
+четыре post-insert failure rollback по полному SQL dump (включая membership/
+lineage/trash/даты/garden event), suppression/off без detach, migration v18→19
+rename/DDL rollback байт-в-байт, seq/JSON/anchor/frozen bytes/stop lineage,
+backup/import очистка lineage только в staging, legacy archive v18. Дополнительно
+paired failure проверяет исходные строки lineage, /tmp/ritm-history-pair-final.log.
+Source trace исключает новую таблицу.
+
+GUI regular capture off/on + tasks capture off/on + backup: offscreen
+**5 passed (47,36 с)**, /tmp/ritm-history-gui-final.log; native Linux X11
+**5 passed (46,93 с)**, /tmp/ritm-history-native.log. Regular capture-on сценарий
+дополнен history rename/reopen/recomplete/delete/restore и новым процессом.
+Отдельного визуального обзора не было. Первый новый unit: 10 passed/2 failed —
+неверное имя history поля LocalData в тесте; GUI: 4 passed/1 failed — тест ожидал
+обязательный repeatDays у ordinary detail, где поле отсутствует. Исправлены
+ожидания; итоговые наборы зелёные. Ruff check/format 12 Python, diff passed.
+Tasks v19/garden v7/dependencies прежние. Full pytest/Windows/Wayland/standalone/
+личный профиль/аккаунты/HTTP/сервер/inbound/релизный аудит не проверялись.
+
 ## T41c5a — durable regular facts, 27 ноября
 
 Итоговый целевой набор DEVELOPMENT с test_sync_regular_capture: **685 passed,

@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from uuid import UUID, uuid4
 
 from ritm.domain.calendar import from_instant_us
-from ritm.integrations.sync_codec import TaskRecord
+from ritm.integrations.sync_codec import RegularRecord, TaskRecord
 from ritm.storage.sync_intents import SyncIntent, _stored_uuid, _uuid
 from ritm.storage.sync_regular_capture import SyncRegularCaptureMixin
 
@@ -136,8 +136,14 @@ class SyncCaptureMixin(SyncRegularCaptureMixin):
         )
 
     def _capture_task_write(self, before, task, *, restored, regular_before=None):
-        if self._sync_capture_active() and regular_before is not None:
-            self._record_regular_change("save", regular_before, self._regular_sync_record(task))
+        if self._sync_capture_active() and type(regular_before) is RegularRecord:
+            self._record_regular_change(
+                "restore" if restored else "save", regular_before, self._regular_sync_record(task)
+            )
+            return
+        if self._sync_capture_active() and self._capture_history_write(
+            regular_before, task, restored=restored
+        ):
             return
         if not self._sync_capture_active() or not self._ordinary_sync_root(task.id):
             return
@@ -173,6 +179,13 @@ class SyncCaptureMixin(SyncRegularCaptureMixin):
             regular = self._regular_sync_record(task)
             if regular is not None:
                 self._record_regular_change("delete", regular, None)
+                return
+            lineage = self._regular_lineage(task.id)
+            if lineage is not None:
+                self._remember_regular_root(task.id, *lineage)
+                self._record_regular_change(
+                    "root_delete", self._regular_source_record(task), None, lineage=lineage
+                )
                 return
         if not self._sync_capture_active() or not self._ordinary_sync_root(task.id):
             return

@@ -679,6 +679,10 @@ def test_failed_pair_restore_keeps_live_sync_queue(tmp_path, monkeypatch):
             sample, None, interval=1, first=date(2026, 11, 27), today=date(2026, 11, 27)
         )
         expected_regular = store.list_sync_regular_changes()
+        expected_lineage = tuple(
+            tuple(row)
+            for row in store._db.execute("SELECT * FROM sync_regular_roots ORDER BY root_id")
+        )
         expected_task = store.get_task(task.id)
         frozen = store.freeze_sync_intent(
             pending.id,
@@ -711,6 +715,13 @@ def test_failed_pair_restore_keeps_live_sync_queue(tmp_path, monkeypatch):
         assert store.get_task(task.id) == expected_task
         assert store.is_sync_task_capture_enabled()
         assert store.list_sync_regular_changes() == expected_regular
+        assert (
+            tuple(
+                tuple(row)
+                for row in store._db.execute("SELECT * FROM sync_regular_roots ORDER BY root_id")
+            )
+            == expected_lineage
+        )
         assert store.get_sync_task_presence(task.id) == "live"
         if store.get_sync_binding() is None:
             assert store.list_frozen_sync_requests() == ()

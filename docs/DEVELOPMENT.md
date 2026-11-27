@@ -1,5 +1,14 @@
 # Окружение, запуск и выпуск
 
+## История повторов — T41c5b
+
+Текущая tasks schema **v19**, garden v7/dependencies прежние. К предыдущему
+целевому набору добавить `tests/test_sync_history_capture.py`. Regular GUI с
+capture on дополнен history rename/reopen/recomplete/delete/restore и новым
+процессом. Временные профили, без HTTP/аккаунта. Миграция v18 сохраняет journal/
+frozen queue, публичные копии исключают lineage. SYNC_REGULAR_CAPTURE.md.
+Не понижать user_version и не включать capture вручную вместо merge/preview.
+
 ## Переходы повторов — T41c5a
 
 Текущая схема tasks **v18**, garden v7/dependencies прежние. Добавить

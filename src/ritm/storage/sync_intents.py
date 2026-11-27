@@ -243,6 +243,7 @@ def sanitize_sync_backup(path: Path):
         db.execute("PRAGMA foreign_keys=ON")
         db.execute("PRAGMA journal_mode=DELETE")
         db.execute("PRAGMA secure_delete=ON")
+        db.execute("DELETE FROM sync_regular_roots")
         db.execute("DELETE FROM sync_regular_changes")
         db.execute("DELETE FROM sync_outbox")
         db.execute("DELETE FROM sync_intents")

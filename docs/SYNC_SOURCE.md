@@ -2,7 +2,10 @@
 
 `storage/sync_source.py`, mixin TaskStore, готовит данные для первоначального
 предпросмотра. Не подключает аккаунт, не отправляет запросы, не изменяет очередь
-и не применяет входящие. Tasks v18/garden v7; зависимости прежние. Source не читает также capture/presence.
+и не применяет входящие. Tasks v19/garden v7; зависимости прежние. Source не читает также capture/presence.
+
+T41c5b opt-in history detach физически удаляет membership; source возвращает
+корень ordinary и после повторного завершения. Sync lineage/journal не читаются.
 
 ## API и снимок
 

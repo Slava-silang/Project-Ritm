@@ -23,11 +23,11 @@ from ritm.storage.recurrence import RECURRENCE_SCHEMA, RecurrenceMixin
 from ritm.storage.sync_capture import CAPTURE_SCHEMA, SyncCaptureMixin
 from ritm.storage.sync_intents import SYNC_SCHEMA, SyncIntentMixin
 from ritm.storage.sync_outbox import OUTBOX_SCHEMA, SyncOutboxMixin
-from ritm.storage.sync_regular_capture import REGULAR_CAPTURE_SCHEMA
+from ritm.storage.sync_regular_capture import REGULAR_CAPTURE_SCHEMA, migrate_regular_capture
 from ritm.storage.sync_source import SyncSourceMixin
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 18
+SCHEMA_VERSION = 19
 SOURCE_SCHEMA = (
     "CREATE TABLE source_links (key TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, "
     "url TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('task','event')), "
@@ -221,7 +221,7 @@ class TaskStore(
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in range(1, 18) and app_id == APPLICATION_ID:
+            if version in range(1, 19) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -264,6 +264,8 @@ class TaskStore(
                 if version < 18:
                     for statement in REGULAR_CAPTURE_SCHEMA:
                         self._db.execute(statement)
+                elif version < 19:
+                    migrate_regular_capture(self._db)
                 if version < 13:
                     create_source(self._db)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -585,7 +587,7 @@ class TaskStore(
         capture = self._sync_capture_active()
         garden_subscribed = self._garden_subscribed()
         before = self.get_task(task.id) if garden_subscribed or capture else None
-        regular_before = self._regular_sync_record(before) if capture else None
+        regular_before = self._regular_source_record(before) if capture else None
         task_id = str(task.id)
         previous = self._db.execute(
             "SELECT completed FROM nodes WHERE id=? AND kind=0", (task_id,)

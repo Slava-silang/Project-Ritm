@@ -46,9 +46,7 @@ class RecurrenceMixin:
             if self._sync_capture_active():
                 old_task = self.get_task(task.id)
                 if old_task is not None:
-                    capture_before = self._regular_sync_record(old_task) or self._sync_task_record(
-                        old_task
-                    )
+                    capture_before = self._regular_source_record(old_task)
             if category is not None:
                 self._write_category(category)
             if interval is None:

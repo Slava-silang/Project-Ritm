@@ -1,5 +1,16 @@
 # Архитектурная основа
 
+## T41c5b — history/detach/restore, tasks v19
+
+sync_regular_capture расширяет факты до OccurrenceRecord и day; tiny
+sync_regular_roots сохраняет rule/day/root после stop/detach/delete/purge.
+History reopen/deadline атомарно удаляет membership, последующее completion
+остаётся ordinary. Restore явно отличается от save; delete без тел.
+Source читает membership, а не sync metadata. V18 journal пересоздаётся атомарно
+с сохранением seq/anchor/JSON и восстановлением доступной lineage; недостающая
+не выдумывается. Backup staging чистит roots, pair rollback сохраняет.
+Resolver/сетевые барьеры/known base ещё впереди; SYNC_REGULAR_CAPTURE.md.
+
 ## T41c5a — durable regular facts, tasks v18
 
 storage/sync_regular_capture.py расширяет capture: неизменяемые before/after

@@ -1,5 +1,43 @@
 # Текущее состояние
 
+## T41c5b — история повторов и восстановление готовы, 27 ноября
+
+sync_regular_capture хранит OccurrenceRecord before/after с исходным rule/day/
+history ID/completion date. History reopen или deadline атомарно отделяет
+membership; recomplete/restart оставляет ordinary с прежними UUID. Current
+серия не меняется. Tiny sync_regular_roots сохраняет rule/day/root после stop/
+detach/delete/purge. Ordinary правки после stop записываются root_save. Delete
+без тела, root_restore явный; current restore не запускает серию, historical
+restore остаётся occurrence. Current subtree restore отдельно помечен для
+будущего epoch barrier. Ошибки откатывают facts/lineage/дерево/даты/trash/garden.
+
+Tasks v19: journal расширен CHECK/day, новая lineage таблица. V18 migration
+атомарно сохраняет seq/UUID/anchor/JSON/frozen queue и восстанавливает доступную
+lineage из snapshots; неизвестную не выдумывает (границы SYNC_REGULAR_CAPTURE.md).
+Архивы v9–18 поддержаны. Public backup/import чистят roots только в staging,
+internal pair rollback сохраняет. Source не читает journal/roots. Capture default
+off и origin guard прежние; сеть/UI подключения/inbound не включены. Garden v7/
+dependencies прежние; личный профиль не открывался.
+
+699 passed/6 GUI deselected (39,67 с), /tmp/ritm-history-verified.log.
+13 focused passed (1,80 с); дополнительный paired rollback — отдельный passed.
+GUI offscreen 5 passed (47,36 с), native Linux X11 5 passed (46,93 с).
+Ruff check/format 12 Python, diff passed. Первые неверные ожидания новых тестов
+исправлены, детали TESTING.md. Full suite/Windows/Wayland/standalone/визуальный
+обзор/релизный аудит/личные данные/реальная сеть не проверялись.
+
+Изменены sync_regular_capture/sync_capture/sqlite/recurrence/sync_intents/backup,
+новый test_sync_history_capture, migration_support/test_sync_intents/source/
+profile_backup/ui_recurrence_scenario; docs SYNC_REGULAR_CAPTURE/CAPTURE/STORAGE/
+SOURCE/SPEC/ARCHITECTURE/DEVELOPMENT/TASKS/TESTING/STATUS. assets/theme_* не тронуты.
+Сохранение: локальный коммит `feat: capture history detachment and regular task restoration`
+(ID — git log). T41c5b done, T41c5/T41c in_progress.
+Следующее точное действие: T41c5c resolver facts→occurrence/typed intents с
+сохранением промежуточных offline completion, local/server UUID mapping,
+переходами типов, известным base/epoch и зависимостями. До resolver pending facts
+блокируют next_sync_sendable. Затем category/calendar/AI paths. До inbound
+согласовать награды сада. HTTP/сервер/бот/размещение/публикация отдельно.
+
 ## T41c5a — переходы current regular надёжно сохраняются, 27 ноября
 
 Новый storage/sync_regular_capture.py: immutable local RegularChange с typed
