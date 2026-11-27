@@ -186,7 +186,7 @@ def _check_graph(entries):
         identifiers = []
         if isinstance(entity, RemovalRecord):
             identifiers = [entity.entity_id]
-            if entity.entity_kind == "occurrence":
+            if entity.entity_kind == "occurrence" and entity.reason != "type_changed":
                 identifiers.append(entity.root_id)
         elif isinstance(entity, CalendarRecord):
             identifiers = [entity.id]

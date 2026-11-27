@@ -84,7 +84,7 @@ class RemovalRecord:
     entity_id: UUID
     revision: int
     delete_epoch: int
-    reason: Literal["user_deleted", "retention"]
+    reason: Literal["user_deleted", "retention", "type_changed"]
     root_id: UUID | None = None
 
 
@@ -338,6 +338,7 @@ def _parse(value):
         ) or reason not in (
             "user_deleted",
             "retention",
+            "type_changed",
         ):
             raise SyncCodecError()
         root = _uuid(data["root_id"]) if data["root_id"] is not None else None
@@ -346,6 +347,7 @@ def _parse(value):
             (entity_kind in ("node", "occurrence")) != (root is not None)
             or root == identifier
             or (reason == "retention" and entity_kind not in ("task", "block", "occurrence"))
+            or (reason == "type_changed" and entity_kind != "occurrence")
         ):
             raise SyncCodecError()
         return RemovalRecord(

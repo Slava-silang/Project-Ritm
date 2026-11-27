@@ -1,5 +1,35 @@
 # Текущее состояние
 
+## T41c5c2b2 — checkpoint detach contract, 27 ноября
+
+Пользователь разрешил продолжать всю локальную синхронизацию до серверной части,
+в прежнем порядке. Общая задача НЕ завершена; сервер не проектировать сейчас.
+Добавлен wire/intent detach_occurrence (occurrence→TaskRecord, epoch+1), pure
+plan_detach_effects с known base/receipt/vacant_task_id и неизменной структурой IDs.
+Два эффекта: occurrence mark reason=type_changed + ordinary task с прежним root.
+Новый reason допускается только для occurrence. Snapshot graph не резервирует
+root у type_changed mark: живое новое представление может сохранить тот же ID.
+Обычные user_deleted/retention marks сохраняют прежнюю защиту root.
+Это контракт и чистые эффекты, НЕ автоматический resolver/enqueue/inbound/SQL.
+
+375 целевых тестов passed (4,89 с), /tmp/ritm-detach-check.log: новый detach,
+codec/pages/operations/transitions/intents/outbox. Ruff check/format 6 Python и
+diff --check passed. Full suite/GUI/Linux native/Windows/реальная сеть этим
+checkpoint не проверялись. Schemas v19/v7/dependencies прежние, личный профиль
+не открывался. Новый action/reason расширяет неопубликованный v1, старые строгие
+клиенты должны отвергать неизвестные значения, без silent downgrade.
+
+Изменены sync_codec/pages/operations/transitions/sync_intents, test_sync_detach,
+STATUS/TASKS/TESTING/SYNC_PROTOCOL. Сохранение: локальный коммит
+`feat: define atomic history detachment effects` (ID — git log).
+Следующее: завершить T41c5c2b2 — planner promotion/detach и его интеграцию с
+известными target bases/UUID maps/frozen/ack guards; затем оставшиеся compound
+cases, durable queue/mappings/receipt/retire, calendar/category/AI capture,
+приём/первоначальный merge через подменный сервер. До inbound согласовать награды
+сада за новые remote completions. Настоящий сервер T41d только после локальной
+части. assets/theme_* не включать.
+
+
 ## T41c5c2b1 — atomic reschedule готов, 27 ноября
 
 Сохранён прежний порядок T41 по уточнению пользователя, перестановок этапов нет.

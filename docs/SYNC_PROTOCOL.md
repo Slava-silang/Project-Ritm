@@ -384,3 +384,15 @@ Target — old rule, payload — другой RegularRecord; epoch+1, два э�
 ревизии. Явная проверка vacancy внутри future server transaction обязательна;
 строгие старые клиенты отвергают новый action, downgrade нет. Контракт/границы/
 тесты — SYNC_RESCHEDULE.md. Это не работающий сервер или проверка авторизации.
+
+
+## Detach contract checkpoint
+
+Неопубликованный v1: detach_occurrence адресует occurrence, payload TaskRecord.
+Applied epoch+1. Pure plan_detach_effects требует known before/CAS/receipt и
+vacant_task_id, сохраняет root/child/item IDs и выдаёт два эффекта одной ревизии:
+occurrence mark type_changed + ordinary task. Type_changed только occurrence;
+его root не считается удалённым самим фактом смены представления. Проверка
+vacancy/owner и запись обоих эффектов атомарно — обязанность будущего caller.
+Автоматический planner/transport ещё не реализован. Старые клиенты новый reason
+и action отвергают, не пропускают молча.

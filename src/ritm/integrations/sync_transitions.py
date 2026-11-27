@@ -163,3 +163,61 @@ def plan_regular_effects(
             for entity in entities
         ),
     )
+
+
+@_guard
+def plan_detach_effects(
+    before: SnapshotEntry,
+    operation: Operation,
+    receipt: Receipt,
+    *,
+    vacant_task_id: UUID | None = None,
+) -> RegularEffects:
+    """Detach history in one proposed transaction; vacancy/owner must be checked by caller."""
+    if type(before) is not SnapshotEntry or type(before.entity) is not OccurrenceRecord:
+        raise SyncCodecError()
+    history = decode_entity(encode_entity(before.entity))
+    verify_receipt(operation, receipt)
+    replacement = operation.payload
+    from ritm.integrations.sync_codec import TaskRecord
+
+    if (
+        operation.action != "detach_occurrence"
+        or operation.target_kind != "occurrence"
+        or operation.target_id != history.id
+        or type(replacement) is not TaskRecord
+        or receipt.status != "applied"
+        or before.revision <= 0
+        or operation.base_revision != before.revision
+        or operation.delete_epoch != before.delete_epoch
+        or type(vacant_task_id) is not UUID
+        or vacant_task_id != replacement.task.id
+        or replacement.task.id != history.current.task.id
+    ):
+        raise SyncCodecError()
+
+    def shape(task):
+        return (task.id, tuple((x.id, tuple(y.id for y in x.items)) for x in task.subtasks))
+
+    if shape(replacement.task) != shape(history.current.task):
+        raise SyncCodecError()
+    entities = (
+        RemovalRecord(
+            entity_kind="occurrence",
+            entity_id=history.id,
+            root_id=history.current.task.id,
+            revision=receipt.revision,
+            delete_epoch=receipt.delete_epoch,
+            reason="type_changed",
+        ),
+        replacement,
+    )
+    for entity in entities:
+        encode_entity(entity)
+    return RegularEffects(
+        receipt=receipt,
+        entries=tuple(
+            SnapshotEntry(revision=receipt.revision, delete_epoch=receipt.delete_epoch, entity=x)
+            for x in entities
+        ),
+    )

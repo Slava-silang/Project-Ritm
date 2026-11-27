@@ -88,6 +88,7 @@ def _intent(intent):
             "stop_regular",
             "rollover",
             "reschedule_regular",
+            "detach_occurrence",
         )
     ):
         raise ValueError("Неизвестное действие синхронизации")
@@ -98,6 +99,8 @@ def _intent(intent):
         and intent.target_kind != "regular"
     ):
         raise ValueError("Действие требует регулярное расписание")
+    if intent.action == "detach_occurrence" and intent.target_kind != "occurrence":
+        raise ValueError("Действие требует историю повтора")
     if intent.action == "prune" and intent.target_kind not in ("task", "regular", "occurrence"):
         raise ValueError("Действие требует дерево задачи")
     payload = None
@@ -105,7 +108,9 @@ def _intent(intent):
         if intent.payload is not None:
             raise ValueError("Намерение удаления не должно содержать прежний текст")
     else:
-        if type(intent.payload) is not PAYLOADS[intent.target_kind]:
+        if type(intent.payload) is not (
+            TaskRecord if intent.action == "detach_occurrence" else PAYLOADS[intent.target_kind]
+        ):
             raise ValueError("Тип данных не соответствует намерению")
         payload = encode_entity(intent.payload).decode("utf-8")
         if not payload_matches_target(

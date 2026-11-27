@@ -1,5 +1,10 @@
 # Проверка «Ритма»
 
+## Detach checkpoint, 27 ноября
+
+375 passed (4,89 с), /tmp/ritm-detach-check.log: test_sync_detach + codec/pages/operations/transitions/intents/outbox. Проверены root identity, wire roundtrip, snapshot с type_changed mark и ordinary root, неверные vacancy/base/epoch/root. Ruff check/format 6 Python, diff passed. Нет полного pytest/GUI/Windows/сети; planner integration ещё не готова.
+
+
 ## T41c5c2b1 — atomic reschedule, 27 ноября
 
 Итоговый целевой набор DEVELOPMENT с test_sync_reschedule: **772 passed,
