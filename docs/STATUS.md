@@ -1,5 +1,29 @@
 # Текущее состояние
 
+## Продолжение цели: durable regular preparation
+
+Tasks schema v20: sync_prepared/identities/phase_acks. Новый enqueue_sync_regular
+пересчитывает по locked facts и атомарно сохраняет intent+metadata+frozen BLOB.
+Retry возвращает прежние bytes/op_id, pending/rejected overlap блокируется.
+Verified applied receipt атомарно сохраняет UUID mappings/фазы; ошибка любой
+записи откатывает и receipt. Restart восстанавливает phase/barrier knowledge,
+контекст не может поменять подтверждённый UUID. Публичные backup очищают staged
+ledger; v19 migration сохраняет frozen queue/facts; old archives v19 приняты.
+809 passed/6 deselected (51,04 с), /tmp/ritm-prepared-suite.log до последних
+дополнительных проверок. Финал sync: 618 passed (24,13 с),
+/tmp/ritm-prepared-final-sync.log; focused 25 passed (3,78 с),
+/tmp/ritm-prepared-final-focused.log. Automated GUI offscreen 3 passed
+(23,46 с), native X11 3 passed (20,86 с), /tmp/ritm-prepared-gui.log и
+/tmp/ritm-prepared-native-retry.log. Первая native попытка не получила доступ
+к :0, повтор с доступом к экрану прошёл. Ruff/diff passed. Ручной визуальный
+осмотр/Windows/full application suite не выполнялись.
+Цель desktop sync НЕ завершена. Все факты остаются, send barrier не снят.
+Следующее: durable history enqueue + baseline/receipt effects и доказуемый
+multi-projection retirement; затем category/calendar/AI, inbound/merge/rewards
+и runtime на подменном транспорте. Сервер/реальные аккаунты не начинать.
+Контракт SYNC_PREPARED.md. Пользовательские темы не тронуты.
+Checkpoint: `feat: persist regular sync preparation and receipt phases`.
+
 ## Продолжение цели: late offline delete
 
 Добавлены forget_task (явно отсутствующий task target, base0/epoch0, только

@@ -155,52 +155,54 @@ class SyncOutboxMixin:
     def freeze_sync_intent(self, identifier: UUID, base: SyncBase | None = None) -> FrozenRequest:
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
-            queued, intent = self._sync_intent_row(identifier)
-            binding = self.get_sync_binding()
-            if binding is None:
-                raise ValueError("Синхронизация не подключена")
-            existing = self._frozen_sync_request(identifier)
-            if existing is not None:
-                if base is not None:
-                    _validate_base(base, binding, intent)
-                    if (base.revision, base.delete_epoch) != (
-                        existing.operation.base_revision,
-                        existing.operation.delete_epoch,
-                    ):
-                        raise ValueError("Основание уже отправляемого запроса нельзя менять")
-                return existing
-            derived = self._sync_dependency_base(queued, intent)
-            if derived is not None:
-                if base is not None and base != derived:
-                    raise ValueError("Основание не совпадает с подтверждённым предшественником")
-                base = derived
-            if base is None and intent.action == "create":
-                base = SyncBase(
-                    server_id=binding.server_id,
-                    target_kind=intent.target_kind,
-                    target_id=intent.target_id,
-                    revision=0,
-                    delete_epoch=0,
-                )
-            _validate_base(base, binding, intent)
-            operation = Operation(
-                op_id=intent.id,
-                device_id=binding.device_id,
+            return self._freeze_sync_intent(identifier, base)
+
+    def _freeze_sync_intent(self, identifier, base=None):
+        queued, intent = self._sync_intent_row(identifier)
+        binding = self.get_sync_binding()
+        if binding is None:
+            raise ValueError("Синхронизация не подключена")
+        existing = self._frozen_sync_request(identifier)
+        if existing is not None:
+            if base is not None:
+                _validate_base(base, binding, intent)
+                if (base.revision, base.delete_epoch) != (
+                    existing.operation.base_revision,
+                    existing.operation.delete_epoch,
+                ):
+                    raise ValueError("Основание уже отправляемого запроса нельзя менять")
+            return existing
+        derived = self._sync_dependency_base(queued, intent)
+        if derived is not None:
+            if base is not None and base != derived:
+                raise ValueError("Основание не совпадает с подтверждённым предшественником")
+            base = derived
+        if base is None and intent.action == "create":
+            base = SyncBase(
                 server_id=binding.server_id,
                 target_kind=intent.target_kind,
                 target_id=intent.target_id,
-                base_revision=base.revision,
-                delete_epoch=base.delete_epoch,
-                action=intent.action,
-                payload=intent.payload,
+                revision=0,
+                delete_epoch=0,
             )
-            raw = encode_operation(operation)
-            self._db.execute(
-                "INSERT INTO sync_outbox(intent_id,request,request_hash,receipt) "
-                "VALUES (?,?,?,NULL)",
-                (str(intent.id), raw, operation_hash(operation)),
-            )
-            return self._frozen_sync_request(identifier)
+        _validate_base(base, binding, intent)
+        operation = Operation(
+            op_id=intent.id,
+            device_id=binding.device_id,
+            server_id=binding.server_id,
+            target_kind=intent.target_kind,
+            target_id=intent.target_id,
+            base_revision=base.revision,
+            delete_epoch=base.delete_epoch,
+            action=intent.action,
+            payload=intent.payload,
+        )
+        raw = encode_operation(operation)
+        self._db.execute(
+            "INSERT INTO sync_outbox(intent_id,request,request_hash,receipt) VALUES (?,?,?,NULL)",
+            (str(intent.id), raw, operation_hash(operation)),
+        )
+        return self._frozen_sync_request(identifier)
 
     def get_frozen_sync_request(self, identifier: UUID) -> FrozenRequest | None:
         with self._db:
@@ -235,6 +237,7 @@ class SyncOutboxMixin:
                 "UPDATE sync_outbox SET receipt=? WHERE intent_id=? AND receipt IS NULL",
                 (raw, str(receipt.op_id)),
             )
+            self._accept_sync_prepared(frozen, receipt)
             return self._frozen_sync_request(receipt.op_id)
 
     def next_sync_sendable(self) -> FrozenRequest | None:

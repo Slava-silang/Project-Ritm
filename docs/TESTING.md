@@ -1,5 +1,21 @@
 # Проверка «Ритма»
 
+## Durable regular preparation / schema v20
+
+Расширенный набор DEVELOPMENT: 809 passed/6 deselected (51,04 с),
+/tmp/ritm-prepared-suite.log, до последних 3 focused cases и archive-v19 case.
+Финал всего sync: 618 passed (24,13 с), /tmp/ritm-prepared-final-sync.log.
+Focused prepared/intents: 25 passed (3,78 с). Проверены atomic enqueue/freeze,
+retry/reopen, отсутствие преждевременных mappings, rollback receipt/mappings,
+pending/rejected overlap, stale base, outer transaction, восстановление barrier,
+v19 migration с frozen/facts, staged backup stripping и старый архив v19.
+Automated GUI backup+regular offscreen 3 passed (23,46 с); native X11 3 passed
+(20,86 с), /tmp/ritm-prepared-native-retry.log. Первая native попытка не смогла
+подключиться к :0 в ограниченной среде; повтор с доступом к экрану прошёл.
+Ruff check/format 8 Python и diff passed. Windows/ручной визуальный осмотр/полный
+application suite не выполнялись. Сервер/реальная сеть/личный профиль не тронуты.
+
+
 ## Late offline delete
 
 608 sync tests passed (22,23 с), /tmp/ritm-late-delete-suite.log. Focused 9 passed

@@ -23,11 +23,12 @@ from ritm.storage.recurrence import RECURRENCE_SCHEMA, RecurrenceMixin
 from ritm.storage.sync_capture import CAPTURE_SCHEMA, SyncCaptureMixin
 from ritm.storage.sync_intents import SYNC_SCHEMA, SyncIntentMixin
 from ritm.storage.sync_outbox import OUTBOX_SCHEMA, SyncOutboxMixin
+from ritm.storage.sync_prepared import PREPARED_SCHEMA, SyncPreparedMixin
 from ritm.storage.sync_regular_capture import REGULAR_CAPTURE_SCHEMA, migrate_regular_capture
 from ritm.storage.sync_source import SyncSourceMixin
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 19
+SCHEMA_VERSION = 20
 SOURCE_SCHEMA = (
     "CREATE TABLE source_links (key TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, "
     "url TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('task','event')), "
@@ -193,6 +194,7 @@ ATTACHMENT_OWNER = """
 
 
 class TaskStore(
+    SyncPreparedMixin,
     SyncCaptureMixin,
     SyncOutboxMixin,
     SyncSourceMixin,
@@ -221,7 +223,7 @@ class TaskStore(
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in range(1, 19) and app_id == APPLICATION_ID:
+            if version in range(1, 20) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -266,6 +268,9 @@ class TaskStore(
                         self._db.execute(statement)
                 elif version < 19:
                     migrate_regular_capture(self._db)
+                if version < 20:
+                    for statement in PREPARED_SCHEMA:
+                        self._db.execute(statement)
                 if version < 13:
                     create_source(self._db)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -299,6 +304,8 @@ class TaskStore(
             for statement in CAPTURE_SCHEMA:
                 self._db.execute(statement)
             for statement in REGULAR_CAPTURE_SCHEMA:
+                self._db.execute(statement)
+            for statement in PREPARED_SCHEMA:
                 self._db.execute(statement)
             create_source(self._db)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")

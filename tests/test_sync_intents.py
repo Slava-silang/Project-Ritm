@@ -208,7 +208,7 @@ def test_backup_strips_only_copy_queue_and_binding_including_freed_pages(tmp_pat
         assert store.get_sync_binding() is None and not store.list_sync_intents()
 
 
-@pytest.mark.parametrize("version", [14, 15, 16, 17, 18])
+@pytest.mark.parametrize("version", [14, 15, 16, 17, 18, 19])
 def test_manually_constructed_archive_cannot_restore_old_queue(tmp_path, version):
     import hashlib
     import json
