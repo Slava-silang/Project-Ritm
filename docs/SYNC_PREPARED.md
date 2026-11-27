@@ -33,11 +33,11 @@ receipt не выдаёт фаз и соответствий. Повтор recei
 
 ## Ещё не готово
 
-Нет persistent baseline snapshot/receipt effects, окончательного retirement (один факт может участвовать
+Persistent full snapshot/receipt реализованы в SYNC_SNAPSHOT.md (v21). Нет окончательного retirement (один факт может участвовать
 в нескольких проекциях), full preparation loop и send coverage. Все исходные
 facts остаются в журнале, `next_sync_sendable` сохраняет общий regular barrier.
 Метод не разрешает обходить его ручной отправкой frozen request. Следующее:
-baseline/effects/phase coverage для обеих проекций, затем снятие
+cached context/preparation loop/phase coverage для обеих проекций, затем снятие
 барьера только для действительно покрытых фактов, calendar/category/AI capture,
 inbound и runtime с подменным транспортом. UI/реальная сеть не включены.
 

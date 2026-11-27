@@ -1,5 +1,31 @@
 # Текущее состояние
 
+## Первый крупный блок: очередь — сохранённый server snapshot
+
+Tasks v21: один full remote snapshot сохраняется отдельно от local nodes/trash/
+files/facts. save_sync_receipt_and_snapshot атомарно сохраняет applied receipt,
+UUID/phase ledger и полный снимок; ошибка любой части откатывает всё. Snapshot
+покрывает watermark квитанции и может быть новее уже изменённого/удалённого
+результата операции. Защищены generation, полнота/graph/лимиты, общий watermark,
+entity revision/epoch и противоречия одинаковых версий. Reopen восстанавливает
+actual base: тест готовит следующий rollover по cached revision без fake accept.
+Это источник знаний, НЕ inbound merge. Transport/снятие send barrier не включены.
+Миграция v20→21 сохраняет очередь/ledger/facts. Публичный backup очищает cache
+только в staged-копии; старые архивы v20 приняты, garden v7/deps прежние.
+Проверки: expanded DEVELOPMENT 830 passed/6 deselected (53,98 с),
+/tmp/ritm-snapshot-suite.log до последних трёх counter guards. Финальный весь sync:
+638 passed (27,38 с), /tmp/ritm-snapshot-final-sync.log; focused snapshot 13 passed
+(2,30 с). Automated GUI backup+regular: offscreen 3 passed (21,36 с),
+/tmp/ritm-snapshot-gui.log; native X11 3 passed (20,71 с), /tmp/ritm-snapshot-native.log.
+Ruff check/format 8 Python и diff passed. Windows/ручной визуальный осмотр/full app
+suite не выполнялись. Пользовательские темы, личные профили/аккаунты не тронуты.
+Первый блок НЕ завершён. Следующее: построение planner contexts из cached snapshot
+и ledger, общий preparation loop и доказуемое retirement фактов обеих проекций.
+Затем прежние четыре блока: calendar/category/AI capture, inbound/merge/rewards,
+runtime/UI на fake transport, сквозные два клиента. Сервер не начинать.
+Контракт SYNC_SNAPSHOT.md. Checkpoint: `feat: persist remote sync snapshots atomically with receipts`.
+
+
 ## Первый крупный блок: очередь — история подключена
 
 enqueue_sync_history использует общий atomic persist/freeze с regular. Три offline

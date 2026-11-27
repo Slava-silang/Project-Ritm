@@ -1,5 +1,14 @@
 # Окружение, запуск и выпуск
 
+## Tasks v21 / full snapshot cache
+
+Миграция v20→21 добавляет cache, сохраняет прежнюю очередь/ledger/facts; garden v7,
+зависимости прежние. К целевому набору добавить tests/test_sync_snapshot.py.
+Проверяется archive v20. Прежнюю сборку к v21 профилю не подключать и user_version
+не понижать. Реального server/HTTP нет, тесты работают с fake полными снимками.
+Контракт SYNC_SNAPSHOT.md; GUI regression backup+regular по командам ниже.
+
+
 ## Tasks v20 / durable preparation
 
 Миграция v19→20 автоматическая, сохраняет очередь/факты, добавляет три ledger tables. Garden v7/deps прежние. К целевому набору добавить tests/test_sync_prepared.py и tests/test_sync_history_prepared.py; backup архивы v19 поддерживаются. Старую сборку к v20 профилю не подключать и user_version не понижать. Нет новой UI/сети, send barrier остаётся. SYNC_PREPARED.md.

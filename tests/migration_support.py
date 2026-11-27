@@ -14,6 +14,7 @@ def drop_later_task_tables(db, version):
         )
         db.execute("DROP TABLE regular_v19_fixture")
     for table, introduced in (
+        ("sync_remote_snapshot", 21),
         ("sync_phase_acks", 20),
         ("sync_identities", 20),
         ("sync_prepared", 20),

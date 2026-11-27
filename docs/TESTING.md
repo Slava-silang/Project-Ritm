@@ -1,5 +1,20 @@
 # Проверка «Ритма»
 
+## Remote snapshot / tasks v21
+
+Expanded DEVELOPMENT 830 passed/6 deselected (53,98 с), /tmp/ritm-snapshot-suite.log
+до последних трёх counter guards. Финал sync 638 passed (27,38 с),
+/tmp/ritm-snapshot-final-sync.log. Snapshot focused 13 passed (2,30 с): reopen→next
+command from actual cached base, atomic receipt/mapping/cache rollback при write/
+watermark/generation/conflict failures, graph/completeness, stale entity counters,
+105 entities/multiple pages, corrupt cache, superseded operation, v20 migration,
+backup stripping без очистки рабочего профиля. Старый v20 archive проверяется
+в intents tests. Automated GUI backup+regular offscreen 3 passed (21,36 с), native
+X11 3 passed (20,71 с), /tmp/ritm-snapshot-gui.log и /tmp/ritm-snapshot-native.log.
+Ruff check/format 8 Python и diff passed. Windows/ручной осмотр/полный application
+suite не выполнялись, реальная сеть/личные данные не использовались.
+
+
 ## Durable history / первый блок очереди
 
 624 sync passed (25,58 с), /tmp/ritm-history-prepared-final.log. Шесть новых

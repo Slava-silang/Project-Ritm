@@ -1,5 +1,15 @@
 # Архитектурная основа
 
+## Сохранённый full snapshot / tasks v21
+
+storage/sync_snapshot.py хранит валидированный bounded full remote snapshot
+отдельно от локального дерева и очереди. Verified receipt+phase mappings+snapshot
+сохраняются атомарно через внутренний _save_sync_receipt. Источник актуальных
+оснований после restart — read_sync_snapshot, а не предсказанные server effects
+payload. Старое состояние/конфликтующие entity counters отвергаются. Применение
+к локальным задачам и retirement — далее. Контракт SYNC_SNAPSHOT.md.
+
+
 ## Durable regular preparation
 
 storage/sync_prepared.py добавляет SyncPreparedMixin для regular/history: locked recompute→intent+metadata+frozen request, applied receipt→immutable bijective identities/phase ledger в одной SQL транзакции. Tasks schema v20; источник оснований пока explicit context, все facts сохраняются. Контракт и границы — SYNC_PREPARED.md.

@@ -222,23 +222,26 @@ class SyncOutboxMixin:
             return tuple(self._frozen_sync_request(identifier) for identifier in ids)
 
     def save_sync_receipt(self, receipt: Receipt) -> FrozenRequest:
-        raw = encode_receipt(receipt)
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
-            frozen = self._frozen_sync_request(receipt.op_id)
-            if frozen is None:
-                raise ValueError("Запрос ещё не подготовлен")
-            verify_receipt(frozen.operation, receipt)
-            if frozen.receipt_bytes is not None:
-                if frozen.receipt_bytes != raw:
-                    raise ValueError("Противоречащие подтверждения одного запроса")
-                return frozen
-            self._db.execute(
-                "UPDATE sync_outbox SET receipt=? WHERE intent_id=? AND receipt IS NULL",
-                (raw, str(receipt.op_id)),
-            )
-            self._accept_sync_prepared(frozen, receipt)
-            return self._frozen_sync_request(receipt.op_id)
+            return self._save_sync_receipt(receipt)
+
+    def _save_sync_receipt(self, receipt):
+        raw = encode_receipt(receipt)
+        frozen = self._frozen_sync_request(receipt.op_id)
+        if frozen is None:
+            raise ValueError("Запрос ещё не подготовлен")
+        verify_receipt(frozen.operation, receipt)
+        if frozen.receipt_bytes is not None:
+            if frozen.receipt_bytes != raw:
+                raise ValueError("Противоречащие подтверждения одного запроса")
+            return frozen
+        self._db.execute(
+            "UPDATE sync_outbox SET receipt=? WHERE intent_id=? AND receipt IS NULL",
+            (raw, str(receipt.op_id)),
+        )
+        self._accept_sync_prepared(frozen, receipt)
+        return self._frozen_sync_request(receipt.op_id)
 
     def next_sync_sendable(self) -> FrozenRequest | None:
         """FIFO candidate only; unresolved regular facts also block transport."""
