@@ -63,6 +63,21 @@ def check_observatory(look):
 
 def check_jungle(look):
     assert gui.item("workspaceSidebar").isVisible()
+    rain = gui.item("jungleRain")
+    drops = gui.item("jungleRainTimer")
+    drop = gui.item("jungleRainDrop")
+    assert drops.property("interval") == 5000
+    drops.triggered.emit()
+    gui.wait_for(drop.isVisible, "drop over the main window")
+    origin = rain.property("origin")
+    start_y = drop.y()
+    gui.wait_for(lambda: rain.property("slide") > 0.6, "drop slides down")
+    assert drop.y() > start_y + 30
+    drops.triggered.emit()
+    assert rain.property("origin") != origin
+    look.setProperty("reduceMotion", True)
+    assert not drop.isVisible() and not drops.property("running")
+    look.setProperty("reduceMotion", False)
     frog = gui.item("jungleFrog")
     assert frog.isVisible() and frog.property("sourceSize").width() > 0
     assert gui.item("jungleLeafStem").isVisible()

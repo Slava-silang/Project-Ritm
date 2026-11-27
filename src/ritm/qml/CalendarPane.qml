@@ -346,6 +346,25 @@ ColumnLayout {
                         color: dayCell.modelData.today ? pane.appearance.colors.selection : dayCell.modelData.inMonth || pane.view.mode === "week" ? pane.appearance.colors.surface : pane.appearance.colors.panel
                         border.color: dayCell.modelData.selected ? pane.appearance.colors.accent : pane.appearance.colors.border
                         border.width: dayCell.modelData.selected ? 2 : 1
+                        Loader {
+                            active: pane.appearance.jungle && !pane.narrow
+                                && dayCell.index === (pane.view.mode === "month" ? 27 : 6)
+                            width: pane.appearance.dp(47)
+                            height: pane.appearance.dp(37)
+                            clip: true
+                            x: dayCell.width - width - pane.appearance.dp(3)
+                            y: dayCell.height - height
+                            sourceComponent: Item {
+                                Image {
+                                    objectName: "jungleCalendarLeaf"
+                                    anchors.right: parent.right
+                                    width: pane.appearance.dp(41)
+                                    height: width
+                                    source: "jungle/calendar-leaf.png"
+                                    mipmap: true
+                                }
+                            }
+                        }
                         DropArea {
                             objectName: "calendarDrop_" + dayCell.index
                             anchors.fill: parent

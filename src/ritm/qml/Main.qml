@@ -588,6 +588,16 @@ ApplicationWindow {
         blocking: false
     }
     Loader {
+        parent: Overlay.overlay
+        anchors.fill: parent
+        z: 10000
+        enabled: false
+        active: window.appearance.jungle
+        sourceComponent: JungleRain {
+            moving: window.active && window.visible && !window.appearance.reduceMotion
+        }
+    }
+    Loader {
         anchors.fill: parent
         anchors.leftMargin: window.sidebarWidth
         active: window.appearance.observatory
