@@ -174,6 +174,7 @@ def encode_page(page: SnapshotPage) -> bytes:
 
 def _check_graph(entries):
     identities = set()
+    entity_keys = set()
     categories = set()
     tasks = set()
     references = []
@@ -183,9 +184,23 @@ def _check_graph(entries):
     history = []
     for entry in entries:
         entity = entry.entity
+        from ritm.integrations.sync_operations import target_identity
+
+        key = (
+            (entity.entity_kind, entity.entity_id)
+            if isinstance(entity, RemovalRecord)
+            else target_identity(entity)
+        )
+        if key in entity_keys:
+            raise SyncCodecError()
+        entity_keys.add(key)
         identifiers = []
         if isinstance(entity, RemovalRecord):
-            identifiers = [entity.entity_id]
+            identifiers = (
+                []
+                if entity.reason == "type_changed" and entity.entity_kind == "task"
+                else [entity.entity_id]
+            )
             if entity.entity_kind == "occurrence" and entity.reason != "type_changed":
                 identifiers.append(entity.root_id)
         elif isinstance(entity, CalendarRecord):

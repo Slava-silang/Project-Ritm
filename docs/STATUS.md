@@ -1,5 +1,26 @@
 # Текущее состояние
 
+## Продолжение активной цели: promotion
+
+Добавлены promote_regular wire/intent и atomic effects task/occurrence→regular.
+Сохраняется структура root/child/item UUID, epoch+1, проверяются vacancy/CAS/
+account day/receipt. Новый sync_promotion_plan связан с current planner через
+promotion_bases и acknowledged_promotions; подтверждённый переход освобождает
+новое правило для последующих current proposals. Source/target неизвестность,
+frozen и противоречивый ack блокируются. SnapshotCollector проверяет typed
+entity keys отдельно от node IDs, включая дубли type_changed markers.
+Общий sync набор до последнего дополнительного collision test: 591 passed
+(19,44 с), /tmp/ritm-promotion-verified.log; итог 592 passed (19,18 с), /tmp/ritm-promotion-final2.log.
+Последний collision test уточнён: строгий codec отвергает некорректный rule ID
+ещё до вычисления hash/effects, это корректная ранняя граница отказа.
+Ruff/diff passed. Полный app suite/GUI/Windows/сеть не повторялись.
+Сохранение: `feat: prepare atomic task promotion to regular schedules`.
+Цель desktop sync НЕ завершена, остаётся активной. Следующее: свести накопленные
+compound chains/template/day случаи, затем durable очередь/mappings/receipts/
+retire, calendar/category/AI и inbound/merge с идемпотентными garden awards.
+Сервер не начинать. Пользовательские assets/theme_* не тронуты.
+
+
 ## Продолжение активной цели: detach planner
 
 Связан detach contract с HistoryContext.task_bases/acknowledged_detaches.

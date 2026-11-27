@@ -347,7 +347,7 @@ def _parse(value):
             (entity_kind in ("node", "occurrence")) != (root is not None)
             or root == identifier
             or (reason == "retention" and entity_kind not in ("task", "block", "occurrence"))
-            or (reason == "type_changed" and entity_kind != "occurrence")
+            or (reason == "type_changed" and entity_kind not in ("task", "occurrence"))
         ):
             raise SyncCodecError()
         return RemovalRecord(

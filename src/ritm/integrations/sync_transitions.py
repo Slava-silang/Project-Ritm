@@ -221,3 +221,78 @@ def plan_detach_effects(
             for x in entities
         ),
     )
+
+
+@_guard
+def plan_promotion_effects(
+    before: SnapshotEntry,
+    operation: Operation,
+    receipt: Receipt,
+    settings: CalendarRecord,
+    moment: datetime,
+    *,
+    vacant_rule_id: UUID | None = None,
+) -> RegularEffects:
+    from ritm.integrations.sync_codec import TaskRecord
+
+    if type(before) is not SnapshotEntry or type(before.entity) not in (
+        TaskRecord,
+        OccurrenceRecord,
+    ):
+        raise SyncCodecError()
+    source = decode_entity(encode_entity(before.entity))
+    current = source if type(source) is TaskRecord else source.current
+    kind = "task" if type(source) is TaskRecord else "occurrence"
+    identifier = current.task.id if kind == "task" else source.id
+    verify_receipt(operation, receipt)
+    replacement = operation.payload
+    if (
+        operation.action != "promote_regular"
+        or operation.target_kind != kind
+        or operation.target_id != identifier
+        or type(replacement) is not RegularRecord
+        or receipt.status != "applied"
+        or before.revision <= 0
+        or operation.base_revision != before.revision
+        or operation.delete_epoch != before.delete_epoch
+        or type(vacant_rule_id) is not UUID
+        or vacant_rule_id != replacement.id
+        or replacement.current_day
+        != scheduled_day(
+            replacement.first_day, replacement.interval_days, calendar_day(settings, moment)
+        )
+    ):
+        raise SyncCodecError()
+
+    def shape(task):
+        return (task.id, tuple((x.id, tuple(y.id for y in x.items)) for x in task.subtasks))
+
+    node_ids = {
+        current.task.id,
+        *(x.id for x in current.task.subtasks),
+        *(y.id for x in current.task.subtasks for y in x.items),
+    }
+    if replacement.id in node_ids | {identifier}:
+        raise SyncCodecError()
+    if shape(current.task) != shape(replacement.current.task):
+        raise SyncCodecError()
+    entities = (
+        RemovalRecord(
+            entity_kind=kind,
+            entity_id=identifier,
+            root_id=current.task.id if kind == "occurrence" else None,
+            revision=receipt.revision,
+            delete_epoch=receipt.delete_epoch,
+            reason="type_changed",
+        ),
+        replacement,
+    )
+    for entity in entities:
+        encode_entity(entity)
+    return RegularEffects(
+        receipt=receipt,
+        entries=tuple(
+            SnapshotEntry(revision=receipt.revision, delete_epoch=receipt.delete_epoch, entity=x)
+            for x in entities
+        ),
+    )

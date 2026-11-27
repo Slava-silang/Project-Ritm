@@ -1,5 +1,13 @@
 # Архитектурная основа
 
+## Promotion preparation
+
+sync_promotion_plan расширяет current planner для task/history→regular.
+Wire/intent promote_regular и pure plan_promotion_effects сохраняют node UUID
+и возвращают type_changed source mark + live regular одной ревизией. Source/
+vacant bases и ack provenance обязательны. Схемы v19/v7 неизменны, SQL/сети нет.
+
+
 ## T41c5c2b1 — atomic reschedule
 
 Wire/intent reschedule_regular адресует old rule, payload new rule с тем же

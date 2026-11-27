@@ -42,6 +42,8 @@ class RegularContext:
     frozen_changes: frozenset[UUID] = frozenset()
     acknowledged_barriers: frozenset[UUID] = frozenset()
     acknowledged_reschedules: frozenset[UUID] = frozenset()
+    promotion_bases: tuple = field(default=(), repr=False)
+    acknowledged_promotions: frozenset[UUID] = frozenset()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -55,6 +57,7 @@ class RegularProposal:
     source_changes: tuple[UUID, ...]
     barrier_changes: tuple[UUID, ...] = ()
     transition_change: UUID | None = None
+    target_kind: str = "regular"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -98,13 +101,20 @@ def _context(context, server_id):
         context.frozen_changes,
         context.acknowledged_barriers,
         context.acknowledged_reschedules,
+        context.acknowledged_promotions,
     ):
         if type(values) is not frozenset or len(values) > MAX_SNAPSHOT_ITEMS:
             raise ValueError("Превышены границы контекста повторов")
         for value in values:
             checked_uuid(value)
-    if context.frozen_changes & (context.acknowledged_barriers | context.acknowledged_reschedules):
+    if context.frozen_changes & (
+        context.acknowledged_barriers
+        | context.acknowledged_reschedules
+        | context.acknowledged_promotions
+    ):
         raise ValueError("Противоречивые подтверждения барьеров")
+    if context.frozen_changes & context.acknowledged_promotions:
+        raise ValueError("Противоречивые подтверждения превращения")
     identities, inverse = {}, set()
     for pair in context.identities:
         if type(pair) is not tuple or len(pair) != 2:
@@ -520,6 +530,17 @@ def plan_regular(changes, context: RegularContext, *, server_id: UUID) -> Regula
     handled, proposals, blocked, unchanged = _reschedules(
         changes, rules, bases, identities, context, today
     )
+    from ritm.integrations.sync_promotion_plan import prepare_promotions
+
+    phandled, pproposals, pblocked, punchanged, released = prepare_promotions(
+        changes, context, bases, identities, today
+    )
+    for key in released:
+        rules[key].blocked = None
+    handled.update(phandled - released)
+    proposals.extend(pproposals)
+    blocked.extend(pblocked)
+    unchanged.extend(punchanged)
     for key, rule in rules.items():
         if key in handled:
             continue

@@ -396,3 +396,18 @@ occurrence mark type_changed + ordinary task. Type_changed только occurren
 vacancy/owner и запись обоих эффектов атомарно — обязанность будущего caller.
 Автоматический planner/transport ещё не реализован. Старые клиенты новый reason
 и action отвергают, не пропускают молча.
+
+
+## Promotion ordinary/history → regular
+
+Неопубликованный v1 promote_regular адресует task либо occurrence и содержит
+RegularRecord. Applied epoch+1. plan_promotion_effects требует known source/CAS/
+receipt, конкретный vacancy rule ID, общий calendar day и прежнюю структуру IDs.
+Task/occurrence type_changed mark и live regular выдаются одной revision/epoch.
+Task type_changed mark не резервирует root для удаления, но SnapshotCollector
+отдельно запрещает дубли entity kind/id, включая маркировки.
+PromotionContext-данные передаются через RegularContext.promotion_bases и
+acknowledged_promotions. Новый sync_promotion_plan готовит предложение только
+по известным source и vacant target, frozen/unknown/неверный ack блокируются.
+Подтверждение не потребляет journal и не является auto enqueue. HTTP/SQL owner/
+реальная vacancy/retirement — будущие этапы.

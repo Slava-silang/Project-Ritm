@@ -7,7 +7,13 @@ from pathlib import Path
 from uuid import UUID
 
 from ritm.domain.tasks import Task
-from ritm.integrations.sync_codec import Entity, TaskRecord, decode_entity, encode_entity
+from ritm.integrations.sync_codec import (
+    Entity,
+    RegularRecord,
+    TaskRecord,
+    decode_entity,
+    encode_entity,
+)
 from ritm.integrations.sync_operations import PAYLOADS, payload_matches_target
 
 SYNC_OBJECTS = ("sync_binding", "sync_intents", "sync_intents_target")
@@ -89,6 +95,7 @@ def _intent(intent):
             "rollover",
             "reschedule_regular",
             "detach_occurrence",
+            "promote_regular",
         )
     ):
         raise ValueError("Неизвестное действие синхронизации")
@@ -101,6 +108,8 @@ def _intent(intent):
         raise ValueError("Действие требует регулярное расписание")
     if intent.action == "detach_occurrence" and intent.target_kind != "occurrence":
         raise ValueError("Действие требует историю повтора")
+    if intent.action == "promote_regular" and intent.target_kind not in ("task", "occurrence"):
+        raise ValueError("Действие требует обычную задачу или историю")
     if intent.action == "prune" and intent.target_kind not in ("task", "regular", "occurrence"):
         raise ValueError("Действие требует дерево задачи")
     payload = None
@@ -109,7 +118,11 @@ def _intent(intent):
             raise ValueError("Намерение удаления не должно содержать прежний текст")
     else:
         if type(intent.payload) is not (
-            TaskRecord if intent.action == "detach_occurrence" else PAYLOADS[intent.target_kind]
+            RegularRecord
+            if intent.action == "promote_regular"
+            else TaskRecord
+            if intent.action == "detach_occurrence"
+            else PAYLOADS[intent.target_kind]
         ):
             raise ValueError("Тип данных не соответствует намерению")
         payload = encode_entity(intent.payload).decode("utf-8")

@@ -1,5 +1,16 @@
 # Проверка «Ритма»
 
+## Promotion integration
+
+592 sync tests passed (19,18 с), /tmp/ritm-promotion-final2.log. Focused до
+последнего collision case: 108 passed (6,97 с). Новые tests проверяют task/history
+→regular proposals, wire/effects/полный snapshot/ack, неизвестные/frozen/неверные
+ack bases и коллизию rule/root. Первоначальный collision тест ожидал отказ на
+effects, но codec правильно отвергает раньше; ожидание исправлено. Ruff check/
+format 8 Python, diff passed. Полный app pytest/GUI/Windows/реальная сеть не
+проверялись. Это прогресс активной цели, не завершённая desktop sync.
+
+
 ## Detach planner integration
 
 586 sync tests passed (19,30 с), /tmp/ritm-detach-plan-verified.log. Focused

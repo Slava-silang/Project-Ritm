@@ -101,6 +101,8 @@ def target_identity(record):
 
 
 def payload_matches_target(action, kind, identifier, payload):
+    if action == "promote_regular":
+        return kind in ("task", "occurrence") and type(payload) is RegularRecord
     if action == "detach_occurrence":
         return kind == "occurrence" and type(payload) is TaskRecord
     if action == "reschedule_regular":
@@ -125,11 +127,17 @@ def _validate(operation):
         "rollover",
         "reschedule_regular",
         "detach_occurrence",
+        "promote_regular",
     ):
         raise SyncCodecError()
     if operation.target_kind == "calendar_settings" and operation.action not in ("create", "put"):
         raise SyncCodecError()
     if operation.action == "detach_occurrence" and operation.target_kind != "occurrence":
+        raise SyncCodecError()
+    if operation.action == "promote_regular" and operation.target_kind not in (
+        "task",
+        "occurrence",
+    ):
         raise SyncCodecError()
     if operation.action == "create":
         if operation.base_revision != 0 or operation.delete_epoch != 0:
@@ -152,7 +160,9 @@ def _validate(operation):
             raise SyncCodecError("schema")
     else:
         if type(operation.payload) is not (
-            TaskRecord
+            RegularRecord
+            if operation.action == "promote_regular"
+            else TaskRecord
             if operation.action == "detach_occurrence"
             else PAYLOADS[operation.target_kind]
         ):
@@ -323,6 +333,7 @@ def verify_receipt(operation: Operation, receipt: Receipt) -> None:
             "prune",
             "reschedule_regular",
             "detach_occurrence",
+            "promote_regular",
         )
         if (
             receipt.revision <= operation.base_revision
