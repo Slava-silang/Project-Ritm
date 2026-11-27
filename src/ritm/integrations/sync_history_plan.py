@@ -45,6 +45,8 @@ class HistoryContext:
     regulars: tuple[RegularRecord, ...] = field(repr=False)
     ordinary_roots: frozenset[UUID] = frozenset()
     frozen_changes: frozenset[UUID] = frozenset()
+    task_bases: tuple[HistoryBase, ...] = field(default=(), repr=False)
+    acknowledged_detaches: frozenset[UUID] = frozenset()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -53,8 +55,9 @@ class HistoryProposal:
     action: str
     base_revision: int
     delete_epoch: int
-    payload: OccurrenceRecord | None = field(repr=False)
+    payload: OccurrenceRecord | TaskRecord | None = field(repr=False)
     source_changes: tuple[UUID, ...]
+    transition_change: UUID | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -223,7 +226,8 @@ def _candidates(changes):
 
 
 def _mapped(record, identities):
-    task = record.current.task
+    current = record if type(record) is TaskRecord else record.current
+    task = current.task
     if not _nodes(task) <= identities.keys():
         return None
     children = tuple(
@@ -235,9 +239,103 @@ def _mapped(record, identities):
         for child in task.subtasks
     )
     task = replace(task, id=identities[task.id], subtasks=children)
-    result = replace(record, current=replace(record.current, task=task))
+    mapped = replace(current, task=task)
+    result = mapped if type(record) is TaskRecord else replace(record, current=mapped)
     _checked(result)
     return result
+
+
+def _detach_proposals(changes, context, bases, identities, occupied):
+    if type(context.task_bases) is not tuple or len(context.task_bases) > MAX_SNAPSHOT_ITEMS:
+        raise ValueError("Некорректные основания ordinary задач")
+    if type(context.acknowledged_detaches) is not frozenset:
+        raise ValueError("Некорректные подтверждения отделения")
+    for key in context.acknowledged_detaches:
+        _uuid(key)
+    if context.acknowledged_detaches & context.frozen_changes:
+        raise ValueError("Противоречивые подтверждения отделения")
+    tasks = {}
+    for base in context.task_bases:
+        if type(base) is not HistoryBase or base.id in tasks:
+            raise ValueError("Некорректное основание ordinary задачи")
+        _uuid(base.id)
+        if base.entry is not None:
+            entry = base.entry
+            if type(entry) is not SnapshotEntry or type(entry.entity) is not TaskRecord:
+                raise ValueError("Нужно известное живое ordinary представление")
+            _counter(entry.revision, positive=True)
+            _counter(entry.delete_epoch)
+            _checked(entry.entity)
+            if entry.entity.task.id != base.id:
+                raise ValueError("Не совпадает ordinary root")
+        tasks[base.id] = base.entry
+    proposals, blocks, unchanged, handled = [], [], [], set()
+    for change in changes:
+        if change.kind != "detach":
+            continue
+        identifier = change.before.id
+        if not context.task_bases:
+            continue  # Existing caller has not supplied compound target knowledge yet.
+        reason = None
+        root = identities.get(change.root_id)
+        if identifier in handled:
+            raise ValueError("Повторное отделение одного слота")
+        handled.add(identifier)
+        if change.id in context.frozen_changes:
+            reason = "frozen_change"
+        elif root is None:
+            reason = "identity_mapping_required"
+        elif identifier not in bases or root not in tasks:
+            reason = "unknown_base"
+        elif change.id in context.acknowledged_detaches:
+            before = bases[identifier]
+            if (
+                before is None
+                or type(before.entity) is not RemovalRecord
+                or before.entity.reason != "type_changed"
+                or before.entity.root_id != root
+                or tasks[root] is None
+            ):
+                reason = "detach_ack_conflict"
+            else:
+                unchanged.append(identifier)
+                continue
+        elif root in occupied:
+            reason = "current_root"
+        elif tasks[root] is not None:
+            reason = "ordinary_target_exists"
+        elif bases[identifier] is None or type(bases[identifier].entity) is not OccurrenceRecord:
+            reason = "live_history_required"
+        if not reason:
+            before = bases[identifier]
+            mapped = _mapped(change.after, identities)
+            if mapped is None:
+                reason = "identity_mapping_required"
+            else:
+
+                def shape(task):
+                    return (
+                        task.id,
+                        tuple((x.id, tuple(y.id for y in x.items)) for x in task.subtasks),
+                    )
+
+                if shape(mapped.task) != shape(before.entity.current.task):
+                    reason = "detach_tree_conflict"
+                else:
+                    proposals.append(
+                        HistoryProposal(
+                            id=identifier,
+                            action="detach_occurrence",
+                            base_revision=before.revision,
+                            delete_epoch=before.delete_epoch,
+                            payload=mapped,
+                            source_changes=(change.id,),
+                            transition_change=change.id,
+                        )
+                    )
+        if reason:
+            blocks.append(HistoryBlock(id=identifier, reason=reason, source_changes=(change.id,)))
+    return handled, proposals, blocks, unchanged
 
 
 def plan_history(changes, context: HistoryContext, *, server_id: UUID) -> HistoryPlan:
@@ -251,7 +349,9 @@ def plan_history(changes, context: HistoryContext, *, server_id: UUID) -> Histor
                 raise ValueError("Один серверный корень занят разными слотами истории")
             remote_owners[root] = key
     candidates = _candidates(changes)
-    proposals, blocked, unchanged = [], [], []
+    handled, proposals, blocked, unchanged = _detach_proposals(
+        changes, context, bases, identities, occupied
+    )
     roots = {}
     for key, candidate in candidates.items():
         if candidate.desired is not None:
@@ -261,6 +361,8 @@ def plan_history(changes, context: HistoryContext, *, server_id: UUID) -> Histor
             for key in keys:
                 candidates[key].blocked = "duplicate_root"
     for identifier, candidate in candidates.items():
+        if identifier in handled:
+            continue
         sources = tuple(candidate.sources)
         reason = candidate.blocked
         desired = _mapped(candidate.desired, identities) if candidate.desired is not None else None

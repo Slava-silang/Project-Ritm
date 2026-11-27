@@ -1,5 +1,14 @@
 # Проверка «Ритма»
 
+## Detach planner integration
+
+586 sync tests passed (19,30 с), /tmp/ritm-detach-plan-verified.log. Focused
+34 passed (6,38 с). Первая проверка обнаружила Occurrence validation для
+незавершённой Task; исправлен тип mapping, итог зелёный. Ruff/diff passed.
+GUI/Windows/полный application suite не повторялись. Цель desktop sync ещё
+не завершена.
+
+
 ## Общий baseline локальной синхронизации, 27 ноября
 
 777 passed, 6 GUI deselected (44,27 с), /tmp/ritm-desktop-sync-baseline.log.

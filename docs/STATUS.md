@@ -1,5 +1,19 @@
 # Текущее состояние
 
+## Продолжение активной цели: detach planner
+
+Связан detach contract с HistoryContext.task_bases/acknowledged_detaches.
+Выдаёт составное предложение с TaskRecord и transition_change, без записи
+или retirement фактов. Проверены неизвестный target/frozen/неверный ack и
+переход через atomic effects к подтверждённому snapshot. Обнаруженная попытка
+проверять reopened Task как completed Occurrence исправлена generic TaskRecord
+UUID mapping. Focused 34 passed (6,38 с), общий sync набор 586 passed (19,30 с), /tmp/ritm-detach-plan-verified.log.
+Ruff/diff passed; GUI/Windows/full application suite не повторялись.
+Следующее — promotion ordinary/history→regular и остальные T41c блоки;
+полная desktop синхронизация НЕ завершена, цель остаётся активной.
+Checkpoint commit: `feat: prepare atomic history detachment proposals`.
+
+
 27 ноября: пользователь подтвердил награды сада за новое remote completion ровно
 один раз; первый импорт истории/retry/restart без повторной награды. Требование
 зафиксировано в SPEC; реализация inbound/идемпотентного учёта ещё не готова.

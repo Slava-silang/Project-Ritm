@@ -96,3 +96,15 @@ cases ещё T41c5c2b. Далее отображение UUID и
 атомарные переходы типов; затем durable prepare/связь proposal→intent→receipt и
 потребление только подтверждённых фактов. Календарь/категории/AI paths после
 regular. Общий account timezone/transport/inbound/награды сада ещё впереди.
+
+
+## Detach planner integration, 27 ноября
+
+HistoryContext.task_bases задаёт known ordinary target (None — подтверждённое
+отсутствие), acknowledged_detaches содержит только fact IDs с проверенной
+квитанцией обоих эффектов. При этих данных detach выдаёт detach_occurrence
+с TaskRecord payload, исходными counters и transition_change. Нет fallback
+для неизвестного target, чужого root, структуры или frozen fact. Без нового
+контекста прежний compound guard сохраняется. Ack требует type_changed mark
+и живой ordinary target; противоречие блокируется. Поздние ordinary изменения
+не поглощаются, все факты остаются remaining. Это ещё не auto enqueue/inbound.
