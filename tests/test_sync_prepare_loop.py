@@ -121,6 +121,9 @@ def confirmed(snapshot, frozen, context):
                 revision=receipt.revision, delete_epoch=receipt.delete_epoch, entity=op.payload
             ),
         )
+    from ritm.integrations.sync_calendar_effects import calendar_transition_effects
+
+    effects = (*effects, *calendar_transition_effects(snapshot, op, receipt, effects))
     for entry in effects:
         entries[key(entry.entity)] = entry
     return receipt, replace(

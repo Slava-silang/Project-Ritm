@@ -1,5 +1,9 @@
 # Архитектурная основа
 
+## Второй блок: приёмка
+
+SYNC_BLOCK2_ACCEPTANCE.md фиксирует category/calendar/AI capture. sync_calendar_effects вычисляет только calendar side effects уже проверенного typed source transition. Receipt+snapshot guard сверяет обязательные linked block effects атомарно с ledger/cache. Stable lineage расширяет own cascade proof на regular/history/canonical roots; skipped sources не публикуют blocks. Schema v22/garden v7 прежние. Дальше inbound/merge/rewards.
+
 ## Calendar queue preparation
 
 SyncPrepareLoopMixin включает SyncBlockPrepareMixin. Полное regular/history/lineage покрытие предшествует block command. Fact UUID закрепляет frozen request; ack+covering snapshot очищает только его block prefix в общей transaction. Confirmed identities меняют wire link, не local WorkBlock. Ordinary cascade proof связывает block marker с точной revision root-delete receipt. SYNC_BLOCK_PREPARE.md. Schema v22/garden v7 прежние.

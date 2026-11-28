@@ -1,6 +1,7 @@
 # Категории и зависимости задач — T41c5d
 
-Второй блок desktop sync начат; календарный capture ещё не подключён.
+Второй блок desktop sync принят: SYNC_BLOCK2_ACCEPTANCE.md.
+Ниже сохранён исходный category checkpoint; calendar capture/resolver уже подключены.
 Категории записываются через SyncCatalogCaptureMixin в транзакции владельца
 TaskStore._write_category. Capture использует существующий opt-in флаг, default
 off. Schema tasks v21/garden v7/dependencies прежние; новой таблицы не требуется.

@@ -219,6 +219,18 @@ Desktop получает reason=retention, сохраняет своё дере�
 
 ### Календарь
 
+
+Typed source transition включает календарные side effects той же applied
+receipt revision: user-delete task/current/history ставит linked block marker
+user_deleted с собственным block epoch+1; замена незавершённого current без live
+representation исключает его blocks через retention без увеличения epoch.
+Completed history и чужие/самостоятельные события этим не удаляются. Pure
+контракт — sync_calendar_effects.calendar_transition_effects; он применяется
+после валидации source transition и не заменяет авторизацию. Desktop проверяет
+обязательные эффекты при приёме receipt+snapshot. При более новой revision блока
+допускается законное последующее изменение. Приёмка — SYNC_BLOCK2_ACCEPTANCE.md.
+
+
 Сохраняются будущие/текущие интервалы и те, чей конец не раньше server_now UTC
 минус 30 суток. Старые записи уходят из облака с reason=retention, а не командой
 удаления локальной истории. Самостоятельное событие содержит название; рабочий

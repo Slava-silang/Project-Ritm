@@ -4,7 +4,13 @@ from dataclasses import dataclass, field
 from uuid import UUID
 
 from ritm.integrations._sync_wire import _number_text
-from ritm.integrations.sync_codec import BlockRecord, RegularRecord, RemovalRecord, TaskRecord
+from ritm.integrations.sync_codec import (
+    BlockRecord,
+    RegularRecord,
+    RemovalRecord,
+    TaskRecord,
+    history_id,
+)
 from ritm.integrations.sync_operations import (
     Operation,
     Receipt,
@@ -175,7 +181,20 @@ class SyncOutboxMixin:
         roots, result = {}, None
         wanted = (intent.target_kind, intent.target_id)
         calendar_mark = None
+        calendar_sources = set()
         if intent.target_kind == "block" and type(intent.payload) is BlockRecord:
+            root = intent.payload.block.task_id
+            if root is not None:
+                calendar_sources.add(("task", root))
+                # Lineage survives regular fact retirement and explicit restore.
+                identities = dict(self._read_sync_prepared_state().identities)
+                local_roots = {root} | {a for a, b in identities.items() if b == root}
+                for local in local_roots:
+                    lineage = self._regular_lineage(local)
+                    if lineage is not None:
+                        rule, day = lineage
+                        calendar_sources.add(("regular", rule))
+                        calendar_sources.add(("occurrence", history_id(rule, day)))
             snapshot = self._read_sync_snapshot()
             calendar_mark = (
                 next(
@@ -209,9 +228,8 @@ class SyncOutboxMixin:
                 result = (receipt.revision, receipt.delete_epoch)
             if (
                 calendar_mark is not None
-                and op.target_kind == "task"
-                and op.action == "delete"
-                and op.target_id == intent.payload.block.task_id
+                and (op.target_kind, op.target_id) in calendar_sources
+                and op.action in ("delete", "forget_task")
                 and receipt.revision == calendar_mark.revision
             ):
                 # The same atomic server revision proves our root-delete cascade.

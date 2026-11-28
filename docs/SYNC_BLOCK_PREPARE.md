@@ -40,7 +40,7 @@ restore tombstone. Обычная правка не возвращает user_de
 edit retained local event в облачное окно использует restore retention marker,
 а не обычный put. Неизвестный existing block не выдаётся за новый create.
 Delete с уже отсутствующим/removed block считается покрытым; живой получает
-отдельную delete-команду. После own ordinary task-delete cascade восстановление
+отдельную delete-команду. После own task/regular/occurrence delete cascade восстановление
 блока использует marker только при точном совпадении его revision с applied
 receipt удаления того же корня. Более новая foreign deletion остаётся conflict.
 
@@ -53,14 +53,14 @@ removed старый block не загружается. Живой cloud block, 
 retention выдаёт policy marker, а не ложное user_deleted. Applied receipt с
 таким covering marker позволяет завершить fact без повторного возвращения.
 
-## Остаток второго блока
+## Второй блок принят
 
-Нужны отдельная приёмка каскадов regular/history/skip/retention при позднем
-восстановлении, проверка всех AI writer путей в полном цикле и общая приёмка
-category/calendar/AI. В частности, own cascade proof сейчас покрывает ordinary
-Task delete; epoch от regular close не получает автоматического разрешения.
-Unknown parent остаётся явным blocked, а не основанием для утраты локального fact.
-Сервер/сеть/авторизация/входящие изменения не реализуются этим шагом.
+Regular/history/canonical cascade proof и skipped/retained parent acceptance
+закрыты, все AI writer paths проверены полным fake exchange и rollback.
+Контракт и фактические проверки — SYNC_BLOCK2_ACCEPTANCE.md. Чистые calendar
+side effects входят в ту же source revision; receipt+snapshot guard атомарно
+отвергает неполные ответы. Unknown parent остаётся явным blocked, а не поводом
+для утраты факта. Реальный transport и inbound принадлежат следующим блокам.
 
 ## Проверки
 

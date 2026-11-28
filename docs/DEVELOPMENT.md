@@ -1,5 +1,9 @@
 # Окружение, запуск и выпуск
 
+## T41c5d принят
+
+Контракт/приёмка SYNC_BLOCK2_ACCEPTANCE.md; test_sync_block2_acceptance входит в test_sync_*.py. Для общего набора добавлены test_planning.py и test_calendar_events.py. Чистые DTO side effects не являются сервером. Не включать real transport; следующий блок inbound/merge/rewards, затем runtime/UI и два клиента.
+
 ## Calendar preparation checkpoint
 
 Новый tests/test_sync_block_prepare.py входит в test_sync_*.py. Fake applied receipts/full snapshot, disposable profiles, default capture off; runtime/HTTP coverage barrier сохраняется. Schema/deps не менялись. Перед продолжением: SYNC_BLOCK_PREPARE.md; next regular/history cascade acceptance и общий AI audit.

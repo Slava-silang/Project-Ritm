@@ -1,5 +1,10 @@
 # Проверка «Ритма»
 
+## Второй блок: итоговая приёмка
+
+SYNC_BLOCK2_ACCEPTANCE.md: proof focused 59 passed (19,04 с), /tmp/ritm-block2-proof.log. Offscreen GUI 6 passed (104,16 с), native X11 3 passed (28,24 с). Финальный expanded: **995 passed/9 GUI deselected (97,67 с)**,
+/tmp/ritm-block2-verified.log. Ruff check/format шести Python и diff passed. GUI до последнего receipt-proof guard, сам guard проверен storage сценариями. Windows/manual/full app suite не выполнялись. Сеть и личный профиль не использованы.
+
 ## Calendar prepare loop
 
 Focused 45 passed (6,93 с), /tmp/ritm-block-prepare-proof-focused.log: event retry/restart/new edit during pending, coalescing, parent ordering/mapping, retention caption/unknown/deleted root, 30-day boundary, policy return, ordinary cascade restore/foreign epoch conflict, global UUID ownership, DST/UTC, target effect proof и fault rollback. Expanded 938 passed/6 GUI deselected (81,93 с), /tmp/ritm-block-prepare-verified.log. Ruff check/format и diff passed. GUI/Windows/native/manual не проверялись, UI не менялся.

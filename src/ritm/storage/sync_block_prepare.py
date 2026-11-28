@@ -153,6 +153,20 @@ class SyncBlockPrepareMixin:
                         remaining_facts=len(facts),
                     )
             payload = last.after
+            if (
+                payload is not None
+                and payload.block.task_id is not None
+                and self.is_skipped_occurrence(payload.block.task_id)
+            ):
+                if base is None or type(base.entity) is RemovalRecord:
+                    retired += self._retire_block_prefix(identifier, last.sequence)
+                    continue
+                return BlockPreparation(
+                    status="needs_snapshot",
+                    reasons=("calendar_policy_effect_missing",),
+                    retired_facts=retired,
+                    remaining_facts=len(facts),
+                )
             reason = None
             if payload is None:
                 if base is None or type(base.entity) is RemovalRecord:

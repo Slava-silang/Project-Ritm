@@ -2,7 +2,8 @@
 
 import json
 
-from ritm.integrations.sync_codec import RemovalRecord, encode_entity
+from ritm.integrations.sync_calendar_effects import calendar_transition_effects
+from ritm.integrations.sync_codec import BlockRecord, RemovalRecord, encode_entity
 from ritm.integrations.sync_operations import target_identity
 from ritm.integrations.sync_pages import (
     MAX_PAGE_ITEMS,
@@ -163,8 +164,31 @@ class SyncSnapshotMixin:
             raise ValueError("Подтверждение требует отдельную транзакцию")
         with self._db:
             self._db.execute("BEGIN IMMEDIATE")
+            before = self._read_sync_snapshot()
             frozen = self._save_sync_receipt(receipt)
             if receipt.status != "applied" or snapshot.set_revision < receipt.revision:
                 raise ValueError("Снимок не покрывает подтверждённое изменение")
             self._remember_sync_snapshot(snapshot)
+            if before is not None:
+                source_effects = tuple(
+                    entry
+                    for entry in snapshot.entries
+                    if entry.revision == receipt.revision
+                    and type(entry.entity) is not BlockRecord
+                    and not (
+                        type(entry.entity) is RemovalRecord and entry.entity.entity_kind == "block"
+                    )
+                )
+                expected = calendar_transition_effects(
+                    before, frozen.operation, receipt, source_effects
+                )
+                entries = {_key(entry): entry for entry in snapshot.entries}
+                for effect in expected:
+                    actual = entries.get(_key(effect))
+                    if (
+                        actual is None
+                        or actual.revision < effect.revision
+                        or (actual.revision == effect.revision and actual != effect)
+                    ):
+                        raise ValueError("Снимок не подтверждает изменения связанного календаря")
             return frozen

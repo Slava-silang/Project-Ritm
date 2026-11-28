@@ -1,5 +1,32 @@
 # Текущее состояние
 
+## Второй блок завершён: категории, календарь и AI capture
+
+Приёмка T41c5d — SYNC_BLOCK2_ACCEPTANCE.md. Calendar side effects в чистом
+sync_calendar_effects связывают source delete/skip с той же receipt revision.
+Task/regular/occurrence cascade restoration использует persistent lineage и
+canonical mapping; более новая foreign deletion остаётся conflict. Skipped
+unfinished current не публикует blocks; completed/retained history сохраняет
+корректные связи/caption. Receipt+snapshot проверяют обязательные cascade effects
+и откатываются вместе при неполном ответе. Все AI owning paths проверены в
+полном exchange/restart, update, idempotent replay и receipt failure rollback.
+
+Изменены sync_calendar_effects (новый), sync_block_prepare, sync_outbox,
+sync_snapshot, test_sync_prepare_loop, новый test_sync_block2_acceptance и docs.
+Schema tasks v22/garden v7/deps прежние. Focused proof 59 passed (19,04 с).
+GUI offscreen 6 passed (104,16 с), native X11 3 passed (28,24 с); итоговый
+expanded 995 passed/9 GUI deselected (97,67 с), /tmp/ritm-block2-verified.log.
+Ruff check/format шести Python и diff passed. GUI до последнего storage receipt guard; его путь
+проверяется focused/full. Windows/manual/full application suite не выполнялись.
+Временные профили/fake replies, без сети/реальных аккаунтов/личных данных.
+
+Следующее действие — третий из пяти блоков: inbound/initial merge/retention/
+local preservation/exactly-once garden remote rewards. Затем runtime/UI/auth
+и два клиента. Реальный transport/server/Mini App не начинать. Пользовательские
+assets/theme_* не тронуты. Checkpoint: HEAD,
+«feat: complete category calendar and AI sync capture block».
+
+
 ## Второй блок: календарь подключён к подготовке очереди
 
 SyncBlockPrepareMixin готовит immutable block intents после подтверждённых task/
