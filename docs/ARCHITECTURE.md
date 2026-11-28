@@ -1,5 +1,9 @@
 # Архитектурная основа
 
+## Журнал календаря / второй блок
+
+SyncBlockCaptureMixin и schema v22: atomic calendar before/after + logical root archive/restore, intent/regular anchors. Pending calendar не даёт retire зависимых regular facts. Wire resolver ещё не подключён. SYNC_BLOCK_CAPTURE.md.
+
 ## Категории / второй блок
 
 SyncCaptureMixin включает SyncCatalogCaptureMixin: owning _write_category capture

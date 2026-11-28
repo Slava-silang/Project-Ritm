@@ -324,6 +324,13 @@ class SyncPrepareLoopMixin:
             return PreparationStep(
                 status="blocked", reasons=("projection_missing",), remaining_facts=len(changes)
             )
+        if self._db.execute(
+            "SELECT 1 FROM sync_block_changes WHERE after_regular_id IN "
+            "(SELECT id FROM sync_regular_changes) LIMIT 1"
+        ).fetchone():
+            return PreparationStep(
+                status="blocked", reasons=("calendar_pending",), remaining_facts=len(changes)
+            )
         # Both projections agree with a complete, covering remote snapshot.
         # No pending command, blocked fact or unrepresented ordinary edit is discarded.
         self._db.execute(

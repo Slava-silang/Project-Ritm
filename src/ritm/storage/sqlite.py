@@ -15,11 +15,13 @@ from ritm.domain.focus import FocusSession
 from ritm.domain.pomodoro import Pomodoro
 from ritm.domain.sources import SourceLink, SourceRef
 from ritm.domain.tasks import Category, ChecklistItem, Subtask, Task
+from ritm.integrations.sync_codec import BlockRecord
 from ritm.storage.attachments import Attachment
 from ritm.storage.codec import decode_task, encode_task
 from ritm.storage.garden_source import GardenSourceMixin, create_source
 from ritm.storage.profile_guard import connect_profile
 from ritm.storage.recurrence import RECURRENCE_SCHEMA, RecurrenceMixin
+from ritm.storage.sync_block_capture import BLOCK_CAPTURE_SCHEMA
 from ritm.storage.sync_capture import CAPTURE_SCHEMA, SyncCaptureMixin
 from ritm.storage.sync_intents import SYNC_SCHEMA, SyncIntentMixin
 from ritm.storage.sync_outbox import OUTBOX_SCHEMA, SyncOutboxMixin
@@ -30,7 +32,7 @@ from ritm.storage.sync_snapshot import SNAPSHOT_SCHEMA, SyncSnapshotMixin
 from ritm.storage.sync_source import SyncSourceMixin
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 21
+SCHEMA_VERSION = 22
 SOURCE_SCHEMA = (
     "CREATE TABLE source_links (key TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, "
     "url TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('task','event')), "
@@ -227,7 +229,7 @@ class TaskStore(
             if version == SCHEMA_VERSION and app_id == APPLICATION_ID:
                 self._db.commit()
                 return
-            if version in range(1, 21) and app_id == APPLICATION_ID:
+            if version in range(1, SCHEMA_VERSION) and app_id == APPLICATION_ID:
                 if version == 1:
                     self._db.execute(TRASH_SCHEMA)
                 if version < 3:
@@ -278,6 +280,9 @@ class TaskStore(
                 if version < 21:
                     for statement in SNAPSHOT_SCHEMA:
                         self._db.execute(statement)
+                if version < 22:
+                    for statement in BLOCK_CAPTURE_SCHEMA:
+                        self._db.execute(statement)
                 if version < 13:
                     create_source(self._db)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -315,6 +320,8 @@ class TaskStore(
             for statement in PREPARED_SCHEMA:
                 self._db.execute(statement)
             for statement in SNAPSHOT_SCHEMA:
+                self._db.execute(statement)
+            for statement in BLOCK_CAPTURE_SCHEMA:
                 self._db.execute(statement)
             create_source(self._db)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")
@@ -770,6 +777,7 @@ class TaskStore(
             )
             if after is None:
                 self._capture_task_delete(before)
+                self._capture_task_blocks(before)
                 # Restoring a deleted current template must not revive its series membership.
                 self._db.execute(
                     "DELETE FROM recurrence_occurrences WHERE task_id=? AND EXISTS "
@@ -928,6 +936,8 @@ class TaskStore(
             self._write_task(
                 restored, restore_root=current is None and entry["kind"] == 0, restore_event=True
             )
+            if current is None and entry["kind"] == 0:
+                self._capture_task_blocks(restored, restored=True)
             self._db.execute("DELETE FROM trash WHERE id=?", (str(identifier),))
             return restored
 
@@ -1013,6 +1023,10 @@ class TaskStore(
                     str(block.id),
                 ),
             )
+
+        self._capture_block_change(
+            BlockRecord(block=before) if before else None, BlockRecord(block=block)
+        )
 
     def create_work_block(self, block: WorkBlock) -> tuple[Task | None, tuple[WorkBlock, ...]]:
         with self._db:

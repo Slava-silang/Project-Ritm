@@ -1,5 +1,32 @@
 # Текущее состояние
 
+## Второй блок: постоянный журнал календаря
+
+28 ноября 2026: schema tasks v22/garden v7. SyncBlockCaptureMixin сохраняет
+before/after и зависимости intent/regular в owning transaction. Manual/AI
+schedule/mail events проходят общий writer. Logical root archive/restore
+фиксирует delete/restore связанных blocks; локальная корзина сохраняется.
+No-op/suppression/default off; SQL failure откатывает parent mutation/receipt.
+Regular retirement не удаляет facts, на которые ссылается pending calendar.
+Backup migration/validator/sanitizer поддерживают новую таблицу и старую v21.
+Подробности и границы: SYNC_BLOCK_CAPTURE.md.
+
+Изменены storage sync_block_capture/sqlite/sync_capture/sync_prepare_loop/
+backup/sync_intents, migration_support, новые test_sync_block_capture и документы.
+Проверки: focused 13 passed (1,91 с); AI+planning subset 34 passed/2 deselected
+(4,21 с, до двух последних focused cases); GUI offscreen 3 passed (23,77 с).
+Expanded 911 passed/6 deselected (76,33 с),
+/tmp/ritm-block-journal-expanded.log (до четырёх дополнительных focused cases).
+Ruff check/format и diff passed. Windows/native/manual не
+выполнялись; временные профили, без сети/аккаунтов/личных данных.
+
+Точное следующее действие: block journal resolver → parent identity dependency,
+local↔wire mapping, cloud 30-day retention/archived caption, immutable commands/
+receipts/restart. Затем общий AI audit и приёмка второго блока. Второй блок ещё
+НЕ завершён; server/inbound/runtime не начинать. Пользовательские темы не тронуты.
+Checkpoint: HEAD, «feat: persist atomic calendar sync changes».
+
+
 ## Второй блок в работе: категории и owning calendar writer
 
 T41c5d: категории capture атомарны с category/task/regular/proposal записью.

@@ -295,6 +295,7 @@ def sanitize_sync_backup(path: Path):
         db.execute("PRAGMA foreign_keys=ON")
         db.execute("PRAGMA journal_mode=DELETE")
         db.execute("PRAGMA secure_delete=ON")
+        db.execute("DELETE FROM sync_block_changes")
         db.execute("DELETE FROM sync_remote_snapshot")
         db.execute("DELETE FROM sync_phase_acks")
         db.execute("DELETE FROM sync_identities")
@@ -307,7 +308,8 @@ def sanitize_sync_backup(path: Path):
         db.execute("DELETE FROM sync_task_presence")
         db.execute("DELETE FROM sync_binding")
         db.execute(
-            "DELETE FROM sqlite_sequence WHERE name IN ('sync_intents','sync_regular_changes')"
+            "DELETE FROM sqlite_sequence WHERE name IN "
+            "('sync_intents','sync_regular_changes','sync_block_changes')"
         )
         db.commit()
         db.execute("VACUUM")

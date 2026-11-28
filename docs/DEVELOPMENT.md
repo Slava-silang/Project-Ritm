@@ -1,5 +1,9 @@
 # Окружение, запуск и выпуск
 
+## T41c5d: calendar journal
+
+Tasks schema v22, garden v7; миграция v21 и backup validation/sanitization обновлены. tests/test_sync_block_capture.py входит в test_sync_*.py. Перед wire resolver прочитать SYNC_BLOCK_CAPTURE.md. Transport barrier сохраняется.
+
 ## T41c5d: category capture
 
 К expanded набору добавить tests/test_sync_category_capture.py (он входит в

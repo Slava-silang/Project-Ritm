@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 from ritm.domain.calendar import from_instant_us
 from ritm.integrations.sync_codec import RegularRecord, TaskRecord
+from ritm.storage.sync_block_capture import SyncBlockCaptureMixin
 from ritm.storage.sync_catalog_capture import SyncCatalogCaptureMixin
 from ritm.storage.sync_intents import SyncIntent, _stored_uuid, _uuid
 from ritm.storage.sync_regular_capture import SyncRegularCaptureMixin
@@ -26,7 +27,7 @@ def _node_ids(task):
     }
 
 
-class SyncCaptureMixin(SyncCatalogCaptureMixin, SyncRegularCaptureMixin):
+class SyncCaptureMixin(SyncBlockCaptureMixin, SyncCatalogCaptureMixin, SyncRegularCaptureMixin):
     def is_sync_task_capture_enabled(self):
         row = self._db.execute("SELECT enabled FROM sync_capture WHERE context_id=1").fetchone()
         if row is None:

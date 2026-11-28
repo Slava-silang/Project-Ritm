@@ -1,5 +1,13 @@
 # Проверка «Ритма»
 
+## Calendar journal capture
+
+Expanded 911 passed/6 deselected (76,33 с), /tmp/ritm-block-journal-expanded.log;
+до четырёх дополнительных focused cases, отдельно пройдены в итоговых 13.
+Ruff check/format и diff passed.
+
+Focused 13 passed (1,91 с), /tmp/ritm-block-journal-final-focused.log: restart/no-op/suppression, task visibility, fault rollback create/edit/delete/restore, regular anchors/retirement guard, AI/mail receipt/idempotency, v21 migration и archive copy stripping. AI+planning 34 passed/2 deselected (4,21 с). GUI offscreen 3 passed (23,77 с), /tmp/ritm-block-journal-gui.log. Windows/native/manual не проверены.
+
 ## Category capture и calendar write-path audit
 
 902 passed/6 GUI deselected (75,81 с), /tmp/ritm-catalog-capture-final-suite.log.
