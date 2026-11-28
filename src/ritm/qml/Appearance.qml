@@ -9,9 +9,10 @@ QtObject {
     readonly property bool darkPreference: themeKey === "dark" || dusk
         || (themeKey === "system" && Application.styleHints.colorScheme === Qt.Dark)
     readonly property bool observatory: themeKey === "space"
+    readonly property bool jungle: themeKey === "jungle"
     property bool reduceMotion: false
-    readonly property bool dark: darkPreference || observatory
-    readonly property bool usesSharedStyle: dusk || observatory || themeKey === "light" || themeKey === "dark" || themeKey === "system"
+    readonly property bool dark: darkPreference || observatory || jungle
+    readonly property bool usesSharedStyle: dusk || observatory || jungle || themeKey === "light" || themeKey === "dark" || themeKey === "system"
     readonly property var colors: dusk ? ({
         background: "#1b2031",
         sidebar: "#151a29",
@@ -94,7 +95,7 @@ QtObject {
         eventAccent: "#d2b6ef",
         warningSurface: "#412d29",
         warning: "#ffb5a7"
-    }) : usesSharedStyle ? ({
+    }) : !jungle ? ({
         background: "#f4f7f6",
         shadow: "#4a655c",
         sidebar: "#e8efed",
@@ -123,31 +124,36 @@ QtObject {
         warningSurface: "#fbe9e4",
         warning: "#923d2e"
     }) : ({
-        background: "#f4f3ed",
-        sidebar: "#f4f3ed",
-        surface: "#ffffff",
-        panel: "#eaece3",
-        raised: "#f5f6f0",
-        field: "#ffffff",
-        text: "#243d33",
-        secondary: "#48594e",
-        muted: "#69766d",
-        border: "#bdcabb",
-        controlBorder: "#bdcabb",
-        accent: "#2b5949",
-        accentFill: "#2b5949",
-        accentHover: "#386b57",
-        accentDown: "#1d4235",
-        onAccent: "#ffffff",
-        disabled: "#9eafa2",
-        track: "#e0e7dc",
-        selection: "#d5e5cc",
-        work: "#e6efdf",
-        event: "#eee6f5",
-        eventHover: "#e0d5eb",
-        eventAccent: "#71518d",
-        warningSurface: "#fff0e7",
-        warning: "#a34425"
+        background: "#101c13",
+        sidebar: "#111d14",
+        surface: "#1b2b1d",
+        panel: "#17271b",
+        raised: "#30442c",
+        field: "#142218",
+        text: "#fff5dc",
+        secondary: "#d9dfbd",
+        muted: "#bcc9a8",
+        border: "#4d6342",
+        controlBorder: "#829671",
+        scrollbar: "#a0ad80",
+        shadow: "#0b140d",
+        accent: "#c6e873",
+        accentFill: "#bfdf70",
+        accentHover: "#d7ed99",
+        accentDown: "#a4c559",
+        wood: "#57361d",
+        woodHover: "#784d27",
+        woodDown: "#412918",
+        onAccent: "#18220e",
+        disabled: "#667054",
+        track: "#36482f",
+        selection: "#354b21",
+        work: "#2a4827",
+        event: "#493643",
+        eventHover: "#5b4252",
+        eventAccent: "#ecc3df",
+        warningSurface: "#4a3027",
+        warning: "#ffc4a7"
     })
 
     function dp(value) {

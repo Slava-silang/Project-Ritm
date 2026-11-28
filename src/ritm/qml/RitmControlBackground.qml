@@ -27,6 +27,8 @@ Rectangle {
             return style.colors.surface;
         if (style.isField)
             return style.colors.field;
+        if (style.primary && style.available && style.appearance.jungle)
+            return style.pressed ? style.colors.woodDown : style.hovered ? style.colors.woodHover : style.colors.wood;
         if (style.primary)
             return !style.available ? style.colors.disabled : style.pressed
                 ? style.colors.accentDown : style.hovered ? style.colors.accentHover : style.colors.accentFill;
@@ -39,6 +41,15 @@ Rectangle {
         : style.focused ? 2 : style.primary || style.selected || style.quiet ? 0 : 1
     border.color: !style.appearance.usesSharedStyle ? style.legacyBorder : style.focused
         ? style.colors.accent : style.isDialog || !style.available ? style.colors.border : style.colors.controlBorder
+    Loader {
+        anchors.fill: parent
+        active: style.appearance.jungle && style.primary && style.available
+        sourceComponent: JungleWood {
+            uiScale: style.appearance.scale
+            hovered: style.hovered
+            pressed: style.pressed
+        }
+    }
     Loader {
         anchors.fill: parent
         active: style.appearance.observatory && (style.isDialog || style.primary || style.hovered && !style.quiet)

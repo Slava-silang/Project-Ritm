@@ -68,7 +68,10 @@ def check_scroll_layout():
     for width, height, percent in ((1480, 930, 100), (1300, 820, 125), (640, 480, 150)):
         window.resize(width, height)
         scale = percent / 100
-        for theme in ("dark", "light", "space"):
+        themes = (
+            ("dark", "light", "space", "jungle") if percent == 100 else ("dark", "light", "space")
+        )
+        for theme in themes:
             controller.saveAppearance(theme, percent)
             gui.idle()
             assert controller.appearance == {"theme": theme, "scale": percent, "panel": "left"}
@@ -90,17 +93,25 @@ def check_scroll_layout():
             check_scrollbar(
                 "planningScrollBar", scale, "workingEnd_3", "planningTask", "planningLast"
             )
-            if theme == "space" and percent == 100:
-                visitor = gui.item("observatoryVisitor")
+            if theme in ("space", "jungle") and percent == 100:
+                visitor_name = "jungleVisitor" if theme == "jungle" else "observatoryVisitor"
+                visitor = gui.item(visitor_name)
                 gui.wait_for(
                     lambda visitor=visitor: not visitor.property("tucked"), "visitor peeks out"
                 )
-                gui.click("observatoryVisitor")
+                QTest.qWait(320)
+                gui.click(visitor_name)
                 assert visitor.property("tucked")
                 gui.wait_for(
                     lambda visitor=visitor: not visitor.property("tucked"), "visitor returns"
                 )
                 QTest.qWait(320)
+                if theme == "jungle":
+                    gui.item("jungleRainTimer").triggered.emit()
+                    rain = gui.item("jungleRain")
+                    gui.wait_for(
+                        lambda rain=rain: rain.property("slide") > 0.3, "drop over the dialog"
+                    )
             gui.screenshot(profile / f"{theme}-planning-{percent}.png")
             gui.click("planningClose")
 

@@ -107,7 +107,7 @@ try:
             gui.item("parametersButton").forceActiveFocus()
             QTest.keyClick(window, Qt.Key.Key_Space)
             gui.wait_for(lambda: gui.item("parametersMenu").property("opened"))
-            assert gui.item("parametersMenu").property("count") == 4
+            assert gui.item("parametersMenu").property("count") == 5
             gui.screenshot(profile / f"parameters-menu-{scale}.png")
             QTest.keyClick(window, Qt.Key.Key_Escape)
             gui.wait_for(lambda: not gui.item("parametersMenu").property("visible"))
@@ -121,6 +121,7 @@ try:
             QTest.keyClick(window, Qt.Key.Key_Space)
             gui.wait_for(lambda: gui.item("parametersMenu").property("opened"))
             QTest.keyClick(window, Qt.Key.Key_Home)
+            QTest.keyClick(window, Qt.Key.Key_Down)
             QTest.keyClick(window, Qt.Key.Key_Down)
             QTest.keyClick(window, Qt.Key.Key_Down)
             QTest.keyClick(window, Qt.Key.Key_Return)

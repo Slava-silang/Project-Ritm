@@ -1,5 +1,53 @@
 # Текущее состояние
 
+## M02 — слияние новой темы «Джунгли»
+
+Конфликты codex/design-refresh объединены с текущей desktop sync schema v22.
+Сохранены dusk, независимый panel left/top, подробный GardenProgress и все
+новые sync files. Новые jungle assets/анимации/DialogVisitor приняты. DR12–DR18
+обозначают задачи дизайна из другой ветки; прежние D05–D08 не перезаписаны.
+Проверки: appearance+dusk+recurrence 34 passed/1 failed (устаревший menu count),
+затем dusk 2 passed (33,84 с). Garden progress/runtime/planning/block journal
+59 passed/1 failed (legacy expected без panel), затем legacy 1 passed (7,57 с).
+Все 95 целевых случаев пройдены по совокупности. QML lint всех компонентов,
+Ruff check/format и diff passed. Linux offscreen; native/Windows/manual не
+проверены. Логи /tmp/ritm-jungle-*.log. Merge checkpoint: HEAD,
+«Merge jungle theme preserving desktop features». Следующий шаг
+основной работы прежний: block journal resolver, не сервер.
+
+
+Обновлено: 28 ноября 2026 года.
+
+## D18 — папоротник в углу «Джунглей»
+
+Мокрый папоротник встроен в нижний левый угол боковой панели. Стебли обрезаны границами окна. Высота зависит от свободного места ниже навигации. Коммит — `feat: add wet fern to the jungle sidebar`. Проверки — TESTING D18.
+
+## D17 — скольжение капель в «Джунглях»
+
+Листья убраны с диалогов и календаря. Капля исчезает примерно через 1,35 секунды от появления, время до начала скольжения около 0,24 секунды. Коммит — `fix: remove jungle leaves and slow rain drops`. Проверки — TESTING D17.
+
+## D16 — листья и скользящие капли
+
+JungleRain.qml анимирует каплю поверх всего окна, включая диалоги. Листья в RitmDialog.qml и CalendarPane.qml обрамляют углы, черешок календарного листа уходит под нижнюю кромку. Проверки — в TESTING D16. Локальная фиксация — `feat: add rain drops and jungle leaves`.
+
+## D15 — края панелей в «Джунглях»
+
+Лианы и папоротник убраны из боковой панели, карточки задачи и диалогов. В Main.qml и RitmDialog.qml удалена загрузка декора, в qml/jungle удалены два изображения. Проверки описаны в TESTING D15. Локальная фиксация — `fix: remove jungle panel foliage`.
+
+## D14 — лягушка и растения в «Джунглях»
+
+В JungleCanopy.qml лист соединён с кроной стеблем, язык лягушки изгибается и плавно втягивается, а насекомые держатся левее её силуэта. Main.qml и RitmDialog.qml размещают лианы и увеличенный папоротник за краями панелей. Проверки и снимки описаны в TESTING D14. Локальная фиксация — `fix: refine jungle wildlife and foliage`.
+
+## D13 — просмотр «Джунглей»
+
+Меню «Вид» и сохранение настроек разрешают выбрать «Джунгли» до получения достижения за 15 главных задач. Обновлены Main.qml, GardenPane.qml, ui/tasks.py и сценарий сада. Проверки описаны в TESTING D13. Локальная фиксация — `feat: allow previewing the jungle theme`.
+
+## D12 — «Лес после ливня»
+
+Палитра «Джунглей» использует общую раскладку из Appearance.qml и Main.qml. JungleCanopy.qml и изображения в qml/jungle добавляют лес, лягушку на мокром листе, стрекозу и бабочку. JungleWood.qml оформляет главные кнопки. DialogVisitor.qml и RitmDialog.qml отвечают за реакцию мультяшной обезьянки в диалогах. Папоротник и лиана размещены у свободных краёв.
+
+Результаты — в TESTING D12. Локальная фиксация — `feat: add the rainforest jungle theme`. Следующее действие — пользовательский осмотр темы «Джунгли» после её открытия в саду.
+
 ## Второй блок: постоянный журнал календаря
 
 28 ноября 2026: schema tasks v22/garden v7. SyncBlockCaptureMixin сохраняет
