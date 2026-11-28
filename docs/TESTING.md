@@ -1,5 +1,9 @@
 # Проверка «Ритма»
 
+## Incoming storage: согласованность и atomic apply
+
+Focused 71 passed (5,93 с), /tmp/ritm-inbound-store-final-focused.log. Expanded 1049 passed/9 GUI deselected (98,34 с), /tmp/ritm-inbound-store-expanded.log. WAL read race, protected dirty input, own ack vs pending, exact restart/replay, SQL rollback/cache/applied/presence, old completion no garden award, canonical link, reserved trash UUID, v22 migration и backup stripping. Offscreen backup+recurrence 3 passed (24,87 с), /tmp/ritm-inbound-store-gui.log. Ruff check/format 9 Python и diff passed. Windows/native/manual/full app suite не выполнялись.
+
 ## Inbound preview
 
 Focused tests/test_sync_inbound.py: 30 passed (0,28 с), /tmp/ritm-inbound-preview-final.log. Bootstrap conflicts/pending protection/local history/role and category dependencies/global ownership и invalid snapshots. Expanded 1025 passed/9 GUI deselected (94,84 с), /tmp/ritm-inbound-preview-verified.log. Нет DB apply/UI/reward ledger; GUI/native/Windows/manual не запускались. Ruff check/format и diff passed.

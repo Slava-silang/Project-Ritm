@@ -160,7 +160,15 @@ def _protected(keys):
     return keys
 
 
-def plan_inbound(*, local, incoming, accepted=None, server_id, protected=frozenset()):
+def plan_inbound(
+    *,
+    local,
+    incoming,
+    accepted=None,
+    server_id,
+    protected=frozenset(),
+    acknowledged_local=frozenset(),
+):
     """Preview against the last APPLIED snapshot, never merely the outgoing cache.
 
     local must contain canonical wire identities and one representation per root
@@ -172,6 +180,7 @@ def plan_inbound(*, local, incoming, accepted=None, server_id, protected=frozens
     incoming = _snapshot(incoming, server_id)
     accepted = _snapshot(accepted, server_id) if accepted is not None else None
     protected = _protected(protected)
+    acknowledged_local = _protected(acknowledged_local)
     if type(local) is not tuple or len(local) > MAX_SNAPSHOT_ITEMS:
         raise ValueError("Нужен ограниченный локальный снимок без усечения")
     if any(type(entity) not in LIVE_TYPES for entity in local):
@@ -254,7 +263,9 @@ def plan_inbound(*, local, incoming, accepted=None, server_id, protected=frozens
                 action, reason = "marker", "node_owned_by_root"
             elif local_entity is None:
                 action, reason = "marker", "already_absent"
-            elif accepted is None or local_entity != base_entity:
+            elif accepted is None or (
+                local_entity != base_entity and key not in acknowledged_local
+            ):
                 action, reason = (
                     "conflict",
                     "bootstrap_delete" if accepted is None else "local_changed",
@@ -277,13 +288,17 @@ def plan_inbound(*, local, incoming, accepted=None, server_id, protected=frozens
         ):
             action, reason = "conflict", "local_identity_occupied"
         elif local_entity is None:
-            if base_entity is not None and type(base_entity) in LIVE_TYPES:
+            if (
+                base_entity is not None
+                and type(base_entity) in LIVE_TYPES
+                and key not in acknowledged_local
+            ):
                 action, reason = "conflict", "local_missing"
             else:
                 action, reason = "insert", "remote_new"
         elif accepted is None:
             action, reason = "conflict", "bootstrap_difference"
-        elif local_entity != base_entity:
+        elif local_entity != base_entity and key not in acknowledged_local:
             action, reason = "conflict", "local_changed"
         elif _key(local_entity) != key or _root(local_entity) != _root(entity):
             action, reason = "transition", "remote_role_changed"

@@ -23,6 +23,7 @@ from ritm.storage.profile_guard import connect_profile
 from ritm.storage.recurrence import RECURRENCE_SCHEMA, RecurrenceMixin
 from ritm.storage.sync_block_capture import BLOCK_CAPTURE_SCHEMA
 from ritm.storage.sync_capture import CAPTURE_SCHEMA, SyncCaptureMixin
+from ritm.storage.sync_inbound import INBOUND_SCHEMA, SyncInboundMixin
 from ritm.storage.sync_intents import SYNC_SCHEMA, SyncIntentMixin
 from ritm.storage.sync_outbox import OUTBOX_SCHEMA, SyncOutboxMixin
 from ritm.storage.sync_prepare_loop import SyncPrepareLoopMixin
@@ -32,7 +33,7 @@ from ritm.storage.sync_snapshot import SNAPSHOT_SCHEMA, SyncSnapshotMixin
 from ritm.storage.sync_source import SyncSourceMixin
 
 APPLICATION_ID = 0x5249544D
-SCHEMA_VERSION = 22
+SCHEMA_VERSION = 23
 SOURCE_SCHEMA = (
     "CREATE TABLE source_links (key TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, "
     "url TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('task','event')), "
@@ -198,6 +199,7 @@ ATTACHMENT_OWNER = """
 
 
 class TaskStore(
+    SyncInboundMixin,
     SyncPrepareLoopMixin,
     SyncSnapshotMixin,
     SyncPreparedMixin,
@@ -283,6 +285,9 @@ class TaskStore(
                 if version < 22:
                     for statement in BLOCK_CAPTURE_SCHEMA:
                         self._db.execute(statement)
+                if version < 23:
+                    for statement in INBOUND_SCHEMA:
+                        self._db.execute(statement)
                 if version < 13:
                     create_source(self._db)
                 self._db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -322,6 +327,8 @@ class TaskStore(
             for statement in SNAPSHOT_SCHEMA:
                 self._db.execute(statement)
             for statement in BLOCK_CAPTURE_SCHEMA:
+                self._db.execute(statement)
+            for statement in INBOUND_SCHEMA:
                 self._db.execute(statement)
             create_source(self._db)
             self._db.execute(f"PRAGMA application_id={APPLICATION_ID}")

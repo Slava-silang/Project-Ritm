@@ -54,6 +54,11 @@ root, затем его block; удаляемая category сохраняетс�
 
 ## Граница готовности и продолжение
 
+Storage adapter и ограниченный atomic apply уже добавлены: SYNC_INBOUND_STORE.md.
+acknowledged_local proof теперь даёт только owning adapter из verified own receipt
+и совпадающего local canonical payload; чистый planner сам receipt не проверяет.
+Ниже — граница исходного pure checkpoint, до storage adapter.
+
 Готов read-only алгоритм решений с immutable DTO и скрытым из repr содержимым.
 Нет SQLite apply, applied cursor/table, UI, сети, ack/cleanup или garden rewards.
 Этот шаг не завершает третий блок. Следующее: coherent TaskStore adapter (canonical

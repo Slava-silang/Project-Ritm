@@ -10,7 +10,7 @@ from test_sync_category_capture import NOW, bound
 
 from ritm.domain.calendar import WorkBlock
 from ritm.domain.tasks import Task
-from ritm.storage.sqlite import TaskStore
+from ritm.storage.sqlite import SCHEMA_VERSION, TaskStore
 from ritm.storage.sync_intents import sanitize_sync_backup
 
 
@@ -118,12 +118,14 @@ def test_upgrade_v21_preserves_calendar_without_fabricating_changes(tmp_path):
     with TaskStore(path) as store:
         store.create_work_block(block)
     with sqlite3.connect(path) as db:
-        db.execute("DROP TABLE sync_block_changes")
+        from migration_support import drop_later_task_tables
+
+        drop_later_task_tables(db, 21)
         db.execute("PRAGMA user_version=21")
     with TaskStore(path) as store:
         assert store.get_work_block(block.id) == block
         assert not store.list_sync_block_changes()
-        assert store._db.execute("PRAGMA user_version").fetchone()[0] == 22
+        assert store._db.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
 
 
 def test_regular_dependency_is_preserved_in_calendar_fact(tmp_path):

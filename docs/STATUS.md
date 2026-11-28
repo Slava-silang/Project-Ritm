@@ -1,5 +1,32 @@
 # Текущее состояние
 
+## Третий блок: первый атомарный incoming write path
+
+Tasks schema v23: sync_applied_snapshot отделён от received/outgoing cache;
+миграция не переносит cache в applied и не включает применение автоматически.
+Новый storage/sync_inbound.py: coherent canonical/pending/trash-file-owner read,
+preview BEGIN / apply recompute BEGIN IMMEDIATE, inverse mapping и verified own
+ack proof. Поддержаны clean bootstrap и ordinary non-destructive writes,
+category/block updates, retention и точные completed_at старого bootstrap.
+Входящие writes без echo; old bootstrap garden mirror обновляется без наград.
+Pending/dirty-input/destructive/regular/new completion/orphan caption gates
+оставляют целый batch без частичного применения. SYNC_INBOUND_STORE.md.
+
+Проверки: focused 71 passed (5,93 с), /tmp/ritm-inbound-store-final-focused.log;
+expanded 1049 passed/9 GUI deselected (98,34 с), /tmp/ritm-inbound-store-expanded.log.
+GUI Linux offscreen backup+recurrence 3 passed (24,87 с),
+/tmp/ritm-inbound-store-gui.log; Ruff check/format 9 Python и diff passed.
+Временные профили/fake replies, без сети/личного профиля. Garden v7/deps прежние.
+Windows/native/manual/full app suite не проверены.
+
+Изменены pure inbound proof, новый storage mixin, sqlite/backup/sanitizer/schema
+fixtures, inbound store tests и docs. Следующее T41c5e: atomic deletion/prune/
+regular/history lifecycle с сохранением локальной корзины/файлов, orphan calendar
+caption и completion ledger/new remote garden rewards; initial conflict choices
+и общая приёмка затем. Третий блок ещё НЕ завершён, runtime/server не начинать.
+Checkpoint: HEAD, «feat: apply guarded incoming sync transactions».
+
+
 ## Третий блок начат: безопасное входящее сравнение
 
 Новый integrations/sync_inbound.py: pure three-way preview по canonical local,

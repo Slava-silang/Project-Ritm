@@ -1,5 +1,9 @@
 # Окружение, запуск и выпуск
 
+## Tasks schema v23 / incoming storage
+
+Миграция v22 создаёт пустой APPLIED baseline, не копирует outgoing cache и не применяет данные. Старым клиентом профиль v23 не открывать. Backup accepts v22 и очищает metadata только в staged copy. tests/test_sync_inbound_store.py входит в test_sync_*.py; SYNC_INBOUND_STORE.md описывает gates и следующий lifecycle/ledger шаг. Real server/UI/transport не подключать.
+
 ## T41c5e: inbound preview
 
 tests/test_sync_inbound.py входит в test_sync_*.py. Только synthetic DTO, без сети/Qt/профиля. Schema/deps прежние. SYNC_INBOUND_PREVIEW.md определяет границу: plan ещё не применяет SQLite данные, outgoing cache не заменяет APPLIED baseline.

@@ -1,5 +1,9 @@
 # Архитектурная основа
 
+## Incoming storage / schema v23
+
+SyncInboundMixin хранит отдельный sync_applied_snapshot, читает canonical DTO + pending + reserved local owners в одной transaction и пересчитывает plan под write lock. Verified own receipt/body proof снимает ложный local divergence, не защищённую очередь. Non-destructive ordinary/category/calendar и retention атомарны с source garden mirror без наград; остальные role/archive/completion/orphan paths явно gated. SYNC_INBOUND_STORE.md. Garden v7/deps прежние.
+
 ## Inbound preview: начало третьего блока
 
 sync_inbound.plan_inbound — bounded pure three-way decisions, один local record на canonical root-role, protected keys, отдельный последний APPLIED snapshot вместо outgoing cache. Retention/absence не удаляют local history, retire_rule не архивирует tree; dependency/UUID/epoch guards. Никакого SQL apply/rewards/cursor. SYNC_INBOUND_PREVIEW.md; следующий owning adapter и durable applied baseline.
