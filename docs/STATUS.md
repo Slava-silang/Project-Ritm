@@ -1,5 +1,27 @@
 # Текущее состояние
 
+## Третий блок начат: безопасное входящее сравнение
+
+Новый integrations/sync_inbound.py: pure three-way preview по canonical local,
+incoming и последнему APPLIED snapshot (не outgoing cache), explicit pending
+keys. Bootstrap conflicts, retention/absence preserve history, regular close
+retire_rule не удаляет physical tree. Node protects root, dependency cascade
+category→root→block; local history references сохраняют category. Global UUID
+ownership/role transitions и revision/epoch/server checks без записи в профиль.
+Контракт/границы — SYNC_INBOUND_PREVIEW.md. Новые tests/test_sync_inbound.py:
+30 passed (0,28 с), /tmp/ritm-inbound-preview-final.log; expanded 1025 passed/9 GUI deselected (94,84 с),
+/tmp/ritm-inbound-preview-verified.log.
+Ruff check/format и diff passed. Schema tasks v22/garden v7/deps прежние.
+GUI/native/Windows/manual не выполнялись; UI/личный профиль/сеть не менялись.
+
+Следующее действие T41c5e: coherent TaskStore canonical/pending adapter и durable
+applied baseline/cursor, atomic incoming apply без echo с сохранением local-only
+history/trash/files; ledger для новых remote completion/garden rewards ровно
+один раз, без bootstrap старых наград. Third block ещё НЕ завершён; runtime/
+server не начинать. Изменены sync_inbound, test_sync_inbound и docs; Checkpoint: HEAD,
+«feat: preview incoming sync without overwriting local work».
+
+
 ## В план добавлены обновления приложения
 
 По запросу пользователя 28 ноября добавлены T30a (обновление пакетом поверх

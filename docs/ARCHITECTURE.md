@@ -1,5 +1,9 @@
 # Архитектурная основа
 
+## Inbound preview: начало третьего блока
+
+sync_inbound.plan_inbound — bounded pure three-way decisions, один local record на canonical root-role, protected keys, отдельный последний APPLIED snapshot вместо outgoing cache. Retention/absence не удаляют local history, retire_rule не архивирует tree; dependency/UUID/epoch guards. Никакого SQL apply/rewards/cursor. SYNC_INBOUND_PREVIEW.md; следующий owning adapter и durable applied baseline.
+
 ## Второй блок: приёмка
 
 SYNC_BLOCK2_ACCEPTANCE.md фиксирует category/calendar/AI capture. sync_calendar_effects вычисляет только calendar side effects уже проверенного typed source transition. Receipt+snapshot guard сверяет обязательные linked block effects атомарно с ledger/cache. Stable lineage расширяет own cascade proof на regular/history/canonical roots; skipped sources не публикуют blocks. Schema v22/garden v7 прежние. Дальше inbound/merge/rewards.

@@ -1,5 +1,9 @@
 # Проверка «Ритма»
 
+## Inbound preview
+
+Focused tests/test_sync_inbound.py: 30 passed (0,28 с), /tmp/ritm-inbound-preview-final.log. Bootstrap conflicts/pending protection/local history/role and category dependencies/global ownership и invalid snapshots. Expanded 1025 passed/9 GUI deselected (94,84 с), /tmp/ritm-inbound-preview-verified.log. Нет DB apply/UI/reward ledger; GUI/native/Windows/manual не запускались. Ruff check/format и diff passed.
+
 ## Второй блок: итоговая приёмка
 
 SYNC_BLOCK2_ACCEPTANCE.md: proof focused 59 passed (19,04 с), /tmp/ritm-block2-proof.log. Offscreen GUI 6 passed (104,16 с), native X11 3 passed (28,24 с). Финальный expanded: **995 passed/9 GUI deselected (97,67 с)**,
