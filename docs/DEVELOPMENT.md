@@ -1,5 +1,9 @@
 # Окружение, запуск и выпуск
 
+## Calendar preparation checkpoint
+
+Новый tests/test_sync_block_prepare.py входит в test_sync_*.py. Fake applied receipts/full snapshot, disposable profiles, default capture off; runtime/HTTP coverage barrier сохраняется. Schema/deps не менялись. Перед продолжением: SYNC_BLOCK_PREPARE.md; next regular/history cascade acceptance и общий AI audit.
+
 ## T41c5d: calendar journal
 
 Tasks schema v22, garden v7; миграция v21 и backup validation/sanitization обновлены. tests/test_sync_block_capture.py входит в test_sync_*.py. Перед wire resolver прочитать SYNC_BLOCK_CAPTURE.md. Transport barrier сохраняется.

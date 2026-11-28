@@ -1,5 +1,9 @@
 # Проверка «Ритма»
 
+## Calendar prepare loop
+
+Focused 45 passed (6,93 с), /tmp/ritm-block-prepare-proof-focused.log: event retry/restart/new edit during pending, coalescing, parent ordering/mapping, retention caption/unknown/deleted root, 30-day boundary, policy return, ordinary cascade restore/foreign epoch conflict, global UUID ownership, DST/UTC, target effect proof и fault rollback. Expanded 938 passed/6 GUI deselected (81,93 с), /tmp/ritm-block-prepare-verified.log. Ruff check/format и diff passed. GUI/Windows/native/manual не проверялись, UI не менялся.
+
 ## M02 — слияние «Джунглей»
 
 Сохранены dusk, независимая панель left/top, подробный GardenProgress и schema

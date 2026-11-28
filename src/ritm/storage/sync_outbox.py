@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from uuid import UUID
 
 from ritm.integrations._sync_wire import _number_text
-from ritm.integrations.sync_codec import RegularRecord, RemovalRecord, TaskRecord
+from ritm.integrations.sync_codec import BlockRecord, RegularRecord, RemovalRecord, TaskRecord
 from ritm.integrations.sync_operations import (
     Operation,
     Receipt,
@@ -174,6 +174,24 @@ class SyncOutboxMixin:
             parent_id = parent.depends_on
         roots, result = {}, None
         wanted = (intent.target_kind, intent.target_id)
+        calendar_mark = None
+        if intent.target_kind == "block" and type(intent.payload) is BlockRecord:
+            snapshot = self._read_sync_snapshot()
+            calendar_mark = (
+                next(
+                    (
+                        e
+                        for e in snapshot.entries
+                        if type(e.entity) is RemovalRecord
+                        and e.entity.entity_kind == "block"
+                        and e.entity.entity_id == intent.target_id
+                        and e.entity.reason == "user_deleted"
+                    ),
+                    None,
+                )
+                if snapshot
+                else None
+            )
         for frozen in reversed(chain):
             op, receipt = frozen.operation, frozen.receipt
             effects = {(op.target_kind, op.target_id)}
@@ -189,6 +207,17 @@ class SyncOutboxMixin:
                 effects.add(("task", roots[op.target_id]))
             if wanted in effects:
                 result = (receipt.revision, receipt.delete_epoch)
+            if (
+                calendar_mark is not None
+                and op.target_kind == "task"
+                and op.action == "delete"
+                and op.target_id == intent.payload.block.task_id
+                and receipt.revision == calendar_mark.revision
+            ):
+                # The same atomic server revision proves our root-delete cascade.
+                # A newer foreign block deletion has a different revision and cannot
+                # borrow this receipt to waive its deletion epoch.
+                result = (receipt.revision, calendar_mark.delete_epoch)
         return result
 
     def freeze_sync_intent(self, identifier: UUID, base: SyncBase | None = None) -> FrozenRequest:

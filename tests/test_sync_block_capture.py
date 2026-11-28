@@ -208,8 +208,12 @@ def test_calendar_dependency_prevents_premature_regular_retirement(tmp_path):
         receipt, snapshot = confirmed(snapshot, step.request, context)
         store.save_sync_receipt_and_snapshot(receipt, snapshot)
         step = store.prepare_next_sync(REGULAR_NOW)
-        assert step.status == "blocked" and step.reasons == ("calendar_pending",)
+        assert step.status == "prepared" and step.request.operation.target_kind == "block"
         assert store.list_sync_regular_changes() == changes
+        receipt, snapshot = confirmed(snapshot, step.request, context)
+        store.save_sync_receipt_and_snapshot(receipt, snapshot)
+        assert store.prepare_next_sync(REGULAR_NOW).status == "settled"
+        assert not store.list_sync_regular_changes() and not store.list_sync_block_changes()
 
 
 def test_archive_keeps_calendar_and_strips_only_copied_journal(tmp_path):

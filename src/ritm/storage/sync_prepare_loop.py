@@ -16,6 +16,7 @@ from ritm.integrations.sync_operations import target_identity
 from ritm.integrations.sync_promotion_plan import PromotionBase
 from ritm.integrations.sync_regular_changes import task_node_ids
 from ritm.integrations.sync_regular_plan import RegularBase, RegularContext, plan_regular
+from ritm.storage.sync_block_prepare import SyncBlockPrepareMixin
 from ritm.storage.sync_intents import _stored_uuid
 from ritm.storage.sync_outbox import FrozenRequest, SyncBase, SyncBaseConflict
 from ritm.storage.sync_prepared import SyncIdentityConflict
@@ -174,7 +175,7 @@ def _contexts(changes, snapshot, state, moment):
     return regular, history
 
 
-class SyncPrepareLoopMixin:
+class SyncPrepareLoopMixin(SyncBlockPrepareMixin):
     def prepare_next_sync(self, moment):
         """Resume frozen head or prepare one command from a full cached snapshot.
 
@@ -257,7 +258,8 @@ class SyncPrepareLoopMixin:
         if snapshot is None or snapshot.set_revision < required_revision:
             return PreparationStep(status="needs_snapshot", remaining_facts=len(changes))
         if not changes:
-            return PreparationStep(status="idle")
+            calendar = self._prepare_sync_blocks(snapshot, moment)
+            return PreparationStep(**vars(calendar)) if calendar else PreparationStep(status="idle")
         state = self._read_sync_prepared_state()
         regular, history = _contexts(changes, snapshot, state, moment)
         entries = {_key(e.entity): e for e in snapshot.entries}
@@ -324,12 +326,10 @@ class SyncPrepareLoopMixin:
             return PreparationStep(
                 status="blocked", reasons=("projection_missing",), remaining_facts=len(changes)
             )
-        if self._db.execute(
-            "SELECT 1 FROM sync_block_changes WHERE after_regular_id IN "
-            "(SELECT id FROM sync_regular_changes) LIMIT 1"
-        ).fetchone():
+        calendar = self._prepare_sync_blocks(snapshot, moment)
+        if calendar is not None and calendar.status != "settled":
             return PreparationStep(
-                status="blocked", reasons=("calendar_pending",), remaining_facts=len(changes)
+                **(vars(calendar) | {"remaining_facts": len(changes) + calendar.remaining_facts})
             )
         # Both projections agree with a complete, covering remote snapshot.
         # No pending command, blocked fact or unrepresented ordinary edit is discarded.
@@ -338,4 +338,7 @@ class SyncPrepareLoopMixin:
             "(SELECT id FROM sync_regular_changes WHERE context_id=1)"
         )
         self._db.execute("DELETE FROM sync_regular_changes WHERE context_id=1")
-        return PreparationStep(status="settled", retired_facts=len(changes))
+        return PreparationStep(
+            status="settled",
+            retired_facts=len(changes) + (calendar.retired_facts if calendar else 0),
+        )

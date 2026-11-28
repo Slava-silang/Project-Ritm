@@ -1,5 +1,27 @@
 # Текущее состояние
 
+## Второй блок: календарь подключён к подготовке очереди
+
+SyncBlockPrepareMixin готовит immutable block intents после подтверждённых task/
+regular projections, использует known cached bases и local→wire parent mapping.
+Coalescing unpublished edits, receipt-covered prefix retirement, restart/pending
+new edits и atomic rollback. Retention 30 суток/точная граница, archived caption
+только при подтверждённом retention root. Unknown parent и foreign user_deleted
+не возвращаются молча. Ordinary root-delete cascade требует точный own receipt.
+Контракт/ограничения: SYNC_BLOCK_PREPARE.md. Schema v22/garden v7/deps прежние.
+
+Изменены sync_block_prepare (новый), sync_prepare_loop, sync_outbox, новые
+ test_sync_block_prepare и обновлён test_sync_block_capture. Focused 45 passed
+(6,93 с), /tmp/ritm-block-prepare-proof-focused.log. Expanded 938 passed/6 GUI deselected (81,93 с),
+/tmp/ritm-block-prepare-verified.log; Ruff check/format и diff passed.
+GUI/native/Windows/manual не выполнялись, UI не менялся. Только disposable
+профили и fake snapshot/receipts, без реального сервера/аккаунтов/сети.
+
+Следующее действие: regular/history cascade и skipped/retained parent acceptance,
+полный AI writer roundtrip audit, затем приёмка всего второго блока. Второй блок
+ещё НЕ завершён. Inbound/runtime/server не начинать. Checkpoint: HEAD, «feat: prepare durable calendar sync operations».
+
+
 ## M02 — слияние новой темы «Джунгли»
 
 Конфликты codex/design-refresh объединены с текущей desktop sync schema v22.

@@ -1,5 +1,9 @@
 # Архитектурная основа
 
+## Calendar queue preparation
+
+SyncPrepareLoopMixin включает SyncBlockPrepareMixin. Полное regular/history/lineage покрытие предшествует block command. Fact UUID закрепляет frozen request; ack+covering snapshot очищает только его block prefix в общей transaction. Confirmed identities меняют wire link, не local WorkBlock. Ordinary cascade proof связывает block marker с точной revision root-delete receipt. SYNC_BLOCK_PREPARE.md. Schema v22/garden v7 прежние.
+
 ## Журнал календаря / второй блок
 
 SyncBlockCaptureMixin и schema v22: atomic calendar before/after + logical root archive/restore, intent/regular anchors. Pending calendar не даёт retire зависимых regular facts. Wire resolver ещё не подключён. SYNC_BLOCK_CAPTURE.md.
